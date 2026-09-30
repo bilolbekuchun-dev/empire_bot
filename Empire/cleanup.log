@@ -1327,3 +1327,13 @@ Original description: Bad Request: group chat was upgraded to a supergroup chat
 2026-10-01 02:23:58,779 - WARNING - Sleep for 2.385755 seconds and try again... (tryings = 3, bot id = 8884302733)
 2026-10-01 02:24:09,490 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
 2026-10-01 02:24:09,491 - WARNING - Sleep for 3.108959 seconds and try again... (tryings = 4, bot id = 8884302733)
+2026-10-01 02:24:17,770 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:24:17,770 - WARNING - Sleep for 3.917427 seconds and try again... (tryings = 5, bot id = 8884302733)
+2026-10-01 02:24:26,764 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:24:26,765 - WARNING - Sleep for 5.016157 seconds and try again... (tryings = 6, bot id = 8884302733)
+2026-10-01 02:24:37,051 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:24:37,052 - WARNING - Sleep for 4.975116 seconds and try again... (tryings = 7, bot id = 8884302733)
+2026-10-01 02:24:47,286 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:24:47,287 - WARNING - Sleep for 4.986239 seconds and try again... (tryings = 8, bot id = 8884302733)
+2026-10-01 02:24:57,478 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:24:57,478 - WARNING - Sleep for 4.981119 seconds and try again... (tryings = 9, bot id = 8884302733)
