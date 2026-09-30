@@ -1,0 +1,47 @@
+{
+  "roles": {
+    "🕵🏼 Komissar katani": "<tg-emoji emoji-id='5206503967760095680'>🕵️</tg-emoji>",
+    "👮🏼 Serjant": "<tg-emoji emoji-id='5206324889098692371'>👮</tg-emoji>",
+    "👨🏼 Tinch axoli": "<tg-emoji emoji-id='5206347888648559947'>👨</tg-emoji>",
+    "👨🏼‍⚕️ Doktor": "<tg-emoji emoji-id='5206305454371678131'>👨‍⚕️</tg-emoji>",
+    "👩🏻‍⚕️ Hamshira": "<tg-emoji emoji-id='5208442393874966946'>👩‍⚕️</tg-emoji>",
+    "🧙‍♂️ Daydi": "<tg-emoji emoji-id='5208783972624018761'>🧙</tg-emoji>",
+    "💃 Kezuvchi": "<tg-emoji emoji-id='5206591061106927786'>💃</tg-emoji>",
+    "🤞🏼 Omadli": "<tg-emoji emoji-id='5208771985370297416'>🤞</tg-emoji>",
+    "🎖 Janob": "<tg-emoji emoji-id='5206458501236303658'>🎖</tg-emoji>",
+    "🤓 Sotqin": "<tg-emoji emoji-id='5206434148771737332'>🤓</tg-emoji>",
+    "👺 Xoyin": "<tg-emoji emoji-id='5208762824205052741'>👺</tg-emoji>",
+    "🛡 Qo'riqchi": "<tg-emoji emoji-id='5206577098168247863'>🛡</tg-emoji>",
+    "⛓ Zanjir": "<tg-emoji emoji-id='5206422084208598163'>⛓️</tg-emoji>",
+    "🤵🏻 Don": "<tg-emoji emoji-id='5206657684639626350'>🤵</tg-emoji>",
+    "🤵🏼 Mafia": "<tg-emoji emoji-id='5206222058991690229'>🤵</tg-emoji>",
+    "👨🏼‍💼 Advokat": "<tg-emoji emoji-id='5206273375260943817'>👨‍💼</tg-emoji>",
+    "🥷 Yollanma qotil": "<tg-emoji emoji-id='5206260563373498644'>🥷</tg-emoji>",
+    "👩🏼‍💻 Jurnalist": "<tg-emoji emoji-id='5208509610113151865'>👩‍💻</tg-emoji>",
+    "🦇 Ayg'oqchi": "<tg-emoji emoji-id='5208540104380950496'>🦇</tg-emoji>",
+    "🔪 Qotil": "<tg-emoji emoji-id='5206617518105468919'>🔪</tg-emoji>",
+    "🐺 Bo'ri": "<tg-emoji emoji-id='5206204505460354188'>🐺</tg-emoji>",
+    "🤹🏻 Aferist": "<tg-emoji emoji-id='5208864043699318415'>🤹</tg-emoji>",
+    "🧌 G'azabkor": "<tg-emoji emoji-id='5206653969492910423'>🧌</tg-emoji>",
+    "🧙‍ Sehrgar": "<tg-emoji emoji-id='5208625471150928649'>🧙</tg-emoji>",
+    "🤦🏼 Suidsid": "<tg-emoji emoji-id='5208949878620725501'>🤦</tg-emoji>",
+    "🧨 Qasoskor": "<tg-emoji emoji-id='5206600875107197380'>🧨</tg-emoji>",
+    "⚔️ Qaroqchi": "<tg-emoji emoji-id='5206412167129115072'>⚔️</tg-emoji>",
+    "🎭 Aktyor": "<tg-emoji emoji-id='5206658719726741982'>🎭</tg-emoji>",
+    "🧞 Jin": "<tg-emoji emoji-id='5206575178317866664'>🧞</tg-emoji>",
+    "👷🏻‍♂️ Konchi": "<tg-emoji emoji-id='5210993217901733758'>👷‍♂️</tg-emoji>"
+  },
+  "weapons": {
+    "miltiq": null,
+    "himoya": null,
+    "doridan_himoya": null,
+    "mask": null,
+    "hujjat": null,
+    "osishdan_himoya": null,
+    "jon": null
+  },
+  "currency": {
+    "diamond": "<tg-emoji emoji-id='5210941235912552228'>💎</tg-emoji>",
+    "dollar": "<tg-emoji emoji-id='5211062061932521090'>💵</tg-emoji>"
+  }
+}

@@ -1,0 +1,34 @@
+[build]
+  publish = "."
+
+# Barcha so'rovlarni index.html ga yo'naltirish (SPA)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# CSS va JS uchun uzoq cache
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# HTML uchun cache yo'q (yangilanishlar tez ko'rinsin)
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache"
+    X-Frame-Options = "ALLOWALL"
+
+# CORS headerlar (Telegram WebApp uchun kerak)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, OPTIONS"
+    Access-Control-Allow-Headers = "*"

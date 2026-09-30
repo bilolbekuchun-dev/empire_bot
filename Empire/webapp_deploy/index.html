@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title data-i18n="webapp_title">Empire Mafia — Shaxsiy kabinet</title>
+    <meta name="description" content="Empire Mafia — O'yin botining shaxsiy kabineti. Profil, statistika, do'kon va boshqalar.">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="stylesheet" href="./index.css">
+    
+    <!-- ═══════ API SERVER KONFIGURATSIYASI ═══════
+         Bot serveringiz URL'ini shu yerga qo'ying.
+         Masalan: "https://your-server.com"
+         Bo'sh qolsa, relative path sifatida ishlaydi (same-origin).
+    -->
+    <script>
+        window.__EMPIRE_API_BASE = "";
+    </script>
+    
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://unpkg.com/lottie-web@5.12.2/build/player/lottie.min.js"></script>
+</head>
+<body>
+    <div class="bg-field">
+        <div class="vignette"></div>
+    </div>
+
+    <div class="shell">
+        <!-- Sidebar navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-user">
+                <img id="sidebar-user-avatar" src="https://img.icons8.com/clouds/100/username.png" alt="Avatar">
+                <div class="sidebar-user-info">
+                    <span class="sidebar-user-name" id="sidebar-user-name" data-i18n="webapp_loading">Yuklanmoqda...</span>
+                    <span class="sidebar-user-username" id="sidebar-user-username">@username</span>
+                </div>
+            </div>
+
+            <nav class="nav-list" id="nav-list">
+                <button class="nav-item active" data-target="overview"><i class="fa-solid fa-house"></i><span data-i18n="webapp_nav_overview">Bosh sahifa</span></button>
+                <button class="nav-item" data-target="leaderboard"><i class="fa-solid fa-ranking-star"></i><span data-i18n="webapp_nav_leaderboard">Reyting</span></button>
+                <button class="nav-item" data-target="history"><i class="fa-solid fa-clock-rotate-left"></i><span data-i18n="webapp_nav_history">O'tkazmalar tarixi</span></button>
+                <button class="nav-item" data-target="inventory"><i class="fa-solid fa-briefcase"></i><span data-i18n="webapp_nav_inventory">Inventar</span></button>
+                <button class="nav-item" data-target="protections"><i class="fa-solid fa-shield-halved"></i><span data-i18n="webapp_nav_protections">Himoyalar</span></button>
+                <button class="nav-item" data-target="geroy"><i class="fa-solid fa-user-shield"></i><span data-i18n="webapp_nav_geroy">Geroy</span></button>
+                <button class="nav-item" data-target="geroy-market"><i class="fa-solid fa-store"></i><span data-i18n="webapp_nav_geroy_market">Geroy savdosi</span></button>
+                <button class="nav-item" data-target="nft-market"><i class="fa-solid fa-gift"></i><span data-i18n="nft_nav_label">NFT Market</span></button>
+                <button class="nav-item" id="nav-tournament" data-target="tournament"><i class="fa-solid fa-bullhorn"></i><span data-i18n="webapp_nav_tournament">Reklama</span></button>
+                <button class="nav-item" id="nav-holiday" data-target="holiday" style="display:none;"><i class="fa-solid fa-gift"></i><span>Bayram</span></button>
+                <button class="nav-item" id="nav-tm-tournament" data-target="tm-tournament" style="display:none;"><i class="fa-solid fa-trophy"></i><span>Turnament</span></button>
+                <button class="nav-item" data-target="para"><i class="fa-solid fa-heart"></i><span data-i18n="webapp_nav_para">Mening Param</span></button>
+                <button class="nav-item" data-target="support"><i class="fa-solid fa-headset"></i><span data-i18n="webapp_nav_support">Yordam</span><span class="admin-support-badge" id="nav-support-badge" style="display:none;">0</span></button>
+                <button class="nav-item" id="nav-groups" data-target="groups" style="display:none;"><i class="fa-solid fa-users-gear"></i><span data-i18n="webapp_nav_groups">Guruh sozlamalari</span></button>
+                <button class="nav-item" id="nav-admin" data-target="admin" style="display:none;"><i class="fa-solid fa-user-shield"></i><span data-i18n="webapp_nav_admin">Admin panel</span></button>
+            </nav>
+
+            <div class="sidebar-foot">
+                <div class="vip-pill" id="sidebar-vip">
+                    <i class="fa-solid fa-gem"></i>
+                    <span id="sidebar-vip-text">VIP yo'q</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Floating support button -->
+        <button class="support-fab" id="support-fab-btn" data-target="support" title="Yordam">
+            <i class="fa-solid fa-headset"></i>
+            <span class="support-fab-badge" id="support-fab-badge" style="display:none;">0</span>
+        </button>
+
+        <!-- Mobile bottom tab bar -->
+        <nav class="tabbar" id="tabbar">
+            <button class="tab-item active" data-target="overview"><i class="fa-solid fa-house"></i></button>
+            <button class="tab-item" data-target="roles"><i class="fa-solid fa-masks-theater"></i></button>
+            <button class="tab-item" data-target="shop"><i class="fa-solid fa-store"></i></button>
+            <button class="tab-item" data-target="transfer"><i class="fa-solid fa-right-left"></i></button>
+            <button class="tab-item" id="menu-toggle-btn"><i class="fa-solid fa-bars"></i></button>
+        </nav>
+
+        <!-- Mobile sidebar backdrop -->
+        <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+        <!-- Main content -->
+        <main class="content">
+            <!-- Topbar -->
+            <header class="topbar">
+                <div class="topbar-user">
+                    <div class="avatar-ring" id="avatar-ring">
+                        <img id="user-avatar" src="https://img.icons8.com/clouds/100/username.png" alt="Avatar">
+                    </div>
+                    <div class="topbar-user-info">
+                        <h1 id="user-name" data-i18n="webapp_loading">Yuklanmoqda...</h1>
+                        <div class="topbar-meta">
+                            <span id="user-username">@username</span>
+                        </div>
+                        <div class="topbar-badges">
+                            <span class="rank-chip" id="rank-badge"><i class="fa-solid fa-star"></i> Gamer</span>
+                            <span class="vip-luxury-badge" id="vip-luxury-badge" style="display:none;"><i class="fa-solid fa-crown"></i> VIP</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="topbar-balances">
+                    <div class="balance-pill gold">
+                        <i class="fa-solid fa-sack-dollar"></i>
+                        <span id="bal-dollars">0</span>
+                    </div>
+                    <div class="balance-pill cyan">
+                        <i class="fa-solid fa-gem"></i>
+                        <span id="bal-diamonds">0</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- ===== OVERVIEW ===== -->
+            <section class="view active" id="view-overview">
+                <div class="view-head">
+                    <h2 data-i18n="webapp_overview_title">Bosh sahifa</h2>
+                    <p data-i18n="webapp_overview_sub">Profilingiz haqida umumiy ko'rinish</p>
+                </div>
+
+                <div class="tournament-carousel-wrap" id="home-tournament-carousel-wrap" style="display:none;">
+                    <div class="tournament-carousel" id="home-tournament-carousel"></div>
+                </div>
+
+                <div class="panel" style="margin-bottom:18px;">
+                    <div class="panel-head"><i class="fa-solid fa-gift"></i><h3 data-i18n="daily_claim_title">Kunlik mukofot</h3></div>
+                    <p class="daily-claim-sub" data-i18n="daily_claim_sub">Har kuni kirib, ketma-ket mukofot oling — 7-kunda eng katta bonus!</p>
+                    <div class="daily-claim-days" id="daily-claim-days"></div>
+                    <button class="sub-cta" id="daily-claim-btn" style="margin-top:14px; width:100%;" data-i18n="daily_claim_btn">Mukofotni olish</button>
+                </div>
+
+                <div class="panel" style="margin-bottom:18px;">
+                    <div class="panel-head"><i class="fa-solid fa-briefcase"></i><h3 data-i18n="webapp_owned_title">Nimalarga egasiz</h3></div>
+                    <div class="owned-grid" id="owned-summary-container"></div>
+                </div>
+
+                <div class="grid grid-4 stat-row">
+                    <div class="stat-card">
+                        <div class="stat-icon blue"><i class="fa-solid fa-gamepad"></i></div>
+                        <div><span class="stat-val" id="stat-games">0</span><span class="stat-label" data-i18n="webapp_stat_games">Jami o'yinlar</span></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon green"><i class="fa-solid fa-trophy"></i></div>
+                        <div><span class="stat-val" id="stat-wins">0</span><span class="stat-label" data-i18n="webapp_stat_wins">G'alabalar</span></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon red"><i class="fa-solid fa-skull"></i></div>
+                        <div><span class="stat-val" id="stat-losses">0</span><span class="stat-label" data-i18n="webapp_stat_losses">Mag'lubiyatlar</span></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon gold"><i class="fa-solid fa-percent"></i></div>
+                        <div><span class="stat-val" id="stat-winrate">0%</span><span class="stat-label" data-i18n="webapp_stat_winrate">G'alaba foizi</span></div>
+                    </div>
+                </div>
+
+                <div class="xp-card">
+                    <div class="xp-labels">
+                        <span id="xp-level-title" data-i18n="webapp_stat_winrate">G'alaba foizi</span>
+                        <span id="xp-pct-val">0%</span>
+                    </div>
+                    <div class="xp-bar-bg"><div class="xp-bar-fill" id="xp-bar-fill" style="width:0%;"></div></div>
+                </div>
+
+                <div class="grid grid-2">
+                    <div class="panel">
+                        <div class="panel-head"><i class="fa-solid fa-server"></i><h3 data-i18n="webapp_server_status">Server holati</h3></div>
+                        <div class="live-stat-list">
+                            <div class="live-stat"><span class="pulse-dot"></span><span data-i18n="webapp_active_games">Faol o'yinlar</span><b id="global-active-games">0</b></div>
+                            <div class="live-stat"><i class="fa-solid fa-users text-cyan"></i><span data-i18n="webapp_total_users">Foydalanuvchilar</span><b id="global-total-users">0</b></div>
+                        </div>
+                    </div>
+                    <div class="panel">
+                        <div class="panel-head"><i class="fa-solid fa-bolt"></i><h3 data-i18n="webapp_vip_title">VIP maqom</h3></div>
+                        <div id="subs-container"></div>
+                        <div class="gift-vip-box">
+                            <label class="transfer-label" data-i18n="webapp_gift_vip_title">🎁 Do'stga VIP sovg'a qilish</label>
+                            <div class="seg-control" id="gift-vip-target-tabs">
+                                <button class="seg active" data-target-type="username" data-i18n="tab_username">@ Username</button>
+                                <button class="seg" data-target-type="id" data-i18n="tab_telegram_id">🆔 Telegram ID</button>
+                                <button class="seg" data-target-type="para" data-i18n="tab_param">💞 Param</button>
+                            </div>
+                            <input type="text" id="gift-vip-username" data-i18n-placeholder="placeholder_friend_username" placeholder="Do'stingizning @username">
+                            <input type="text" id="gift-vip-target-id" data-i18n-placeholder="placeholder_friend_id" placeholder="Do'stingizning Telegram ID raqami" inputmode="numeric" style="display:none;">
+                            <div id="gift-vip-target-preview" class="target-preview" style="display:none;"></div>
+                            <div class="seg-control" id="gift-vip-plan-tabs">
+                                <button class="seg active" data-days="7" data-i18n-days="7">7 kun</button>
+                                <button class="seg" data-days="14" data-i18n-days="14">14 kun</button>
+                                <button class="seg" data-days="30" data-i18n-days="30">30 kun</button>
+                            </div>
+                            <div class="sub-cta-row">
+                                <button class="sub-cta" id="gift-vip-diamond-btn">💎 8 orqali</button>
+                                <button class="sub-cta stars" id="gift-vip-stars-btn">⭐️ 50 orqali</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== LEADERBOARD ===== -->
+            <section class="view" id="view-leaderboard">
+                <div class="view-head">
+                    <h2 data-i18n="webapp_leaderboard_title">Reyting</h2>
+                    <p data-i18n="webapp_leaderboard_sub">Eng zo'r o'yinchilar TOP-20 ro'yxati</p>
+                </div>
+                <div class="seg-control" id="lb-tabs">
+                    <button class="seg active" data-cat="wins" data-i18n="tab_wins">🏆 G'alabalar</button>
+                    <button class="seg" data-cat="dollar" data-i18n="tab_dollar">💵 Dollar</button>
+                    <button class="seg" data-cat="diamond" data-i18n="tab_diamond">💎 Olmos</button>
+                    <button class="seg" data-cat="games_count" data-i18n="tab_games">🎮 O'yinlar</button>
+                </div>
+                <div class="panel">
+                    <div class="lb-table" id="lb-container">
+                        <div class="skeleton-list"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== HISTORY ===== -->
+            <section class="view" id="view-history">
+                <div class="view-head">
+                    <h2 data-i18n="webapp_history_title">O'tkazmalar tarixi</h2>
+                    <p data-i18n="webapp_history_sub">Oxirgi 20 ta pul/olmos o'tkazmangiz</p>
+                </div>
+                <div class="panel">
+                    <div class="history-list" id="history-container">
+                        <div class="skeleton-list"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== ROLES ===== -->
+            <section class="view" id="view-roles">
+                <div class="view-head">
+                    <h2 data-i18n="webapp_roles_title">O'yin rollari</h2>
+                    <p data-i18n="webapp_roles_sub">Barcha rollar va ularning qobiliyatlari</p>
+                </div>
+                <div class="search-bar">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="roles-search" data-i18n-placeholder="webapp_roles_search" placeholder="Rol nomini qidirish...">
+                </div>
+                <div id="roles-container"></div>
+            </section>
+
+            <!-- ===== INVENTORY ===== -->
+            <section class="view" id="view-inventory">
+                <div class="view-head">
+                    <h2 data-i18n="webapp_inventory_title">Shaxsiy inventar</h2>
+                    <p data-i18n="webapp_inventory_sub">Sotib olingan faol rollaringiz</p>
+                </div>
+                <div id="inventory-container"></div>
+            </section>
+
+            <!-- ===== PROTECTIONS ===== -->
+            <section class="view" id="view-protections">
+                <div class="view-head">
+                    <h2 data-i18n="webapp_protections_title">Himoyalar</h2>
+                    <p data-i18n="webapp_protections_sub">O'yin ichida avtomatik ishlaydigan himoyalarni boshqaring</p>
+                </div>
+                <div class="panel">
+                    <div class="toggle-list" id="protections-container"></div>
+                </div>
+                <div class="panel" id="active-role-toggle-panel" style="margin-top:16px; display:none;">
+                    <div class="panel-head"><i class="fa-solid fa-star"></i><h3 data-i18n="webapp_nav_active_shop">Faol rollar</h3></div>
+                    <div class="toggle-list" id="active-role-toggle-container"></div>
+                </div>
+            </section>
+
+            <!-- ===== SHOP ===== -->
+            <section class="view" id="view-shop">
+                <div class="view-head">
+                    <h2 data-i18n="webapp_shop_title">Qurol-yarog' do'koni</h2>
+                    <p data-i18n="webapp_shop_sub">Balansingizga himoya va buyumlar xarid qiling</p>
+                </div>
+                <div class="grid grid-3" id="shop-container"></div>
+
+                <div class="view-head" style="margin-top:24px;">
+                    <h2 data-i18n="webapp_currency_title">Pul va Olmos xarid qilish</h2>
+                    <p data-i18n="webapp_currency_sub">⭐️ Telegram Stars orqali to'g'ridan-to'g'ri xarid qiling</p>
+                </div>
+                <div class="panel" style="margin-bottom:16px;">
+                    <div class="panel-head"><i class="fa-solid fa-gem"></i><h3 data-i18n="webapp_currency_diamond">Olmos</h3></div>
+                    <div class="seg-control" id="diamond-method-tabs">
+                        <button class="seg active" data-method="stars" data-i18n="tab_stars">⭐️ Stars</button>
+                        <button class="seg" data-method="dollar" data-i18n="webapp_currency_dollar_via">💵 Dollar (1000$ = 1💎)</button>
+                    </div>
+                    <div class="grid pack-grid" id="diamond-stars-container"></div>
+                    <div class="grid pack-grid" id="diamond-dollar-container" style="display:none;"></div>
+                </div>
+                <div class="panel">
+                    <div class="panel-head"><i class="fa-solid fa-sack-dollar"></i><h3 data-i18n="webapp_currency_dollar">Dollar</h3></div>
+                    <div class="seg-control" id="dollar-method-tabs">
+                        <button class="seg active" data-method="stars" data-i18n="tab_stars">⭐️ Stars</button>
+                        <button class="seg" data-method="diamond" data-i18n="webapp_currency_diamond_via">💎 Olmos (1💎 = 1000$)</button>
+                    </div>
+                    <div class="grid pack-grid" id="dollar-packs-container"></div>
+                    <div class="grid pack-grid" id="dollar-diamond-container" style="display:none;"></div>
+                </div>
+            </section>
+
+            <!-- ===== GEROY ===== -->
+            <section class="view" id="view-geroy">
+                <div class="view-head">
+                    <h2 data-i18n="webapp_geroy_title">Geroy</h2>
+                    <p data-i18n="webapp_geroy_sub">Shaxsiy Geroyingizni sotib oling va boshqaring</p>
+                </div>
+                <div id="geroy-container"><div class="skeleton-list"></div></div>
+            </section>
+
+            <!-- ===== GEROY MARKET ===== -->
+            <section class="view" id="view-geroy-market">
+                <div class="view-head">
+                    <h2 data-i18n="geroy_market_title">Geroy savdosi</h2>
+                    <p data-i18n="geroy_market_sub">Geroylarni sotib oling yoki o'zingiznikini sotuvga qo'ying</p>
+                </div>
+                <div class="seg-control" id="geroy-market-tabs">
+                    <button class="seg active" data-gm-tab="browse" data-i18n="geroy_market_tab_browse">Bozor</button>
+                    <button class="seg" data-gm-tab="mine" data-i18n="geroy_market_tab_mine">Mening e'lonim</button>
+                    <button class="seg" data-gm-tab="admin" id="gm-tab-admin-btn" style="display:none;" data-i18n="geroy_market_tab_admin">Admin</button>
+                </div>
+                <div class="gm-tab-panel" id="gm-panel-browse">
+                    <div id="geroy-market-browse-container"><div class="skeleton-list"></div></div>
+                </div>
+                <div class="gm-tab-panel" id="gm-panel-mine" style="display:none;">
+                    <div id="geroy-market-mine-container"><div class="skeleton-list"></div></div>
+                </div>
+                <div class="gm-tab-panel" id="gm-panel-admin" style="display:none;">
+                    <div class="panel" style="margin-top:16px;">
+                        <div class="panel-head"><i class="fa-solid fa-store"></i><h3 data-i18n="geroy_market_admin_create_title">🏪 Yangi do'kon geroyi qo'shish</h3></div>
+                        <div class="admin-action-row">
+                            <input type="text" id="gm-admin-name" data-i18n-placeholder="geroy_market_admin_name_placeholder" placeholder="Geroy nomi">
+                        </div>
+                        <div class="admin-action-row">
+                            <input type="number" id="gm-admin-level" data-i18n-placeholder="geroy_market_admin_level_placeholder" placeholder="Daraja" min="1" value="1">
+                            <input type="number" id="gm-admin-price" data-i18n-placeholder="geroy_market_price_placeholder" placeholder="Narx (kamida 20 💎)" min="20">
+                        </div>
+                        <div class="admin-action-row">
+                            <button class="sub-cta" id="gm-admin-create-btn" data-i18n="geroy_market_admin_create_btn">Yaratish va sotuvga qo'yish</button>
+                        </div>
+                    </div>
+                    <div class="panel" style="margin-top:16px;">
+                        <div class="panel-head"><i class="fa-solid fa-list"></i><h3 data-i18n="geroy_market_admin_manage_title">Barcha faol e'lonlar (boshqarish)</h3></div>
+                        <div id="geroy-market-admin-list"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== NFT MARKET ===== -->
+            <section class="view" id="view-nft-market">
+                <div class="view-head">
+                    <h2 data-i18n="nft_view_title">🎁 NFT Market</h2>
+                    <p data-i18n="nft_view_sub">Telegram sovg'alarini olmosga sotib oling — to'g'ridan-to'g'ri Telegram hisobingizga yuboriladi</p>
+                </div>
+                <div id="nft-stars-balance-top" style="display:none; margin:0 0 14px; padding:10px 14px; border-radius:var(--radius-md); border:1px solid var(--gold-line); background:linear-gradient(155deg, var(--glass-hi) 0%, var(--glass) 55%, rgba(255,246,224,0.02) 100%); font-weight:800; font-size:16px; color:var(--diamond);">⭐ —</div>
+                <div class="seg-control" id="nft-market-tabs">
+                    <button class="seg active" data-nft-tab="browse" data-i18n="nft_tab_browse">Do'kon</button>
+                    <button class="seg" data-nft-tab="mine" data-i18n="nft_tab_mine">Sotib olganlar</button>
+                    <button class="seg" data-nft-tab="storeedit" id="nft-tab-storeedit-btn" style="display:none;" data-i18n="nft_tab_storeedit">Do'konda</button>
+                    <button class="seg" data-nft-tab="resale" data-i18n="resale_tab_label">Collectibles</button>
+                    <button class="seg" data-nft-tab="premium">Premium</button>
+                    <button class="seg" data-nft-tab="admin" id="nft-tab-admin-btn" style="display:none;" data-i18n="nft_tab_admin">Admin</button>
+                </div>
+                <div class="gm-tab-panel" id="nft-panel-browse">
+                    <div id="nft-market-browse-container"><div class="skeleton-list"></div></div>
+                </div>
+                <div class="gm-tab-panel" id="nft-panel-mine" style="display:none;">
+                    <div id="nft-market-mine-container"><div class="skeleton-list"></div></div>
+                </div>
+                <div class="gm-tab-panel" id="nft-panel-storeedit" style="display:none;">
+                    <div id="nft-storeedit-list"></div>
+                </div>
+                <div class="gm-tab-panel" id="nft-panel-resale" style="display:none;">
+                    <p style="font-size:12.5px; color:var(--text-2); margin-bottom:12px;" data-i18n="resale_view_sub">Noyob, boshqa foydalanuvchilar qayta sotuvga qo'ygan sovg'alarni olmosga sotib oling</p>
+                    <div id="resale-market-browse-container"><div class="skeleton-list"></div></div>
+                </div>
+                <div class="gm-tab-panel" id="nft-panel-premium" style="display:none;">
+                    <p style="font-size:12.5px; color:var(--text-2); margin-bottom:12px;">Telegram Premium obunasini olmosga sotib oling — o'z hisobingizga sovg'a qilinadi</p>
+                    <div id="premium-market-browse-container"><div class="skeleton-list"></div></div>
+                </div>
+                <div class="gm-tab-panel" id="nft-panel-admin" style="display:none;">
+                    <div class="panel" style="margin-top:16px;">
+                        <div class="panel-head"><i class="fa-solid fa-star"></i><h3 data-i18n="nft_admin_stars_title">Userbot Stars balansi</h3></div>
+                        <div id="nft-stars-balance" style="font-size:20px; font-weight:800; color:var(--diamond);">⭐ —</div>
+                        <div id="nft-budget-info" style="font-size:12.5px; color:var(--text-2); margin-top:6px;"></div>
+                        <div id="nft-budget-edit-row" style="display:none; margin-top:10px;" class="admin-action-row">
+                            <input type="text" id="nft-budget-input" data-i18n-placeholder="nft_budget_placeholder" placeholder="Byudjet (⭐, bo'sh = cheksiz)" inputmode="numeric">
+                            <button class="sub-cta" id="nft-budget-save-btn" type="button" data-i18n="nft_budget_save_btn">Byudjetni saqlash</button>
+                        </div>
+                    </div>
+                    <div class="panel" style="margin-top:16px;">
+                        <div class="panel-head"><i class="fa-solid fa-rotate"></i><h3 data-i18n="nft_admin_sync_title">Katalogni yangilash</h3></div>
+                        <p style="font-size:12.5px; color:var(--text-2);" data-i18n="nft_admin_sync_desc">Telegramning sovg'a katalogini qayta sinxronlaydi (yangi sovg'a dizaynlarini olib keladi).</p>
+                        <div class="admin-action-row">
+                            <button class="sub-cta" id="nft-admin-sync-btn" type="button" data-i18n="nft_admin_sync_btn">🔄 Sinxronlash</button>
+                            <button class="sub-cta" id="resale-admin-sync-btn" type="button" data-i18n="resale_admin_sync_btn">🔄 Collectibles</button>
+                            <button class="sub-cta" id="premium-admin-sync-btn" type="button">🔄 Premium</button>
+                        </div>
+                    </div>
+                    <div class="panel" style="margin-top:16px;">
+                        <div class="panel-head"><i class="fa-solid fa-tags"></i><h3 data-i18n="nft_admin_price_title">Narxlarni belgilash</h3></div>
+                        <div class="seg-control" id="nft-admin-filter-tabs" style="margin-bottom:12px;">
+                            <button class="seg active" data-nft-filter="all" data-i18n="nft_admin_filter_all">Barchasi</button>
+                            <button class="seg" data-nft-filter="listed" data-i18n="nft_admin_filter_listed">Do'kondagilar</button>
+                            <button class="seg" data-nft-filter="resale" data-i18n="resale_tab_label">Collectibles</button>
+                            <button class="seg" data-nft-filter="premium">Premium</button>
+                        </div>
+                        <div id="nft-admin-list"></div>
+                    </div>
+                    <div class="panel" style="margin-top:16px;">
+                        <div class="panel-head"><i class="fa-solid fa-clock-rotate-left"></i><h3 data-i18n="nft_admin_history_title">Xaridlar tarixi</h3></div>
+                        <div id="nft-admin-history"></div>
+                    </div>
+                    <div class="panel" style="margin-top:16px;">
+                        <div class="panel-head"><i class="fa-solid fa-clock-rotate-left"></i><h3>Collectibles xaridlar tarixi</h3></div>
+                        <div id="resale-admin-history"></div>
+                    </div>
+                    <div class="panel" style="margin-top:16px;">
+                        <div class="panel-head"><i class="fa-solid fa-clock-rotate-left"></i><h3>Premium xaridlar tarixi</h3></div>
+                        <div id="premium-admin-history"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== TRANSFER ===== -->
+            <section class="view" id="view-transfer">
+                <div class="view-head">
+                    <h2 data-i18n="webapp_transfer_title">O'tkazma</h2>
+                    <p data-i18n="webapp_transfer_sub">Dollar, olmos yoki inventar buyumini boshqa foydalanuvchiga o'tkazing</p>
+                </div>
+                <div class="panel">
+                    <div class="transfer-target-row">
+                        <label class="transfer-label" data-i18n="webapp_transfer_to">Kimga:</label>
+                        <div class="seg-control" id="transfer-target-tabs">
+                            <button class="seg active" data-target-type="username" data-i18n="tab_username">@ Username</button>
+                            <button class="seg" data-target-type="id" data-i18n="tab_telegram_id">🆔 Telegram ID</button>
+                            <button class="seg" data-target-type="para" id="transfer-para-tab" data-i18n="tab_param">💞 Param</button>
+                        </div>
+                        <input type="text" id="transfer-target-username" data-i18n-placeholder="placeholder_username_generic" placeholder="Foydalanuvchi @username">
+                        <input type="text" id="transfer-target-id" data-i18n-placeholder="placeholder_id_generic" placeholder="Foydalanuvchi Telegram ID raqami" inputmode="numeric" style="display:none;">
+                        <div id="transfer-target-preview" class="target-preview" style="display:none;"></div>
+                    </div>
+                    <div class="transfer-kind-row">
+                        <label class="transfer-label" data-i18n="webapp_transfer_what">Nima:</label>
+                        <div class="seg-control" id="transfer-kind-tabs">
+                            <button class="seg active" data-kind="dollar" data-i18n="tab_dollar">💵 Dollar</button>
+                            <button class="seg" data-kind="diamond" data-i18n="tab_diamond">💎 Olmos</button>
+                            <button class="seg" data-kind="item" data-i18n="tab_item">🎒 Inventar</button>
+                        </div>
+                    </div>
+                    <div id="transfer-amount-row">
+                        <label class="transfer-label" data-i18n="webapp_transfer_amount">Miqdor:</label>
+                        <input type="text" id="transfer-amount" data-i18n-placeholder="placeholder_amount_example" placeholder="Masalan: 100" inputmode="numeric">
+                    </div>
+                    <div id="transfer-item-row" style="display:none;">
+                        <label class="transfer-label" data-i18n="webapp_transfer_item">Buyum:</label>
+                        <select id="transfer-item-field"></select>
+                    </div>
+                    <div class="transfer-fee-note" id="transfer-fee-note"></div>
+                    <button class="sub-cta" id="transfer-submit-btn" data-i18n="webapp_transfer_submit" style="margin-top:14px;">O'tkazish</button>
+                </div>
+            </section>
+
+            <!-- ===== PARA ===== -->
+            <section class="view" id="view-para">
+                <div class="view-head">
+                    <h2 data-i18n="webapp_para_title">Mening param</h2>
+                    <p data-i18n="webapp_para_sub">Sherigingiz haqida ma'lumot</p>
+                </div>
+                <div class="panel" id="para-container"></div>
+
+                <div class="panel" id="para-transfer-panel" style="display:none; margin-top:16px;">
+                    <div class="panel-head"><i class="fa-solid fa-gift"></i><h3 data-i18n="panel_transfer_to_para">Paraga o'tkazish</h3></div>
+                    <div class="seg-control" id="para-transfer-kind-tabs">
+                        <button class="seg active" data-kind="dollar" data-i18n="tab_dollar">💵 Dollar</button>
+                        <button class="seg" data-kind="diamond" data-i18n="tab_diamond">💎 Olmos</button>
+                        <button class="seg" data-kind="item" data-i18n="tab_item">🎒 Inventar</button>
+                    </div>
+                    <div id="para-transfer-amount-row">
+                        <input type="text" id="para-transfer-amount" data-i18n-placeholder="placeholder_amount_example2" placeholder="Miqdor, masalan: 100" inputmode="numeric">
+                    </div>
+                    <div id="para-transfer-item-row" style="display:none;">
+                        <select id="para-transfer-item-field"></select>
+                    </div>
+                    <div class="transfer-fee-note" id="para-transfer-fee-note" data-i18n="label_commission_fixed">Komissiya: 10 $</div>
+                    <button class="sub-cta" id="para-transfer-submit-btn" data-i18n="webapp_transfer_submit" style="margin-top:12px;">O'tkazish</button>
+                </div>
+            </section>
+
+            <!-- ===== SUPPORT CHAT ===== -->
+            <section class="view" id="view-support">
+                <div class="view-head" style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px;">
+                    <div>
+                        <h2 data-i18n="webapp_nav_support">Yordam</h2>
+                        <p data-i18n="webapp_support_sub">Operator bilan bog'laning — istalgan tilda yozishingiz mumkin</p>
+                    </div>
+                    <button class="support-photo-btn" id="support-chat-clear-btn" type="button" data-i18n-title="webapp_support_clear_title" title="Chatni tozalash"><i class="fa-solid fa-trash-can"></i></button>
+                </div>
+                <div class="panel support-chat-panel">
+                    <div class="admin-support-customer-card" id="support-chat-header" style="display:none;"></div>
+                    <div id="support-chat-messages" class="support-chat-messages"></div>
+                    <div class="support-chat-input-row">
+                        <button class="support-photo-btn" id="support-chat-photo-btn" type="button"><i class="fa-solid fa-image"></i></button>
+                        <input type="file" id="support-chat-photo-input" accept="image/*" style="display:none;">
+                        <textarea id="support-chat-input" rows="1" data-i18n-placeholder="webapp_support_placeholder" placeholder="Xabar yozing..."></textarea>
+                        <button class="sub-cta" id="support-chat-send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== GROUP SETTINGS ===== -->
+            <section class="view" id="view-groups">
+                <div class="view-head">
+                    <h2 data-i18n="webapp_groups_title">Guruh sozlamalari</h2>
+                    <p data-i18n="webapp_groups_sub">Admin bo'lgan guruhlaringiz sozlamalarini boshqaring</p>
+                </div>
+                <div class="group-select-row">
+                    <select id="group-select"></select>
+                </div>
+                <div class="grid grid-2">
+                    <div class="panel">
+                        <div class="panel-head"><i class="fa-solid fa-gun"></i><h3 data-i18n="webapp_groups_weapons">Qurol-buyumlar</h3></div>
+                        <div class="toggle-list" id="group-weapons-container"></div>
+                    </div>
+                    <div class="panel">
+                        <div class="panel-head"><i class="fa-solid fa-sliders"></i><h3 data-i18n="webapp_groups_more">Qo'shimcha sozlamalar</h3></div>
+                        <div class="toggle-list" id="group-more-container"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== TOURNAMENT (public) ===== -->
+            <section class="view" id="view-tournament">
+                <div class="view-head">
+                    <h2 id="tournament-title" data-i18n="webapp_nav_tournament">Reklama</h2>
+                </div>
+                <div class="tournament-hero is-personal" id="tournament-personal-hero" style="display:none;">
+                    <div class="tournament-hero-imgwrap">
+                        <img id="tournament-personal-img" src="" alt="">
+                    </div>
+                    <div class="tournament-hero-body">
+                        <div class="tournament-hero-title" id="tournament-personal-title"></div>
+                        <div class="tournament-hero-text" id="tournament-personal-text"></div>
+                        <a href="#" target="_blank" rel="noopener" class="tournament-join-btn tournament-join-btn-inline" id="tournament-personal-join-btn" style="display:none;">
+                            <i class="fa-brands fa-telegram"></i> <span>Qatnashish uchun yozing</span>
+                        </a>
+                    </div>
+                </div>
+                <div class="tournament-hero" id="tournament-hero" style="display:none;">
+                    <div class="tournament-hero-imgwrap">
+                        <img id="tournament-hero-img" src="" alt="">
+                        <video id="tournament-hero-video" src="" muted loop autoplay playsinline style="display:none;"></video>
+                        <button type="button" class="tournament-mute-btn" id="tournament-hero-mute" style="display:none;"><i class="fa-solid fa-volume-xmark"></i></button>
+                    </div>
+                    <div class="tournament-hero-body">
+                        <div class="tournament-hero-title" id="tournament-hero-title"></div>
+                        <div class="tournament-hero-text" id="tournament-hero-text"></div>
+                        <div class="tournament-hero-date" id="tournament-hero-date" style="display:none;"></div>
+                        <a href="#" target="_blank" rel="noopener" class="tournament-join-btn tournament-join-btn-inline" id="tournament-join-btn" style="display:none;">
+                            <span class="tournament-join-avatar" id="tournament-join-avatar" style="display:none;"></span>
+                            <i class="fa-brands fa-telegram"></i> <span data-i18n="tournament_join_btn">Qatnashish uchun yozing</span>
+                        </a>
+                    </div>
+                </div>
+                <p id="tournament-banner" class="tournament-banner-text"></p>
+                <h3 class="tournament-section-title" id="tournament-upcoming-title" data-i18n="tournament_nextup_badge" style="display:none;">Kelasi reklama</h3>
+                <div id="tournament-nextup-list" class="tournament-nextup-list"></div>
+                <h3 class="tournament-section-title" id="tournament-finished-title" data-i18n="tournament_status_finished" style="display:none;">Tugagan</h3>
+                <div id="tournament-finished-list" class="tournament-nextup-list"></div>
+            </section>
+
+            <!-- ===== HOLIDAY (public) ===== -->
+            <section class="view" id="view-holiday">
+                <div class="view-head">
+                    <h2>🎉 Bayram</h2>
+                </div>
+                <div id="holiday-active-list" class="tournament-nextup-list"></div>
+                <h3 class="tournament-section-title" id="holiday-upcoming-title" style="display:none;">Kelasi bayramlar</h3>
+                <div id="holiday-upcoming-list" class="tournament-nextup-list"></div>
+            </section>
+
+            <!-- ===== TURNIR MENEJERI (cheklangan reklama boshqaruvi) ===== -->
+            <section class="view" id="view-tm-tournament">
+                <div class="view-head">
+                    <h2>🏆 Turnament</h2>
+                    <p>O'z reklamalaringizni joylashtiring va boshqaring</p>
+                </div>
+
+                <div class="panel" style="margin-top:16px;">
+                    <div class="panel-head"><i class="fa-solid fa-bullhorn"></i><h3 id="tm-t-form-title">➕ Yangi reklama</h3></div>
+                    <div class="admin-action-row">
+                        <input type="text" id="tm-t-title" placeholder="Reklama nomi">
+                    </div>
+                    <div class="admin-action-row">
+                        <textarea id="tm-t-banner" placeholder="Reklama matni (istalgancha uzun, emoji bilan yozishingiz mumkin)" rows="6"></textarea>
+                    </div>
+                    <div class="admin-action-row">
+                        <input type="text" id="tm-t-event-date" placeholder="Sana va vaqt (masalan: 15-iyul, 19:00)">
+                    </div>
+                    <div class="admin-action-row">
+                        <input type="text" id="tm-t-contact-username" placeholder="Qatnashish uchun username (masalan: username, @siz)">
+                    </div>
+                    <div class="admin-action-row">
+                        <input type="text" id="tm-t-contact-btn-text" placeholder="Tugma matni (bo'sh — standart: Qatnashish uchun yozing)">
+                    </div>
+                    <div class="admin-action-row">
+                        <input type="hidden" id="tm-t-banner-image">
+                        <button class="sub-cta" id="tm-t-upload-btn" type="button">🖼 Rasm yuklash</button>
+                        <input type="file" id="tm-t-upload-input" accept="image/*" style="display:none;">
+                        <img id="tm-t-banner-preview" src="" alt="" style="display:none; height:44px; border-radius:8px; object-fit:cover;">
+                    </div>
+                    <div class="admin-action-row">
+                        <select id="tm-t-status">
+                            <option value="upcoming">Kutilmoqda</option>
+                            <option value="active">Faol (ko'rsatilmoqda)</option>
+                            <option value="finished">Tugadi</option>
+                        </select>
+                    </div>
+                    <div class="admin-action-row">
+                        <button class="sub-cta" id="tm-t-save-btn">Saqlash</button>
+                        <button class="sub-cta" id="tm-t-new-btn" style="background:rgba(255,255,255,.08);">➕ Yangi</button>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top:16px;">
+                    <div class="panel-head"><i class="fa-solid fa-list"></i><h3>Mening reklamalarim</h3></div>
+                    <div id="tm-t-list" class="admin-tlist"></div>
+                </div>
+            </section>
+
+            <!-- ===== ADMIN PANEL ===== -->
+            <section class="view" id="view-admin">
+                <div class="view-head">
+                    <h2 data-i18n="webapp_admin_title">Admin panel</h2>
+                    <p data-i18n="webapp_admin_sub">Bot statistikasi va foydalanuvchilarni boshqarish</p>
+                </div>
+                <div class="grid grid-4" id="admin-stats-container"></div>
+
+                <div class="seg-control" id="admin-tabs" style="margin-top:18px;">
+                    <button class="seg active" data-admin-tab="users" data-i18n="admin_tab_users">👤 Foydalanuvchilar</button>
+                    <button class="seg" data-admin-tab="groups" data-i18n="admin_tab_groups">👥 Guruhlar</button>
+                    <button class="seg" data-admin-tab="broadcast" data-i18n="admin_tab_broadcast">📢 Xabar yuborish</button>
+                    <button class="seg" data-admin-tab="tournament" data-i18n="admin_tab_tournament">📢 Reklama</button>
+                    <button class="seg" data-admin-tab="turnir">🏆 Turnir</button>
+                    <button class="seg" data-admin-tab="holiday">🎉 Bayram</button>
+                    <button class="seg" data-admin-tab="birthday">🎂 Tug'ilgan kun</button>
+                    <button class="seg" data-admin-tab="activity">💳 Faoliyat</button>
+                </div>
+
+                <div class="admin-tab-panel" id="admin-tab-users">
+                    <div class="panel" style="margin-top:16px;">
+                        <div class="panel-head"><i class="fa-solid fa-magnifying-glass"></i><h3 data-i18n="admin_search_btn">Qidirish</h3></div>
+                        <div class="admin-search-row" style="position:relative;">
+                            <input type="text" id="admin-search-input" data-i18n-placeholder="admin_search_placeholder" placeholder="Username yoki Telegram ID">
+                            <button class="sub-cta" id="admin-search-btn" data-i18n="admin_search_btn" style="width:auto; padding:0 22px;">Qidirish</button>
+                            <div id="admin-search-results" class="admin-support-search-results" style="display:none;"></div>
+                        </div>
+                        <div id="admin-user-result" style="display:none; margin-top:16px;">
+                            <div id="admin-user-card" class="admin-user-card"></div>
+                            <div class="admin-action-row">
+                                <input type="text" id="admin-dollar-amount" data-i18n-placeholder="admin_dollar_amount_placeholder" placeholder="Dollar miqdori" inputmode="numeric">
+                                <button class="sub-cta" id="admin-dollar-add-btn" data-i18n="admin_add_btn" style="width:auto; padding:0 18px;">➕ Qo'shish</button>
+                                <button class="sub-cta danger" id="admin-dollar-sub-btn" data-i18n="admin_sub_btn" style="width:auto; padding:0 18px;">➖ Ayirish</button>
+                            </div>
+                            <div class="admin-action-row">
+                                <input type="text" id="admin-diamond-amount" data-i18n-placeholder="admin_diamond_amount_placeholder" placeholder="Olmos miqdori" inputmode="numeric">
+                                <button class="sub-cta" id="admin-diamond-add-btn" data-i18n="admin_add_btn" style="width:auto; padding:0 18px;">➕ Qo'shish</button>
+                                <button class="sub-cta danger" id="admin-diamond-sub-btn" data-i18n="admin_sub_btn" style="width:auto; padding:0 18px;">➖ Ayirish</button>
+                            </div>
+                            <div class="admin-items-label">📦 Inventar</div>
+                            <div id="admin-items-grid" class="admin-items-grid"></div>
+                            <div class="admin-action-row">
+                                <span class="admin-item-label" style="min-width:auto;">🥷 Geroy darajasi: <b id="admin-geroy-level-val">—</b></span>
+                                <input type="text" id="admin-geroy-level-amount" placeholder="Daraja" inputmode="numeric" style="max-width:90px;">
+                                <button class="sub-cta" id="admin-geroy-level-add-btn" style="width:auto; padding:0 18px;">➕</button>
+                                <button class="sub-cta danger" id="admin-geroy-level-sub-btn" style="width:auto; padding:0 18px;">➖</button>
+                            </div>
+                            <div class="admin-action-row">
+                                <input type="text" id="admin-vip-days" data-i18n-placeholder="admin_vip_days_placeholder" placeholder="VIP kunlar soni" inputmode="numeric">
+                                <button class="sub-cta stars" id="admin-grant-vip-btn" data-i18n="admin_grant_vip_btn">VIP berish</button>
+                                <button class="sub-cta danger" id="admin-revoke-vip-btn" data-i18n="admin_revoke_vip_btn">VIP ni olib tashlash</button>
+                            </div>
+                            <div class="admin-action-row" style="position:relative;">
+                                <input type="text" id="admin-role-key" autocomplete="off" data-i18n-placeholder="admin_grant_role_placeholder" placeholder="Rol nomi (masalan: don)">
+                                <button class="sub-cta" id="admin-grant-role-btn" data-i18n="admin_grant_role_btn">Faol rol berish</button>
+                                <div id="admin-role-suggest" class="admin-role-suggest"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="admin-tab-panel" id="admin-tab-groups" style="display:none;">
+                    <div class="search-bar" style="margin-top:16px;">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="admin-groups-search" data-i18n-placeholder="admin_groups_search_placeholder" placeholder="Guruh nomini qidirish...">
+                    </div>
+                    <div class="panel" style="margin-top:12px;">
+                        <div id="admin-groups-container"><div class="skeleton-list"></div></div>
+                    </div>
+                </div>
+
+                <div class="admin-tab-panel" id="admin-tab-broadcast" style="display:none;">
+                    <div class="panel" style="margin-top:16px;">
+                        <textarea id="admin-broadcast-text" data-i18n-placeholder="admin_broadcast_placeholder" placeholder="Xabar matnini kiriting (HTML qo'llab-quvvatlanadi)..." rows="6"></textarea>
+                        <button class="sub-cta stars" id="admin-broadcast-btn" data-i18n="admin_broadcast_btn" style="margin-top:12px;">Hammaga yuborish</button>
+                    </div>
+                </div>
+
+                <div class="admin-tab-panel" id="admin-tab-tournament" style="display:none;">
+                    <div class="panel" style="margin-top:16px;">
+                        <div class="panel-head"><i class="fa-solid fa-bullhorn"></i><h3 id="adm-t-form-title" data-i18n="tournament_new_btn">➕ Yangi reklama</h3></div>
+                        <div class="admin-action-row">
+                            <input type="text" id="adm-t-title" data-i18n-placeholder="tournament_title_placeholder" placeholder="Reklama nomi">
+                        </div>
+                        <div class="admin-action-row adm-t-color-strip" id="adm-t-color-strip">
+                            <button type="button" class="adm-t-color-btn" data-color-name="oq" style="background:#e8e8e8;" title="Oddiy (rangsiz)"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="qizil" style="background:#f87171;" title="Qizil"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="pushti" style="background:#f472b6;" title="Pushti"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="binafsha" style="background:#c084fc;" title="Binafsha"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="siyoh" style="background:#818cf8;" title="Siyohrang"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="moviy" style="background:#60a5fa;" title="Moviy"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="osmon" style="background:#38bdf8;" title="Osmon rang"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="zumrad" style="background:#2dd4bf;" title="Zumrad"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="yashil" style="background:#4ade80;" title="Yashil"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="limon" style="background:#a3e635;" title="Limon"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="sariq" style="background:#facc15;" title="Sariq"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="oltin" style="background:#fbbf24;" title="Oltin"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="apelsin" style="background:#fb923c;" title="To'q sariq"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="jigar" style="background:#d4a373;" title="Jigarrang"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="kulrang" style="background:#cbd5e1;" title="Kulrang"></button>
+                        </div>
+                        <div class="admin-action-row adm-t-size-strip" id="adm-t-size-strip">
+                            <button type="button" class="adm-t-size-btn" data-size-name="normal" style="font-size:13px;" title="Oddiy">A</button>
+                            <button type="button" class="adm-t-size-btn" data-size-name="kichik" style="font-size:11px;" title="Kichik">A</button>
+                            <button type="button" class="adm-t-size-btn" data-size-name="katta" style="font-size:16px;" title="Katta">A</button>
+                            <button type="button" class="adm-t-size-btn" data-size-name="jkatta" style="font-size:19px;" title="Juda katta">A</button>
+                        </div>
+                        <div class="admin-action-row adm-t-emoji-strip" id="adm-t-emoji-strip">
+                            <button type="button" class="adm-t-emoji-btn">🏆</button>
+                            <button type="button" class="adm-t-emoji-btn">🎉</button>
+                            <button type="button" class="adm-t-emoji-btn">🔥</button>
+                            <button type="button" class="adm-t-emoji-btn">💎</button>
+                            <button type="button" class="adm-t-emoji-btn">👑</button>
+                            <button type="button" class="adm-t-emoji-btn">⭐️</button>
+                            <button type="button" class="adm-t-emoji-btn">🎁</button>
+                            <button type="button" class="adm-t-emoji-btn">📢</button>
+                            <button type="button" class="adm-t-emoji-btn">✅</button>
+                            <button type="button" class="adm-t-emoji-btn">❌</button>
+                            <button type="button" class="adm-t-emoji-btn">🕐</button>
+                            <button type="button" class="adm-t-emoji-btn">📅</button>
+                            <button type="button" class="adm-t-emoji-btn">💰</button>
+                            <button type="button" class="adm-t-emoji-btn">🎯</button>
+                            <button type="button" class="adm-t-emoji-btn">⚔️</button>
+                            <button type="button" class="adm-t-emoji-btn">🛡️</button>
+                            <button type="button" class="adm-t-emoji-btn">🎭</button>
+                            <button type="button" class="adm-t-emoji-btn">💥</button>
+                            <button type="button" class="adm-t-emoji-btn">🚀</button>
+                            <button type="button" class="adm-t-emoji-btn">🎮</button>
+                        </div>
+                        <div class="admin-action-row">
+                            <textarea id="adm-t-banner" data-i18n-placeholder="tournament_banner_placeholder" placeholder="Reklama matni (istalgancha uzun, emoji bilan yozishingiz mumkin)" rows="6"></textarea>
+                        </div>
+                        <div class="admin-action-row">
+                            <input type="text" id="adm-t-event-date" data-i18n-placeholder="tournament_event_date_placeholder" placeholder="Sana va vaqt (masalan: 15-iyul, 19:00)">
+                        </div>
+                        <div class="admin-action-row">
+                            <input type="text" id="adm-t-contact-username" data-i18n-placeholder="tournament_contact_username_placeholder" placeholder="Qatnashish uchun username (masalan: username, @siz)">
+                        </div>
+                        <div id="adm-t-contact-preview" class="admin-user-card" style="display:none; margin-bottom:12px;"></div>
+                        <div class="admin-action-row">
+                            <input type="text" id="adm-t-contact-btn-text" data-i18n-placeholder="tournament_contact_btn_text_placeholder" placeholder="Tugma matni (bo'sh — standart: Qatnashish uchun yozing)">
+                        </div>
+                        <div class="admin-action-row">
+                            <input type="hidden" id="adm-t-banner-image">
+                            <button class="sub-cta" id="adm-t-upload-btn" type="button" data-i18n="tournament_upload_btn">🖼 Rasm yuklash</button>
+                            <input type="file" id="adm-t-upload-input" accept="image/*" style="display:none;">
+                            <img id="adm-t-banner-preview" src="" alt="" style="display:none; height:44px; border-radius:8px; object-fit:cover;">
+                        </div>
+                        <div class="admin-action-row">
+                            <input type="hidden" id="adm-t-banner-images">
+                            <button class="sub-cta" id="adm-t-upload-extra-btn" type="button" data-i18n="tournament_upload_extra_btn">🖼➕ Slayd rasmlarini qo'shish</button>
+                            <input type="file" id="adm-t-upload-extra-input" accept="image/*" multiple style="display:none;">
+                        </div>
+                        <div id="adm-t-extra-preview-list" class="admin-tlist"></div>
+                        <div class="admin-action-row">
+                            <select id="adm-t-lang">
+                                <option value="" data-i18n="tournament_lang_all_opt">🌐 Barcha tillar</option>
+                                <option value="uz">🇺🇿 O'zbekcha</option>
+                                <option value="ru">🇷🇺 Русский</option>
+                                <option value="en">🇬🇧 English</option>
+                                <option value="ar">🇸🇦 العربية</option>
+                                <option value="id">🇮🇩 Indonesia</option>
+                                <option value="kk">🇰🇿 Қазақша</option>
+                                <option value="tr">🇹🇷 Türkçe</option>
+                                <option value="ko">🇰🇷 한국어</option>
+                            </select>
+                        </div>
+                        <div class="admin-action-row">
+                            <select id="adm-t-status">
+                                <option value="upcoming" data-i18n="tournament_status_upcoming">Kutilmoqda</option>
+                                <option value="active" data-i18n="tournament_status_active_opt">Faol (ko'rsatilmoqda)</option>
+                                <option value="finished" data-i18n="tournament_status_finished">Tugadi</option>
+                            </select>
+                        </div>
+                        <div id="adm-t-winner-row" style="display:none;">
+                            <div class="admin-action-row">
+                                <input type="text" id="adm-t-winner-name" data-i18n-placeholder="tournament_winner_name_placeholder" placeholder="G'olib ismi">
+                                <input type="text" id="adm-t-winner-team" data-i18n-placeholder="tournament_winner_team_placeholder" placeholder="G'olib jamoasi">
+                            </div>
+                            <div class="admin-action-row">
+                                <input type="text" id="adm-t-winner-uid" data-i18n-placeholder="tournament_winner_uid_placeholder" placeholder="G'olibning Telegram ID (ixtiyoriy, rasmi uchun)" inputmode="numeric">
+                            </div>
+                        </div>
+                        <div class="admin-action-row">
+                            <button class="sub-cta" id="adm-t-info-save-btn" data-i18n="admin_action_save">Saqlash</button>
+                            <button class="sub-cta stars" id="adm-t-preview-btn" data-i18n="tournament_preview_btn">👁 Ko'rish</button>
+                        </div>
+                    </div>
+
+                    <div class="panel" style="margin-top:16px;">
+                        <div class="panel-head"><i class="fa-solid fa-list"></i><h3 data-i18n="tournament_list_title">Reklamalar ro'yxati</h3></div>
+                        <div id="adm-t-list" class="admin-tlist"></div>
+                        <button class="sub-cta" id="adm-t-new-btn" style="margin-top:10px;" data-i18n="tournament_new_btn">➕ Yangi reklama</button>
+                    </div>
+
+                    <div class="panel" style="margin-top:16px;">
+                        <div class="panel-head"><i class="fa-solid fa-user-tag"></i><h3>Turnir menejerlari</h3></div>
+                        <div class="admin-action-row" style="position:relative;">
+                            <input type="text" id="adm-tm-grant-search" placeholder="Foydalanuvchi (ID/@username/ism)">
+                            <button class="sub-cta" id="adm-tm-grant-btn" type="button" style="width:auto; min-height:38px; padding:0 20px; display:inline-flex; align-items:center; justify-content:center;">➕ Menejer qilish</button>
+                            <div id="adm-tm-grant-suggest" class="admin-role-suggest"></div>
+                        </div>
+                        <input type="hidden" id="adm-tm-grant-user-id">
+                        <div id="adm-tm-managers-list" class="admin-tlist" style="margin-top:10px;"></div>
+                    </div>
+
+                </div>
+
+                <div class="admin-tab-panel" id="admin-tab-turnir" style="display:none;">
+                    <div class="panel" style="margin-top:16px;">
+                        <div class="panel-head"><i class="fa-solid fa-trophy"></i><h3 id="adm-tr-form-title">➕ Yangi turnir</h3></div>
+                        <div class="admin-action-row">
+                            <input type="text" id="adm-tr-title" placeholder="Turnir nomi">
+                        </div>
+                        <div class="admin-action-row adm-t-color-strip" id="adm-tr-color-strip" data-textarea="adm-tr-banner">
+                            <button type="button" class="adm-t-color-btn" data-color-name="oq" style="background:#e8e8e8;" title="Oddiy (rangsiz)"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="qizil" style="background:#f87171;" title="Qizil"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="pushti" style="background:#f472b6;" title="Pushti"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="binafsha" style="background:#c084fc;" title="Binafsha"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="siyoh" style="background:#818cf8;" title="Siyohrang"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="moviy" style="background:#60a5fa;" title="Moviy"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="osmon" style="background:#38bdf8;" title="Osmon rang"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="zumrad" style="background:#2dd4bf;" title="Zumrad"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="yashil" style="background:#4ade80;" title="Yashil"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="limon" style="background:#a3e635;" title="Limon"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="sariq" style="background:#facc15;" title="Sariq"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="oltin" style="background:#fbbf24;" title="Oltin"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="apelsin" style="background:#fb923c;" title="To'q sariq"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="jigar" style="background:#d4a373;" title="Jigarrang"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="kulrang" style="background:#cbd5e1;" title="Kulrang"></button>
+                        </div>
+                        <div class="admin-action-row adm-t-size-strip" id="adm-tr-size-strip" data-textarea="adm-tr-banner">
+                            <button type="button" class="adm-t-size-btn" data-size-name="normal" style="font-size:13px;" title="Oddiy">A</button>
+                            <button type="button" class="adm-t-size-btn" data-size-name="kichik" style="font-size:11px;" title="Kichik">A</button>
+                            <button type="button" class="adm-t-size-btn" data-size-name="katta" style="font-size:16px;" title="Katta">A</button>
+                            <button type="button" class="adm-t-size-btn" data-size-name="jkatta" style="font-size:19px;" title="Juda katta">A</button>
+                        </div>
+                        <div class="admin-action-row adm-t-emoji-strip" id="adm-tr-emoji-strip" data-textarea="adm-tr-banner">
+                            <button type="button" class="adm-t-emoji-btn">🏆</button>
+                            <button type="button" class="adm-t-emoji-btn">🎉</button>
+                            <button type="button" class="adm-t-emoji-btn">🔥</button>
+                            <button type="button" class="adm-t-emoji-btn">💎</button>
+                            <button type="button" class="adm-t-emoji-btn">👑</button>
+                            <button type="button" class="adm-t-emoji-btn">⭐️</button>
+                            <button type="button" class="adm-t-emoji-btn">🎁</button>
+                            <button type="button" class="adm-t-emoji-btn">📢</button>
+                            <button type="button" class="adm-t-emoji-btn">✅</button>
+                            <button type="button" class="adm-t-emoji-btn">❌</button>
+                            <button type="button" class="adm-t-emoji-btn">🕐</button>
+                            <button type="button" class="adm-t-emoji-btn">📅</button>
+                            <button type="button" class="adm-t-emoji-btn">💰</button>
+                            <button type="button" class="adm-t-emoji-btn">🎯</button>
+                            <button type="button" class="adm-t-emoji-btn">⚔️</button>
+                            <button type="button" class="adm-t-emoji-btn">🛡️</button>
+                            <button type="button" class="adm-t-emoji-btn">🎭</button>
+                            <button type="button" class="adm-t-emoji-btn">💥</button>
+                            <button type="button" class="adm-t-emoji-btn">🚀</button>
+                            <button type="button" class="adm-t-emoji-btn">🎮</button>
+                        </div>
+                        <div class="admin-action-row">
+                            <textarea id="adm-tr-banner" placeholder="Turnir matni" rows="6"></textarea>
+                        </div>
+                        <div class="admin-action-row">
+                            <input type="text" id="adm-tr-event-date" placeholder="Sana va vaqt (masalan: 15-iyul, 19:00)">
+                        </div>
+                        <div class="admin-action-row">
+                            <input type="text" id="adm-tr-contact-username" placeholder="Qatnashish uchun username (masalan: username, @siz)">
+                        </div>
+                        <div id="adm-tr-contact-preview" class="admin-user-card" style="display:none; margin-bottom:12px;"></div>
+                        <div class="admin-action-row">
+                            <input type="text" id="adm-tr-contact-btn-text" placeholder="Tugma matni (bo'sh — standart: Qatnashish uchun yozing)">
+                        </div>
+                        <div class="admin-action-row">
+                            <input type="hidden" id="adm-tr-banner-image">
+                            <button class="sub-cta" id="adm-tr-upload-btn" type="button">🖼 Rasm yuklash</button>
+                            <input type="file" id="adm-tr-upload-input" accept="image/*" style="display:none;">
+                            <img id="adm-tr-banner-preview" src="" alt="" style="display:none; height:44px; border-radius:8px; object-fit:cover;">
+                        </div>
+                        <div class="admin-action-row">
+                            <input type="hidden" id="adm-tr-banner-images">
+                            <button class="sub-cta" id="adm-tr-upload-extra-btn" type="button">🖼➕ Slayd rasmlarini qo'shish</button>
+                            <input type="file" id="adm-tr-upload-extra-input" accept="image/*" multiple style="display:none;">
+                        </div>
+                        <div id="adm-tr-extra-preview-list" class="admin-tlist"></div>
+                        <div class="admin-action-row">
+                            <select id="adm-tr-lang">
+                                <option value="">🌐 Barcha tillar</option>
+                                <option value="uz">🇺🇿 O'zbekcha</option>
+                                <option value="ru">🇷🇺 Русский</option>
+                                <option value="en">🇬🇧 English</option>
+                                <option value="ar">🇸🇦 العربية</option>
+                                <option value="id">🇮🇩 Indonesia</option>
+                                <option value="kk">🇰🇿 Қазақша</option>
+                                <option value="tr">🇹🇷 Türkçe</option>
+                                <option value="ko">🇰🇷 한국어</option>
+                            </select>
+                        </div>
+                        <div class="admin-action-row">
+                            <select id="adm-tr-status">
+                                <option value="upcoming">Kutilmoqda</option>
+                                <option value="active">Faol (ko'rsatilmoqda)</option>
+                                <option value="finished">Tugadi</option>
+                            </select>
+                        </div>
+                        <div id="adm-tr-winner-row" style="display:none;">
+                            <div class="admin-action-row">
+                                <input type="text" id="adm-tr-winner-name" placeholder="G'olib ismi">
+                                <input type="text" id="adm-tr-winner-team" placeholder="G'olib jamoasi">
+                            </div>
+                            <div class="admin-action-row">
+                                <input type="text" id="adm-tr-winner-uid" placeholder="G'olibning Telegram ID (ixtiyoriy, rasmi uchun)" inputmode="numeric">
+                            </div>
+                        </div>
+                        <div class="admin-action-row">
+                            <button class="sub-cta" id="adm-tr-save-btn">Saqlash</button>
+                            <button class="sub-cta" id="adm-tr-new-btn" style="background:rgba(255,255,255,.08);">➕ Yangi</button>
+                            <button class="sub-cta stars" id="adm-tr-preview-btn">👁 Ko'rish</button>
+                        </div>
+                    </div>
+                    <div class="panel" style="margin-top:16px;">
+                        <div class="panel-head"><i class="fa-solid fa-list"></i><h3>Turnirlar ro'yxati</h3></div>
+                        <div id="adm-tr-list" class="admin-tlist"></div>
+                    </div>
+                </div>
+
+                <div class="admin-tab-panel" id="admin-tab-holiday" style="display:none;">
+                    <div class="panel" style="margin-top:16px;">
+                        <div class="panel-head"><i class="fa-solid fa-gift"></i><h3 id="adm-h-form-title">➕ Yangi bayram</h3></div>
+                        <div class="admin-action-row">
+                            <input type="text" id="adm-h-title" placeholder="Bayram nomi">
+                        </div>
+                        <div class="admin-action-row adm-t-color-strip" id="adm-h-color-strip" data-textarea="adm-h-banner">
+                            <button type="button" class="adm-t-color-btn" data-color-name="oq" style="background:#e8e8e8;" title="Oddiy (rangsiz)"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="qizil" style="background:#f87171;" title="Qizil"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="pushti" style="background:#f472b6;" title="Pushti"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="binafsha" style="background:#c084fc;" title="Binafsha"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="siyoh" style="background:#818cf8;" title="Siyohrang"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="moviy" style="background:#60a5fa;" title="Moviy"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="osmon" style="background:#38bdf8;" title="Osmon rang"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="zumrad" style="background:#2dd4bf;" title="Zumrad"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="yashil" style="background:#4ade80;" title="Yashil"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="limon" style="background:#a3e635;" title="Limon"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="sariq" style="background:#facc15;" title="Sariq"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="oltin" style="background:#fbbf24;" title="Oltin"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="apelsin" style="background:#fb923c;" title="To'q sariq"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="jigar" style="background:#d4a373;" title="Jigarrang"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="kulrang" style="background:#cbd5e1;" title="Kulrang"></button>
+                        </div>
+                        <div class="admin-action-row adm-t-size-strip" id="adm-h-size-strip" data-textarea="adm-h-banner">
+                            <button type="button" class="adm-t-size-btn" data-size-name="normal" style="font-size:13px;" title="Oddiy">A</button>
+                            <button type="button" class="adm-t-size-btn" data-size-name="kichik" style="font-size:11px;" title="Kichik">A</button>
+                            <button type="button" class="adm-t-size-btn" data-size-name="katta" style="font-size:16px;" title="Katta">A</button>
+                            <button type="button" class="adm-t-size-btn" data-size-name="jkatta" style="font-size:19px;" title="Juda katta">A</button>
+                        </div>
+                        <div class="admin-action-row">
+                            <textarea id="adm-h-banner" placeholder="Bayram matni" rows="6"></textarea>
+                        </div>
+                        <div class="admin-action-row">
+                            <input type="text" id="adm-h-event-date" placeholder="Sana va vaqt">
+                        </div>
+                        <div class="admin-action-row">
+                            <input type="hidden" id="adm-h-banner-image">
+                            <button class="sub-cta" id="adm-h-upload-btn" type="button">🖼 Rasm yuklash</button>
+                            <input type="file" id="adm-h-upload-input" accept="image/*" style="display:none;">
+                            <img id="adm-h-banner-preview" src="" alt="" style="display:none; height:44px; border-radius:8px; object-fit:cover;">
+                        </div>
+                        <div class="admin-action-row">
+                            <select id="adm-h-status">
+                                <option value="upcoming">Kutilmoqda</option>
+                                <option value="active">Faol (ko'rsatilmoqda)</option>
+                                <option value="finished">Tugadi</option>
+                            </select>
+                        </div>
+                        <div class="admin-action-row">
+                            <button class="sub-cta" id="adm-h-save-btn">Saqlash</button>
+                            <button class="sub-cta" id="adm-h-new-btn" style="background:rgba(255,255,255,.08);">➕ Yangi</button>
+                        </div>
+                    </div>
+                    <div class="panel" style="margin-top:16px;">
+                        <div class="panel-head"><i class="fa-solid fa-list"></i><h3>Bayramlar ro'yxati</h3></div>
+                        <div id="adm-h-list" class="admin-tlist"></div>
+                    </div>
+                </div>
+
+                <div class="admin-tab-panel" id="admin-tab-birthday" style="display:none;">
+                    <div class="panel" style="margin-top:16px;">
+                        <div class="panel-head"><i class="fa-solid fa-cake-candles"></i><h3>Bugungi tug'ilgan kunlar</h3></div>
+                        <div id="adm-bd-today-list" class="admin-tlist"></div>
+                    </div>
+
+                    <div class="panel" style="margin-top:16px;">
+                        <div class="panel-head"><i class="fa-solid fa-gift"></i><h3 id="adm-bd-form-title">➕ Yangi shaxsiy tabrik</h3></div>
+                        <div class="admin-action-row" style="position:relative;">
+                            <input type="text" id="adm-bd-target-search" placeholder="Kimga? ID/@username/ism bo'yicha qidiring">
+                            <button class="sub-cta" id="adm-bd-target-clear-btn" type="button" style="width:auto; min-height:38px; padding:0 20px; display:inline-flex; align-items:center; justify-content:center;">✖ Tozalash</button>
+                            <div id="adm-bd-target-suggest" class="admin-role-suggest"></div>
+                        </div>
+                        <div id="adm-bd-target-selected" class="admin-user-card" style="display:none; margin-bottom:12px;"></div>
+                        <input type="hidden" id="adm-bd-target-user-id">
+                        <div class="admin-action-row">
+                            <input type="text" id="adm-bd-title" placeholder="Tabrik nomi (masalan: Tug'ilgan kun tabrigi)">
+                        </div>
+                        <div class="admin-action-row adm-t-emoji-strip" id="adm-bd-emoji-strip" data-textarea="adm-bd-banner">
+                            <button type="button" class="adm-t-emoji-btn">🎂</button>
+                            <button type="button" class="adm-t-emoji-btn">🎉</button>
+                            <button type="button" class="adm-t-emoji-btn">🎁</button>
+                            <button type="button" class="adm-t-emoji-btn">🥳</button>
+                            <button type="button" class="adm-t-emoji-btn">🎈</button>
+                            <button type="button" class="adm-t-emoji-btn">✨</button>
+                            <button type="button" class="adm-t-emoji-btn">❤️</button>
+                            <button type="button" class="adm-t-emoji-btn">👑</button>
+                        </div>
+                        <div class="admin-action-row adm-t-color-strip" id="adm-bd-color-strip" data-textarea="adm-bd-banner">
+                            <button type="button" class="adm-t-color-btn" data-color-name="oq" style="background:#e8e8e8;" title="Oddiy (rangsiz)"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="qizil" style="background:#f87171;" title="Qizil"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="pushti" style="background:#f472b6;" title="Pushti"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="binafsha" style="background:#c084fc;" title="Binafsha"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="siyoh" style="background:#818cf8;" title="Siyohrang"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="moviy" style="background:#60a5fa;" title="Moviy"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="osmon" style="background:#38bdf8;" title="Osmon rang"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="zumrad" style="background:#2dd4bf;" title="Zumrad"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="yashil" style="background:#4ade80;" title="Yashil"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="limon" style="background:#a3e635;" title="Limon"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="sariq" style="background:#facc15;" title="Sariq"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="oltin" style="background:#fbbf24;" title="Oltin"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="apelsin" style="background:#fb923c;" title="To'q sariq"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="jigar" style="background:#d4a373;" title="Jigarrang"></button>
+                            <button type="button" class="adm-t-color-btn" data-color-name="kulrang" style="background:#cbd5e1;" title="Kulrang"></button>
+                        </div>
+                        <div class="admin-action-row adm-t-size-strip" id="adm-bd-size-strip" data-textarea="adm-bd-banner">
+                            <button type="button" class="adm-t-size-btn" data-size-name="normal" style="font-size:13px;" title="Oddiy">A</button>
+                            <button type="button" class="adm-t-size-btn" data-size-name="kichik" style="font-size:11px;" title="Kichik">A</button>
+                            <button type="button" class="adm-t-size-btn" data-size-name="katta" style="font-size:16px;" title="Katta">A</button>
+                            <button type="button" class="adm-t-size-btn" data-size-name="jkatta" style="font-size:19px;" title="Juda katta">A</button>
+                        </div>
+                        <div class="admin-action-row">
+                            <textarea id="adm-bd-banner" placeholder="Tabrik matni (istalgancha uzun, emoji bilan yozishingiz mumkin)" rows="6"></textarea>
+                        </div>
+                        <div class="admin-action-row">
+                            <input type="hidden" id="adm-bd-banner-image">
+                            <button class="sub-cta" id="adm-bd-upload-btn" type="button">🖼 Rasm yuklash</button>
+                            <input type="file" id="adm-bd-upload-input" accept="image/*" style="display:none;">
+                            <img id="adm-bd-banner-preview" src="" alt="" style="display:none; height:44px; border-radius:8px; object-fit:cover;">
+                        </div>
+                        <div class="admin-action-row">
+                            <select id="adm-bd-status">
+                                <option value="active">Faol (ko'rsatilmoqda)</option>
+                                <option value="finished">Tugadi (yashirish)</option>
+                            </select>
+                        </div>
+                        <div class="admin-action-row">
+                            <input type="text" id="adm-bd-date" placeholder="Sana: KK.OO (masalan 05.09) — bo'sh bo'lsa doim ko'rinadi">
+                        </div>
+                        <div class="admin-action-row">
+                            <input type="text" id="adm-bd-gift-diamond" placeholder="💎 Sovg'a olmos (ixtiyoriy)" inputmode="numeric">
+                            <input type="text" id="adm-bd-gift-dollar" placeholder="💵 Sovg'a dollar (ixtiyoriy)" inputmode="numeric">
+                        </div>
+                        <div class="admin-action-row">
+                            <button class="sub-cta stars" id="adm-bd-preview-btn" type="button">👁 Ko'rish</button>
+                            <button class="sub-cta" id="adm-bd-save-btn">Saqlash</button>
+                        </div>
+                    </div>
+
+                    <div class="panel" style="margin-top:16px;">
+                        <div class="panel-head"><i class="fa-solid fa-list"></i><h3>Shaxsiy tabriklar ro'yxati</h3></div>
+                        <div id="adm-bd-list" class="admin-tlist"></div>
+                        <button class="sub-cta" id="adm-bd-new-btn" style="margin-top:10px;">➕ Yangi shaxsiy tabrik</button>
+                        <button class="sub-cta" id="adm-bd-goto-tournament-btn" type="button" style="margin-top:10px;">📢 Reklama bo'limiga o'tish</button>
+                    </div>
+                </div>
+
+                <div class="admin-tab-panel" id="admin-tab-activity" style="display:none;">
+                    <div class="panel admin-collapsible" style="margin-top:16px;">
+                        <div class="panel-head admin-collapse-toggle"><i class="fa-solid fa-star"></i><h3>⭐ So'nggi Stars xaridlar</h3><i class="fa-solid fa-chevron-down admin-collapse-arrow"></i></div>
+                        <div id="admin-purchases-list" class="admin-tlist admin-collapse-body"></div>
+                    </div>
+                    <div class="panel admin-collapsible" style="margin-top:16px;">
+                        <div class="panel-head admin-collapse-toggle"><i class="fa-solid fa-gift"></i><h3>🎁 Bugun kunlik mukofot olganlar</h3><i class="fa-solid fa-chevron-down admin-collapse-arrow"></i></div>
+                        <div id="admin-daily-claims-list" class="admin-tlist admin-collapse-body"></div>
+                    </div>
+                    <div class="panel admin-collapsible" style="margin-top:16px;">
+                        <div class="panel-head admin-collapse-toggle"><i class="fa-solid fa-user-shield"></i><h3>🛠 Adminlar faoliyati</h3><i class="fa-solid fa-chevron-down admin-collapse-arrow"></i></div>
+                        <div id="admin-gives-list" class="admin-tlist admin-collapse-body"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== ADMIN SUPPORT (alohida menyu) ===== -->
+            <section class="view" id="view-admin-support">
+                <div class="view-head">
+                    <h2>🆘 Support</h2>
+                    <p>Foydalanuvchilar bilan yozishmalar</p>
+                </div>
+                <div class="panel" style="margin-top:16px;" id="admin-support-list-panel">
+                    <div class="panel-head"><i class="fa-solid fa-headset"></i><h3>🆘 Support suhbatlari</h3></div>
+                    <div class="admin-support-search-row" style="position:relative;">
+                        <input type="text" id="admin-support-search-input" placeholder="ID, @username yoki ism-familiya bo'yicha topib, birinchi yozing...">
+                        <button class="sub-cta" id="admin-support-search-btn"><i class="fa-solid fa-magnifying-glass"></i></button>
+                        <div id="admin-support-search-results" class="admin-support-search-results" style="display:none;"></div>
+                    </div>
+                    <div id="admin-support-list" class="admin-support-list"></div>
+                </div>
+                <div class="panel support-chat-panel" style="margin-top:16px; display:none;" id="admin-support-thread-panel">
+                    <div style="padding:14px 14px 0; display:flex; align-items:center; justify-content:space-between;">
+                        <div class="admin-support-thread-back" id="admin-support-back-btn"><i class="fa-solid fa-arrow-left"></i> Orqaga</div>
+                        <button class="support-photo-btn" id="admin-support-delete-btn" type="button" title="Suhbatni o'chirish"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                    <div class="admin-support-customer-card" id="admin-support-customer-card"></div>
+                    <div id="admin-support-thread-messages" class="support-chat-messages"></div>
+                    <div class="support-chat-input-row">
+                        <button class="support-photo-btn" id="admin-support-photo-btn" type="button"><i class="fa-solid fa-image"></i></button>
+                        <input type="file" id="admin-support-photo-input" accept="image/*" style="display:none;">
+                        <textarea id="admin-support-reply-input" rows="1" placeholder="O'zbekcha javob yozing..."></textarea>
+                        <button class="sub-cta" id="admin-support-reply-btn"><i class="fa-solid fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="bd-preview-overlay" class="bd-preview-overlay" style="display:none;">
+        <div class="bd-preview-card-wrap">
+            <button id="bd-preview-close" class="bd-preview-close" type="button">✖</button>
+            <div id="bd-preview-card-slot"></div>
+        </div>
+    </div>
+
+    <script src="./index.js"></script>
+</body>
+</html>
