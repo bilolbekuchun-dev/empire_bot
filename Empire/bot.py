@@ -30,7 +30,7 @@ from aiohttp import web
 WEBHOOK_HOST = "https://66.151.41.155.nip.io"
 WEBHOOK_PATH = f"/webhook/{TOKEN}"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
-WEBAPP_HOST = "127.0.0.1"  # faqat localhost'da tinglaymiz, tashqi trafik nginx orqali keladi
+WEBAPP_HOST = os.getenv("WEBAPP_HOST", "0.0.0.0")  # 0.0.0.0 for Railway/Docker/Cloud containers
 WEBAPP_PORT = int(PORT)
 local_server = TelegramAPIServer.from_base("http://localhost:8081")
 dp = Dispatcher()
