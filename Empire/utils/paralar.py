@@ -391,8 +391,9 @@ async def select_gender(call: CallbackQuery, gender: str, state=None):
 
     if pending_args:
         from config import BOT_URL
+        b_url = BOT_URL if (BOT_URL and BOT_URL.startswith("http")) else "https://t.me/test_empire_bot"
         markup = InlineKeyboardBuilder()
-        markup.button(text="▶️ Davom etish", url=f"{BOT_URL}?start={pending_args}")
+        markup.button(text="▶️ Davom etish", url=f"{b_url}?start={pending_args}")
         markup.adjust(1)
         await call.message.edit_text(
             "✅ Rahmat! Endi davom etish uchun tugmani bosing:",

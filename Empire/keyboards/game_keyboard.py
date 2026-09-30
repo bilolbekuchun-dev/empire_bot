@@ -7,20 +7,28 @@ from random import shuffle
 from random import choice, randint
 from utils.vsgame import TeamCOlors
 
+def _get_bot_url():
+    from config import BOT_URL
+    if BOT_URL and BOT_URL.startswith("http"):
+        return BOT_URL.rstrip("/")
+    return "https://t.me/test_empire_bot"
+
 def join_vsgame_button(game_id, team_count=2):
     markup = InlineKeyboardBuilder()
+    bot_url = _get_bot_url()
     i = 1
     for color_name, color_value in TeamCOlors.all_colors_dict().items():
         if i > team_count:
             break
-        markup.button(text=color_value, url=f"{BOT_URL}?&start=vsgame_{game_id}_{color_name}")
+        markup.button(text=color_value, url=f"{bot_url}?start=vsgame_{game_id}_{color_name}")
         i += 1
     markup.adjust(2)
     return markup.as_markup()
 
 async def join_game_button(game_id):
     markup = InlineKeyboardBuilder()
-    markup.button(text="🤵 Qo'shilish", url=f"{BOT_URL}?&start=game_{game_id}")
+    bot_url = _get_bot_url()
+    markup.button(text="🤵 Qo'shilish", url=f"{bot_url}?start=game_{game_id}")
     markup.adjust(1)
     return markup.as_markup()
 
