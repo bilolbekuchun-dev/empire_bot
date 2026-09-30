@@ -1,5 +1,5 @@
 from aiogram.types import Message, CallbackQuery
-from keyboards.main_keyboard import get_start_markup, gender_keyboard, start_markup
+from keyboards.main_keyboard import get_start_markup, gender_keyboard
 from config import DIAMOND_SHOP_USERNAME
 from models.user import User
 

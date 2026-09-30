@@ -24,6 +24,8 @@ def get_start_markup():
     b.adjust(1, 1, 1, 2)
     return b.as_markup()
 
+start_markup = get_start_markup()
+
 
 def gender_keyboard():
     m = InlineKeyboardBuilder()
