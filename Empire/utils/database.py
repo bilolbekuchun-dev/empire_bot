@@ -33,7 +33,9 @@ except Exception:
 
 class LazyRedis:
     def __init__(self):
-        self._real = Redis(host='localhost', port=6379, db=0, decode_responses=True)
+        host = os.getenv("REDIS_HOST", "localhost")
+        port = int(os.getenv("REDIS_PORT", "6379"))
+        self._real = Redis(host=host, port=port, db=0, decode_responses=True)
         self._active = None
 
     async def _get_client(self):
@@ -45,14 +47,26 @@ class LazyRedis:
                 if _fake_redis:
                     self._active = _fake_redis
                 else:
-                    self._active = self._real
+                    try:
+                        import fakeredis.aioredis
+                        self._active = fakeredis.aioredis.FakeRedis(decode_responses=True)
+                    except Exception:
+                        self._active = self._real
         return self._active
 
     def __getattr__(self, name):
         async def method(*args, **kwargs):
-            client = await self._get_client()
-            fn = getattr(client, name)
-            return await fn(*args, **kwargs)
+            try:
+                client = await self._get_client()
+                fn = getattr(client, name)
+                return await fn(*args, **kwargs)
+            except Exception as e:
+                # If real Redis fails during method call, fallback to FakeRedis
+                if _fake_redis:
+                    self._active = _fake_redis
+                    fn = getattr(_fake_redis, name)
+                    return await fn(*args, **kwargs)
+                raise e
         return method
 
 redis_client = LazyRedis()
