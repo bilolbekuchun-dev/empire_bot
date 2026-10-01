@@ -76,8 +76,12 @@ async def execute_night_phase_redis(
     except Exception as e:
         print(f"O'yinchilar ro'yxatini ko'rsatishda xato: {e}")
     
-    # Night actions
-    # TODO: tungi_harakat_redis
+    # Night actions - har bir o'yinchiga rol bo'yicha tugma yuborish
+    try:
+        from utils.redis_game.night_engine import send_night_actions
+        await send_night_actions(int(game_id), night_number, players, bot, chat)
+    except Exception as e:
+        print(f"Tungi harakatlarni yuborishda xato: {e}")
     await bot.send_message(chat.chat_id, "⏳ Tungi harakatlar boshlandi...")
     
     # Wait for night time
@@ -88,8 +92,12 @@ async def execute_night_phase_redis(
     if not game_state or not game_state.is_active:
         return
     
-    # Stop mafia voting
-    # TODO: stop_voting_mafias_redis
+    # Apply night results (o'ldirish/davolash/himoya/tekshiruv)
+    try:
+        from utils.redis_game.night_engine import process_night_results
+        await process_night_results(int(game_id), night_number, players, bot, chat)
+    except Exception as e:
+        print(f"Tungi natijalarni qo'llashda xato: {e}")
     
     # Morning message
     await bot.send_photo(
@@ -200,6 +208,13 @@ async def execute_day_phase_redis(
         reply_markup=bot_link_markup,
         disable_web_page_preview=True
     )
+
+    # Ovoz berish tugmalarini yuborish
+    try:
+        from utils.redis_game.night_engine import send_day_votes
+        await send_day_votes(int(game_id), day_number, players, bot, chat)
+    except Exception as e:
+        print(f"Ovoz tugmalarini yuborishda xato: {e}")
     
     # Create day voting phase
     day_phase = GamePhaseState(
@@ -226,6 +241,13 @@ async def execute_day_phase_redis(
     game_state = await game_repo.load_game(game_id)
     if not game_state or not game_state.is_active:
         return
+
+    # Ovozlarni sanab, osishni qo'llash
+    try:
+        from utils.redis_game.night_engine import process_day_votes
+        await process_day_votes(int(game_id), day_number, players, bot, chat)
+    except Exception as e:
+        print(f"Ovozlarni qayta ishlashda xato: {e}")
     
     # Mark day phase as ended
     day_phase.is_end = True

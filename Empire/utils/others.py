@@ -77,11 +77,35 @@ async def check_user_balance(message: Message):
     user, profile = await _get_user_and_profile(message.from_user.id)
     await message.answer(f"💳 Sizning balansingiz: {profile.dollar}$ / {profile.diamond} 💎", parse_mode="HTML")
 
+def _build_roles_text() -> list:
+    """Botdagi barcha rollarni toifalar bo'yicha ro'yxat qilib qaytaradi."""
+    from config import tinch_rollar, mafia_rollar, yakka_rollar
+    from utils.roles_text import Roles as RolesText
+    from utils.telegram_utils import split_long_message
+
+    def block(title: str, roles: list) -> str:
+        lines = [f"<b>{title} ({len(roles)} ta):</b>"]
+        for r in roles:
+            lines.append(f"• <b>{r}</b> — {RolesText.get_description(r)}")
+        return "\n".join(lines)
+
+    total = len(tinch_rollar) + len(mafia_rollar) + len(yakka_rollar)
+    text = (
+        f"🎭 <b>BOTDAGI BARCHA ROLLAR ({total} ta)</b>\n\n"
+        + block("👨🏼 Tinch aholi", tinch_rollar) + "\n\n"
+        + block("🤵 Mafia", mafia_rollar) + "\n\n"
+        + block("🃏 Yakkalar", yakka_rollar)
+    )
+    return split_long_message(text)
+
+
 async def role_names_handler(message: Message):
-    await message.answer("🎭 Botdagi barcha rollar ro'yxati va ma'lumotlar WebApp da mavjud.")
+    for chunk in _build_roles_text():
+        await message.answer(chunk, parse_mode="HTML")
 
 async def get_roles_text(message: Message):
-    await message.answer("🎭 Rollar haqida ma'lumot olish uchun WebApp 'Rollar' bo'limiga kiring.")
+    for chunk in _build_roles_text():
+        await message.answer(chunk, parse_mode="HTML")
 
 async def get_role_text(call: CallbackQuery):
     await call.answer("Batafsil ma'lumot WebApp da!", show_alert=True)
