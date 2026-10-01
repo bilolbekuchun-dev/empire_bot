@@ -91,6 +91,34 @@ ITEM_PRICES = {
 }
 
 
+def _clean_role_key(role: str) -> str:
+    """"🕵🏼 Komissar katani" -> "Komissar katani" (emoji ni olib tashlash)"""
+    if " " in role:
+        return role.split(" ", 1)[1].strip()
+    return role
+
+
+def build_roles_catalog() -> list:
+    """WebApp "O'yin rollari" bo'limi uchun katalog (tinch/mafia/yakka)."""
+    from config import tinch_rollar, mafia_rollar, yakka_rollar
+    from utils.roles_text import Roles as RolesText
+
+    def entry(role, team):
+        return {
+            "name": role,
+            "team": team,
+            "role_key": _clean_role_key(role),
+            "elite": False,
+            "description": RolesText.get_description(role),
+        }
+
+    return (
+        [entry(r, "tinch") for r in tinch_rollar]
+        + [entry(r, "mafia") for r in mafia_rollar]
+        + [entry(r, "yakka") for r in yakka_rollar]
+    )
+
+
 def setup_webapp_routes(app: web.Application, static_dir: str, bot=None):
     app.middlewares.append(cors_middleware)
     index_path = os.path.join(static_dir, "index.html")
@@ -214,6 +242,7 @@ def setup_webapp_routes(app: web.Application, static_dir: str, bot=None):
             "para": para_info,
             "lang": "uz",
             "ui": get_ui_strings("uz"),
+            "roles": build_roles_catalog(),
         }
         return web.json_response(data)
 
