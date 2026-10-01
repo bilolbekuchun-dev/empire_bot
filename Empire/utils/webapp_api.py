@@ -18,6 +18,7 @@ from models.user import (
 from models.game_data import Chat, Game, GamePlayer, Geroys
 from models.user import GeroyMarket
 from utils.paralar import _has_active_para
+from utils.webapp_i18n import get_ui_strings
 
 logger = logging.getLogger(__name__)
 
@@ -211,10 +212,23 @@ def setup_webapp_routes(app: web.Application, static_dir: str, bot=None):
                 "streak": profile.daily_streak,
             },
             "para": para_info,
+            "lang": "uz",
+            "ui": get_ui_strings("uz"),
         }
         return web.json_response(data)
 
     app.router.add_post("/webapp/api/profile", profile_handler)
+
+    # ── SET LANGUAGE ──
+    async def set_lang_handler(request):
+        try:
+            payload = await request.json()
+        except Exception:
+            payload = {}
+        lang = str(payload.get("lang") or "uz")[:8]
+        return web.json_response({"ok": True, "lang": lang, "ui": get_ui_strings(lang)})
+
+    app.router.add_post("/webapp/api/set_lang", set_lang_handler)
 
     # ── CLAIM DAILY REWARD ──
     async def claim_daily_handler(request):
