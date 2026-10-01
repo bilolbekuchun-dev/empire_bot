@@ -63,7 +63,7 @@ async def get_profile(bot: Bot, message: Message):
         f"💵 Dollar: <b>{profile.dollar:,}$</b>\n"
         f"💎 Olmos: <b>{profile.diamond:,} ta</b>\n"
         f"🎮 O'yinlar soni: <b>{profile.games_count} ta</b>\n"
-        f"🏆 G'alabalar: <b>{profile.wins_count} ta</b>\n"
+        f"🏆 G'alabalar: <b>{profile.wins:,} ta</b>\n"
     )
     await message.answer(text, parse_mode="HTML")
 

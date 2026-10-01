@@ -70,7 +70,7 @@ async def f(call: CallbackQuery, bot: Bot, state: FSMContext):
 async def f(call: CallbackQuery, bot: Bot, state: FSMContext):
     await sandiqlar.open_mega_sandiq(call, state)
 
-@router.message(Command("profile"))
+@router.message(Command("profile", "profil"))
 async def f(message: Message, bot: Bot):
     await others.get_profile(bot, message)
 
