@@ -80,13 +80,14 @@ async def check_user_balance(message: Message):
 def _build_roles_text() -> list:
     """Botdagi barcha rollarni toifalar bo'yicha ro'yxat qilib qaytaradi."""
     from config import tinch_rollar, mafia_rollar, yakka_rollar
+    from utils.premium_emojis import role_display
     from utils.roles_text import Roles as RolesText
     from utils.telegram_utils import split_long_message
 
     def block(title: str, roles: list) -> str:
         lines = [f"<b>{title} ({len(roles)} ta):</b>"]
         for r in roles:
-            lines.append(f"• <b>{r}</b> — {RolesText.get_description(r)}")
+            lines.append(f"• <b>{role_display(r)}</b> — {RolesText.get_description(r)}")
         return "\n".join(lines)
 
     total = len(tinch_rollar) + len(mafia_rollar) + len(yakka_rollar)
