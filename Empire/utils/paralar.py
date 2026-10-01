@@ -65,10 +65,14 @@ async def force_close_anon_chat(*user_ids: int, bot: Bot = None) -> None:
             await redis_client.delete(f"anon_chat:{uid}")
         except Exception:
             pass
-        if bot is not None and _fsm_storage is not None:
+        if bot is not None:
             try:
+                storage = _fsm_storage
+                if storage is None:
+                    from bot import dp
+                    storage = dp.storage
                 key = StorageKey(bot_id=bot.id, chat_id=uid, user_id=uid)
-                await _FSM(storage=_fsm_storage, key=key).clear()
+                await _FSM(storage=storage, key=key).clear()
             except Exception:
                 pass
 
@@ -145,19 +149,30 @@ async def add_para_request(message: Message):
     if not user_id:
         return
     if user_id == message.from_user.id:
+        await message.answer("O'zingiz bilan para bo'la olmaysiz!")
         return
+    if message.reply_to_message.from_user.is_bot:
+        await message.answer("Botlar bilan para bo'lish mumkin emas!")
+        return
+
     user = await User.get_or_none(user_id=message.from_user.id)
     if not user:
         return
     targ_user = await User.get_or_none(user_id=user_id)
     if not targ_user:
+        await message.answer("Foydalanuvchi ma'lumotlar bazasidan topilmadi. Avval u botga /start bosishi kerak.")
         return
 
-    exists = await Paralar.filter(user1=user, user2=targ_user).first()
-    if not exists:
-        exists = await Paralar.filter(user1=targ_user, user2=user).first()
-    if exists:
-        await message.answer("Siz allaqachon ushbu foydalanuvchi bilan para bo'lgansiz.")
+    # User da para bor-yo'qligini tekshirish
+    u_para = await Paralar.filter(user1=user).first() or await Paralar.filter(user2=user).first()
+    if u_para:
+        await message.answer("Sizda allaqachon para bor! Yangi para tuzish uchun avvalgisini bekor qiling (/dpara).")
+        return
+
+    # Target user da para bor-yo'qligini tekshirish
+    t_para = await Paralar.filter(user1=targ_user).first() or await Paralar.filter(user2=targ_user).first()
+    if t_para:
+        await message.answer("Ushbu foydalanuvchida allaqachon para bor!")
         return
     
     markup = InlineKeyboardBuilder()
@@ -183,32 +198,38 @@ async def accept_para(callback: CallbackQuery):
         return
     user1_id = int(args[2])
     user2_id = int(args[3])
+
+    # Faqat so'rov yuborilgan foydalanuvchi (user2) qabul qilishi/rad etishi mumkin!
+    if callback.from_user.id != user2_id:
+        await callback.answer("❗ Ushbu para so'rovi sizga yuborilmagan!", show_alert=True)
+        return
+
     user1 = await User.get_or_none(user_id=user1_id)
     user2 = await User.get_or_none(user_id=user2_id)
+    if not user1 or not user2:
+        await callback.answer("Foydalanuvchi topilmadi!", show_alert=True)
+        return
+
     match args[1]:
         case "accept":
-            para = None
-            para1 = await Paralar.filter(user1=user1).first()
-            para2 = await Paralar.filter(user1=user2).first()
-            if para1 and para2:
-                await para2.delete()
-                para = para1
-            if not para:
-                para = await Paralar.filter(user1=user2, user2=user1).first()
-            if para:
+            # Ikki foydalanuvchidan birida allaqachon para bor-yo'qligini tekshirish
+            u1_para = await Paralar.filter(user1=user1).first() or await Paralar.filter(user2=user1).first()
+            u2_para = await Paralar.filter(user1=user2).first() or await Paralar.filter(user2=user2).first()
+
+            if u1_para and u2_para and (u1_para.id == u2_para.id):
                 await callback.answer("Siz allaqachon ushbu foydalanuvchi bilan para bo'lgansiz.", show_alert=True)
                 return
-            para = await Paralar.filter(user1=user2).first()
-            if not para:
-                para = await Paralar.filter(user2=user2).first()
-                if not para:
-                    await Paralar.create(user1=user1, user2=user2)
-                else:
-                    para.user1 = user1
-                    await para.save()
-            else:
-                para.user2 = user1
-                await para.save()
+
+            if u1_para:
+                await callback.answer(f"{user1.full_name} allaqachon boshqa foydalanuvchi bilan para bo'lgan.", show_alert=True)
+                return
+
+            if u2_para:
+                await callback.answer("Siz allaqachon boshqa foydalanuvchi bilan para bo'lgansiz.", show_alert=True)
+                return
+
+            await Paralar.create(user1=user1, user2=user2)
+
             await callback.answer("Para so'rovi qabul qilindi.")
             await callback.message.edit_text(
                 f"Siz {user1.mention} bilan para bo'ldingiz!",
@@ -223,12 +244,13 @@ async def accept_para(callback: CallbackQuery):
         case "decline":
             await callback.answer("Para so'rovi rad etildi.")
             await callback.message.edit_text(
-                f"Siz {user1.mention}ning para so'rovini rad etdiniz.",
+                f"Siz {user1.mention}ning para so'rovini rad etdingiz.",
                 parse_mode="HTML"
             )
-            await callback.bot.send_message(
-                chat_id=user1.user_id,
-                text=f"Sizning {user2.mention}ga yuborgan para so'rovingiz rad etildi.",
+            await safe_send_message(
+                callback.bot,
+                user1.user_id,
+                f"Sizning {user2.mention}ga yuborgan para so'rovingiz rad etildi.",
                 parse_mode="HTML"
             )
 
@@ -258,12 +280,21 @@ async def show_para_gift_menu(call: CallbackQuery):
         parse_mode="HTML"
     )
 
+ALLOWED_GIFT_ITEMS = {
+    "dollar", "diamond", "himoya", "hujjat", "qotildan_himoya",
+    "osishdan_himoya", "miltiq", "doridan_himoya", "maska",
+    "slip_himoya", "geroy_himoya"
+}
+
 async def start_para_gift(call: CallbackQuery, state):
     data = call.data.split("_")
     # para_send_dollar, para_send_diamond, para_send_item_{key}
     gift_type = data[2]
     item_key = data[3] if len(data) > 3 else gift_type
     
+    if item_key not in ALLOWED_GIFT_ITEMS:
+        return await call.answer("❌ Noto'g'ri sovg'a turi!", show_alert=True)
+
     await state.update_data(gift_type=gift_type, item_key=item_key)
     
     names = {
@@ -300,9 +331,16 @@ async def process_para_gift(message: Message, state):
     
     data = await state.get_data()
     item_key = data.get("item_key")
+    if item_key not in ALLOWED_GIFT_ITEMS:
+        await state.clear()
+        return await message.answer("❌ Noto'g'ri sovg'a turi!")
     
     user = await User.get_or_none(user_id=message.from_user.id)
-    profile = await Profile.get_or_none(user=user)
+    if not user:
+        await state.clear()
+        return await message.answer("Foydalanuvchi topilmadi!")
+
+    profile, _ = await Profile.get_or_create(user=user, defaults={"dollar": 0, "diamond": 0})
     
     para = await Paralar.filter(user1=user).prefetch_related("user1", "user2").first()
     if not para:
@@ -313,7 +351,7 @@ async def process_para_gift(message: Message, state):
         return await message.answer("Sizda para yo'q!")
     
     other_user = para.user2 if para.user1.id == user.id else para.user1
-    other_profile = await Profile.get_or_none(user=other_user)
+    other_profile, _ = await Profile.get_or_create(user=other_user, defaults={"dollar": 0, "diamond": 0})
     
     # Check balance
     user_val = getattr(profile, item_key, 0)
@@ -377,8 +415,13 @@ async def select_gender(call: CallbackQuery, gender: str, state=None):
     user = await User.get_or_none(user_id=call.from_user.id)
     if not user:
         return
+    current_changes = (getattr(user, "gender_changes", 0) or 0)
+    if current_changes >= GENDER_CHANGE_MAX:
+        await call.answer(f"❗ Siz jinsingizni ko'pi bilan {GENDER_CHANGE_MAX} marta o'zgartirishingiz mumkin!", show_alert=True)
+        return
+
     user.gender = gender  # "m" yoki "f"
-    user.gender_changes = (getattr(user, "gender_changes", 0) or 0) + 1
+    user.gender_changes = current_changes + 1
     await user.save()
     await call.answer("✅ Saqlandi!", show_alert=True)
 
@@ -433,9 +476,7 @@ async def find_random_para(call: CallbackQuery, bot: Bot):
         await call.answer(f"❗ Kuniga faqat {limit} marta random para so'rovi yuborishingiz mumkin.", show_alert=True)
         return
 
-    existing = await Paralar.filter(user1=user).first()
-    if not existing:
-        existing = await Paralar.filter(user2=user).first()
+    existing = await Paralar.filter(user1=user).first() or await Paralar.filter(user2=user).first()
     if existing:
         await call.answer("❗ Sizda allaqachon para bor!", show_alert=True)
         return
@@ -455,7 +496,6 @@ async def find_random_para(call: CallbackQuery, bot: Bot):
         return
 
     target = choice(candidates)
-    _find_requests[user.user_id] = (today, count + 1)
 
     markup = InlineKeyboardBuilder()
     markup.button(text="Qabul qilish", callback_data=f"para_accept_{user.user_id}_{target.user_id}")
@@ -473,6 +513,7 @@ async def find_random_para(call: CallbackQuery, bot: Bot):
         await call.answer("❗ Hozircha mos para topilmadi. Keyinroq urinib ko'ring.", show_alert=True)
         return
 
+    _find_requests[user.user_id] = (today, count + 1)
     await call.answer("✅ Random para so'rovi yuborildi! Javobini kuting.", show_alert=True)
 
 async def find_random_para_command(message: Message, bot: Bot):
@@ -494,9 +535,7 @@ async def find_random_para_command(message: Message, bot: Bot):
         await message.answer(f"❗ Kuniga faqat {limit} marta random para so'rovi yuborishingiz mumkin.")
         return
 
-    existing = await Paralar.filter(user1=user).first()
-    if not existing:
-        existing = await Paralar.filter(user2=user).first()
+    existing = await Paralar.filter(user1=user).first() or await Paralar.filter(user2=user).first()
     if existing:
         await message.answer("❗ Sizda allaqachon para bor!")
         return
@@ -516,7 +555,6 @@ async def find_random_para_command(message: Message, bot: Bot):
         return
 
     target = choice(candidates)
-    _find_requests[user.user_id] = (today, count + 1)
 
     markup = InlineKeyboardBuilder()
     markup.button(text="Qabul qilish", callback_data=f"para_accept_{user.user_id}_{target.user_id}")
@@ -534,6 +572,7 @@ async def find_random_para_command(message: Message, bot: Bot):
         await message.answer("❗ Hozircha mos para topilmadi. Keyinroq urinib ko'ring.")
         return
 
+    _find_requests[user.user_id] = (today, count + 1)
     await message.answer("✅ Random para so'rovi yuborildi! Javobini kuting.")
 
 # ── ANONIM SUHBAT ──

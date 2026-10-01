@@ -9,8 +9,8 @@ Strategy: Use a single-pass approach to avoid double-replacement issues.
 import re
 import os
 
-SRC = os.path.join(os.path.dirname(__file__), '..', 'index.js')
-DST = os.path.join(os.path.dirname(__file__), 'index.js')
+SRC = os.path.join(os.path.dirname(__file__), 'index.js')
+DST = os.path.join(os.path.dirname(__file__), 'webapp_deploy', 'index.js')
 
 with open(SRC, 'r', encoding='utf-8') as f:
     js = f.read()
