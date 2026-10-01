@@ -139,17 +139,74 @@ def setup_webapp_routes(app: web.Application, static_dir: str, bot=None):
     app.router.add_get("/webapp", index_handler)
     app.router.add_get("/webapp/", index_handler)
 
-    # ── AVATAR PLACEHOLDER ──
+    # ── AVATAR HANDLERS ──
+    SVG_AVATAR_FALLBACK = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">'
+        '<rect width="100%" height="100%" fill="#1e1e2d"/>'
+        '<text x="50%" y="55%" font-size="42" fill="#f0c419" text-anchor="middle" dominant-baseline="middle">👤</text>'
+        '</svg>'
+    )
+
     async def avatar_handler(request):
-        user_id = request.match_info.get("user_id")
-        return web.Response(status=404, text="Avatar not found")
+        user_id_str = request.match_info.get("user_id")
+        if bot and user_id_str:
+            try:
+                user_id = int(user_id_str)
+                photos = await bot.get_user_profile_photos(user_id=user_id, limit=1)
+                if photos and photos.total_count > 0 and photos.photos:
+                    file_id = photos.photos[0][-1].file_id
+                    tg_file = await bot.get_file(file_id)
+                    file_url = f"https://api.telegram.org/file/bot{bot.token}/{tg_file.file_path}"
+                    return web.HTTPFound(location=file_url)
+            except Exception as e:
+                logger.debug(f"Failed to fetch avatar for {user_id_str}: {e}")
+
+        return web.Response(text=SVG_AVATAR_FALLBACK, content_type="image/svg+xml")
+
+    async def avatar_chat_handler(request):
+        chat_id_str = request.match_info.get("chat_id")
+        if bot and chat_id_str:
+            try:
+                chat_id = int(chat_id_str)
+                chat = await bot.get_chat(chat_id=chat_id)
+                if chat and chat.photo:
+                    tg_file = await bot.get_file(chat.photo.big_file_id)
+                    file_url = f"https://api.telegram.org/file/bot{bot.token}/{tg_file.file_path}"
+                    return web.HTTPFound(location=file_url)
+            except Exception as e:
+                logger.debug(f"Failed to fetch chat avatar for {chat_id_str}: {e}")
+
+        return web.Response(text=SVG_AVATAR_FALLBACK, content_type="image/svg+xml")
+
     app.router.add_get("/webapp/avatar/{user_id}", avatar_handler)
+    app.router.add_get("/webapp/avatar_chat/{chat_id}", avatar_chat_handler)
 
     # ── VERSION ──
     async def version_handler(request):
         return web.json_response({"ok": True, "version": "1.0.0"})
     app.router.add_get("/webapp/api/version", version_handler)
     app.router.add_post("/webapp/api/version", version_handler)
+
+    # ── TOURNAMENT & HOLIDAY ──
+    async def tournament_handler(request):
+        return web.json_response({
+            "ok": True,
+            "info": {"title": "Empire Mafia", "active": False},
+            "personal": None,
+            "next_up": [],
+            "history": []
+        })
+    app.router.add_get("/webapp/api/tournament", tournament_handler)
+    app.router.add_post("/webapp/api/tournament", tournament_handler)
+
+    async def holiday_handler(request):
+        return web.json_response({
+            "ok": True,
+            "active": [],
+            "upcoming": []
+        })
+    app.router.add_get("/webapp/api/holiday", holiday_handler)
+    app.router.add_post("/webapp/api/holiday", holiday_handler)
 
     # ── PROFILE ──
     async def profile_handler(request):
@@ -191,13 +248,37 @@ def setup_webapp_routes(app: web.Application, static_dir: str, bot=None):
 
         # Daily reward check
         today = date.today()
-        can_claim_daily = (profile.last_claim_date != today)
+        claimed_today = (profile.last_claim_date == today)
+        streak = profile.daily_streak or 0
+        if streak < 1 or streak > 7:
+            streak = 1
+        
+        DAILY_REWARD_TABLE = { 1: 100, 2: 150, 3: 200, 4: 250, 5: 300, 6: 400, 7: 500 }
+
+        if claimed_today:
+            next_streak = streak
+            next_reward = DAILY_REWARD_TABLE.get(streak, 100)
+        else:
+            if profile.last_claim_date == today - timedelta(days=1):
+                next_streak = 1 if streak >= 7 else streak + 1
+            else:
+                next_streak = 1
+            next_reward = DAILY_REWARD_TABLE.get(next_streak, 100)
+
+        daily_claim_data = {
+            "claimed_today": claimed_today,
+            "streak": streak,
+            "next_streak": next_streak,
+            "next_reward": next_reward,
+            "can_claim": not claimed_today,
+        }
 
         # Response payload
         data = {
             "ok": True,
             "user": {
                 "id": user.user_id,
+                "user_id": user.user_id,
                 "full_name": user.full_name,
                 "username": user.username,
                 "gender": user.gender,
@@ -235,10 +316,8 @@ def setup_webapp_routes(app: web.Application, static_dir: str, bot=None):
                 "duration_days": vip.duration_days if vip else 0,
             },
             "active_role": active_role,
-            "daily": {
-                "can_claim": can_claim_daily,
-                "streak": profile.daily_streak,
-            },
+            "daily_claim": daily_claim_data,
+            "daily": daily_claim_data,
             "para": para_info,
             "lang": "uz",
             "ui": get_ui_strings("uz"),
@@ -274,11 +353,12 @@ def setup_webapp_routes(app: web.Application, static_dir: str, bot=None):
             return web.json_response({"ok": False, "error": "already_claimed_today"})
 
         if profile.last_claim_date == today - timedelta(days=1):
-            profile.daily_streak = min(7, profile.daily_streak + 1)
+            profile.daily_streak = 1 if profile.daily_streak >= 7 else profile.daily_streak + 1
         else:
             profile.daily_streak = 1
 
-        reward = profile.daily_streak * 100  # 100$ - 700$
+        DAILY_REWARD_TABLE = { 1: 100, 2: 150, 3: 200, 4: 250, 5: 300, 6: 400, 7: 500 }
+        reward = DAILY_REWARD_TABLE.get(profile.daily_streak, 100)
         profile.dollar += reward
         profile.last_claim_date = today
         await profile.save()
@@ -287,7 +367,8 @@ def setup_webapp_routes(app: web.Application, static_dir: str, bot=None):
             "ok": True,
             "reward": reward,
             "streak": profile.daily_streak,
-            "dollar": profile.dollar
+            "dollar": profile.dollar,
+            "claimed_today": True
         })
 
     app.router.add_post("/webapp/api/claim_daily", claim_daily_handler)
