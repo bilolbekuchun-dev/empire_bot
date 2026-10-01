@@ -15,7 +15,8 @@ from models.user import (
     NftGiftCatalog, NftPurchaseLog, NftResaleListing, NftResalePurchaseLog,
     PremiumGiftOption, PremiumPurchaseLog
 )
-from models.game_data import Chat, Game, GamePlayer, Geroys, GeroyMarket
+from models.game_data import Chat, Game, GamePlayer, Geroys
+from models.user import GeroyMarket
 from utils.paralar import _has_active_para
 
 logger = logging.getLogger(__name__)

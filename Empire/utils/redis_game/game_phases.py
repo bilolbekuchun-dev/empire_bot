@@ -42,7 +42,7 @@ async def execute_night_phase_redis(
     # Create night phase
     night_phase = GamePhaseState(
         game_id=game_id,
-        number=night_number,
+        phase_num=night_number,
         phase_type="night",
         is_end=False,
         created_at=datetime.now(timezone.utc)
@@ -147,7 +147,7 @@ async def execute_day_phase_redis(
     # Create morning phase
     morning_phase = GamePhaseState(
         game_id=game_id,
-        number=day_number,
+        phase_num=day_number,
         phase_type="morning",
         is_end=False,
         created_at=datetime.now(timezone.utc)
@@ -219,7 +219,7 @@ async def execute_day_phase_redis(
     # Create day voting phase
     day_phase = GamePhaseState(
         game_id=game_id,
-        number=day_number,
+        phase_num=day_number,
         phase_type="day",
         is_end=False,
         created_at=datetime.now(timezone.utc)
@@ -255,7 +255,7 @@ async def execute_day_phase_redis(
     # Create afternoon phase
     afternoon_phase = GamePhaseState(
         game_id=game_id,
-        number=day_number,
+        phase_num=day_number,
         phase_type="afternoon",
         is_end=False,
         created_at=datetime.now(timezone.utc)
