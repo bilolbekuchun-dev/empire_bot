@@ -219,6 +219,8 @@ async def _finalize_role_assignment(
     """
     Final rol tayinlash va notification yuborish.
     """
+    from utils.redis_game.repositories.player_repository import player_repository as player_repo
+
     chat = await Chat.get(chat_id=chat_id)
     err_players = []
     i = 1
@@ -249,6 +251,9 @@ async def _finalize_role_assignment(
         p.role = rol
         p.maxsus_raqam = i
         i += 1
+
+        # Save updated player state to Redis
+        await player_repo.save_player(p)
         
         # Send role description
         try:
@@ -273,6 +278,7 @@ async def _finalize_role_assignment(
     # In Redis version, we'll just mark them as inactive or remove
     for p in err_players:
         p.is_alive = False
+        await player_repo.save_player(p)
 
 
 async def get_role_config_text(mode: str = None) -> list:
