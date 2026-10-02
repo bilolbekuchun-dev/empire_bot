@@ -83,9 +83,10 @@ async def init():
     await Tortoise.init(
         db_url=pooled_db_url,
         modules={
-            "models": ["models.game_data", 'models.user', "models.game_set"]
+            "models": ["models.game_data", 'models.user', "models.game_set", "models.airdrop"]
         },
     )
+    await Tortoise.generate_schemas(safe=True)
     
     # Migrations
     try:

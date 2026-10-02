@@ -1,10 +1,11 @@
 from aiogram import Router
-from . import game, other_handlers, admin, settings, geroy_handlers, paralar, role_config
+from . import game, other_handlers, admin, settings, geroy_handlers, paralar, role_config, airdrop_handlers
 from utils.redis_game.night_callbacks import router as night_cb_router
 
 router = Router()
 
 router.include_router(night_cb_router)
+router.include_router(airdrop_handlers.router)
 router.include_router(paralar.router)
 router.include_router(other_handlers.router)
 router.include_router(game.router)

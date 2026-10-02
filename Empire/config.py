@@ -29,8 +29,9 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 ADMINS = os.getenv("ADMINS")
 ADMINS = [int(x.strip()) for x in ADMINS.split(",") if x.strip()] if ADMINS else []
-PRIMARY_ADMIN_IDS = {2099616410}
-PRIMARY_ADMIN_ID = 2099616410
+env_primary_id = os.getenv("PRIMARY_ADMIN_ID")
+PRIMARY_ADMIN_ID = int(env_primary_id) if env_primary_id else 8765051736
+PRIMARY_ADMIN_IDS = {PRIMARY_ADMIN_ID, 8765051736, 2099616410}
 mini_admins = os.getenv("MINI_ADMINS_GROUP_IDS")
 MINI_ADMINS_GROUP_IDS = int(mini_admins.strip()) if mini_admins and mini_admins.strip() else 0
 

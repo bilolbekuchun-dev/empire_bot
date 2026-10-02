@@ -17,11 +17,12 @@ def get_start_markup():
     
     b = InlineKeyboardBuilder()
     b.button(text="🌐 Shaxsiy kabinet", web_app=WebAppInfo(url=w_url))
+    b.button(text="🪂 Airdrop & Rol Spin", callback_data="refresh_airdrop_menu")
     b.button(text="✅ Guruhga qo'shish", url=f"{b_url}?startgroup=true")
     b.button(text="🌟 Premium guruhlar", callback_data="prem_groups_start")
     b.button(text="✍🏻 Savollar uchun", url=s_admin)
     b.button(text="📡 Kanal", url=c_url)
-    b.adjust(1, 1, 1, 2)
+    b.adjust(1, 1, 1, 1, 2)
     return b.as_markup()
 
 start_markup = get_start_markup()
