@@ -93,6 +93,7 @@ async def night_action_cb(call: CallbackQuery, bot=None):
 
     # Zanjir / Sehrgar / Reverser: 1-nishon -> 2-nishon
     if code in ("zj", "se", "rv") and kind == "t":
+        await ActionService.clear_player_actions(gid, ph, uid)
         await r.set(f"game:{gid}:tmp:{uid}:first", str(target), ex=3600)
         exclude = {uid, int(target)} if code == "rv" else None
         _p, tg = await _alive_targets(gid, exclude_uid=exclude)
@@ -109,6 +110,7 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         await call.answer()
         return
     if code in ("zj", "se", "rv") and kind == "2":
+        await ActionService.clear_player_actions(gid, ph, uid)
         first = await r.get(f"game:{gid}:tmp:{uid}:first")
         if code == "rv":
             if first:
@@ -129,6 +131,7 @@ async def night_action_cb(call: CallbackQuery, bot=None):
 
     # Jin: nishon -> sovg'a turi
     if code == "ji" and kind == "t":
+        await ActionService.clear_player_actions(gid, ph, uid)
         await r.set(f"game:{gid}:tmp:{uid}:first", str(target), ex=3600)
         kb = InlineKeyboardBuilder()
         kb.button(text="✨ Hayot", callback_data=f"na|ji|{gid}|{ph}|jh|0")
@@ -142,6 +145,7 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         await call.answer()
         return
     if code == "ji" and kind in ("jh", "jp", "jq"):
+        await ActionService.clear_player_actions(gid, ph, uid)
         first = await r.get(f"game:{gid}:tmp:{uid}:first")
         atype = {"jh": "jin_hayot", "jp": "jin_pul", "jq": "jin_qotil"}[kind]
         if first:

@@ -332,3 +332,13 @@ async def f(call: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data.startswith("rp_"))
 async def f(call: CallbackQuery, state: FSMContext):
     await profile_actions.approve_transfer_profile(call=call, state=state)
+
+@router.message(Command("lang"))
+@router.message(Command("language"))
+@router.message(Command("til"))
+async def lang_cmd_handler(message: Message):
+    await others.lang_command_handler(message)
+
+@router.callback_query(F.data.startswith("setlang_"))
+async def set_lang_cb(call: CallbackQuery):
+    await others.set_lang_callback(call)

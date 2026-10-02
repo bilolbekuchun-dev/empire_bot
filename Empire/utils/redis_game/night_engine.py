@@ -95,9 +95,88 @@ KILL_ACTIONS = {"kill"}
 
 MAFIA_ROLES = {RoleNames.DON, RoleNames.MAFIA, RoleNames.AYGOQCHI}
 
-
-# ------------------------------------------------------------------
-# Yordamchi
+NIGHT_STRINGS = {
+    "uz": {
+        "slept": "💤 Sizni uyqu dorisi bilan uxlatishdi — bu tun uxlaysiz.",
+        "xoyin_win": "👺 Siz mafiyani topdingiz va endi mafiyaga aylandingiz!",
+        "xoyin_miss": "👺 Topa olmadingiz ({miss}/3).",
+        "investigate_res": "🔍 Natija: {name} → <b>{role}</b>",
+        "jurnalist_res": "📰 Ma'lumot: {name} → <b>{role}</b>",
+        "aygoqchi_res": "🦇 Ayg'oqchi: {name} → <b>{role}</b>",
+        "konchi_kill_reason": "Kon tuzog'iga tushdi.",
+        "konchi_win": "⛏ Kon {no}: {count} 💎 qazib oldingiz!",
+        "gazabdor_warn": "🧌 Sizni G'azabkor nishonga oldi!",
+        "day_vote_prompt": "🗳 <b>Kun</b> — kimni osamiz?",
+        "day_no_vote": "🗳 Bugun hech kim osilmadi.",
+        "day_tie_vote": "🗳 Ovozlar teng bo'ldi — bugun hech kim osilmadi.",
+        "advokat_protect": "⚖️ Advokat {name} ni himoya qildi — u osilmadi!",
+        "lynched_msg": "🪢 {name} xalq tomonidan osildi!\nU edi — <b>{role}</b>",
+        "actor_msg": "🎭 <b>Aktyor</b>: Siz bu tun <b>{role}</b> roliga kirdingiz!",
+        "mimic_win": "🎭 <b>Taqlidchi</b>: Siz halok bo'lgan o'yinchining rolini egalladingiz!\nYangi rolingiz: <b>{role}</b>",
+        "mimic_wait": "🎭 <b>Taqlidchi</b>: Hali hech kim halok bo'lmadi — birinchi o'lik o'yinchining rolini kutmoqdasiz.",
+        "passive_msg": "🌙 <b>Kecha bo'ldi.</b>\nRolingiz: {role}\n\nBu tunda maxsus harakatingiz yo'q — tonggacha kuting.",
+    },
+    "ru": {
+        "slept": "💤 Вас усыпили снотворным — этой ночью вы спите.",
+        "xoyin_win": "👺 Вы нашли мафию и присоединились к ней!",
+        "xoyin_miss": "👺 Не угадали ({miss}/3).",
+        "investigate_res": "🔍 Результат: {name} → <b>{role}</b>",
+        "jurnalist_res": "📰 Информация: {name} → <b>{role}</b>",
+        "aygoqchi_res": "🦇 Шпион: {name} → <b>{role}</b>",
+        "konchi_kill_reason": "Попал в ловушку в шахте.",
+        "konchi_win": "⛏ Шахта {no}: вы добыли {count} 💎!",
+        "gazabdor_warn": "🧌 Каратель взял вас на прицел!",
+        "day_vote_prompt": "🗳 <b>День</b> — кого повесим?",
+        "day_no_vote": "🗳 Сегодня никто не был повешен.",
+        "day_tie_vote": "🗳 Голоса разделились поровну — никто не повешен.",
+        "advokat_protect": "⚖️ Адвокат защитил {name} — его не повесили!",
+        "lynched_msg": "🪢 {name} был повешен обществом!\nОн был — <b>{role}</b>",
+        "actor_msg": "🎭 <b>Актер</b>: На эту ночь ваша роль — <b>{role}</b>!",
+        "mimic_win": "🎭 <b>Мимик</b>: Вы приняли роль погибшего игрока!\nВаша новая роль: <b>{role}</b>",
+        "mimic_wait": "🎭 <b>Мимик</b>: Еще никто не погиб — ждете первого погибшего игрока.",
+        "passive_msg": "🌙 <b>Наступила ночь.</b>\nВаша роль: {role}\n\nУ вас нет ночных действий — ждите утра.",
+    },
+    "en": {
+        "slept": "💤 You were put to sleep — you sleep through this night.",
+        "xoyin_win": "👺 You found the mafia and became part of them!",
+        "xoyin_miss": "👺 Missed ({miss}/3).",
+        "investigate_res": "🔍 Result: {name} → <b>{role}</b>",
+        "jurnalist_res": "📰 Info: {name} → <b>{role}</b>",
+        "aygoqchi_res": "🦇 Spy: {name} → <b>{role}</b>",
+        "konchi_kill_reason": "Fell into a mine trap.",
+        "konchi_win": "⛏ Mine {no}: You mined {count} 💎!",
+        "gazabdor_warn": "🧌 The Avenger has targeted you!",
+        "day_vote_prompt": "🗳 <b>Day</b> — Who shall we lynch?",
+        "day_no_vote": "🗳 No one was lynched today.",
+        "day_tie_vote": "🗳 Tie vote — no one was lynched today.",
+        "advokat_protect": "⚖️ The Lawyer defended {name} — lynch prevented!",
+        "lynched_msg": "🪢 {name} was lynched by the town!\nThey were — <b>{role}</b>",
+        "actor_msg": "🎭 <b>Actor</b>: For tonight, your role is <b>{role}</b>!",
+        "mimic_win": "🎭 <b>Mimic</b>: You inherited the dead player's role!\nNew role: <b>{role}</b>",
+        "mimic_wait": "🎭 <b>Mimic</b>: No one has died yet — waiting for the first casualty.",
+        "passive_msg": "🌙 <b>Night has fallen.</b>\nYour role: {role}\n\nYou have no night action — wait until morning.",
+    },
+    "tr": {
+        "slept": "💤 Uyku hapı verildi — bu gece uyuyorsunuz.",
+        "xoyin_win": "👺 Mafyayı buldunuz ve mafya oldunuz!",
+        "xoyin_miss": "👺 Bulamadınız ({miss}/3).",
+        "investigate_res": "🔍 Sonuç: {name} → <b>{role}</b>",
+        "jurnalist_res": "📰 Bilgi: {name} → <b>{role}</b>",
+        "aygoqchi_res": "🦇 Ajan: {name} → <b>{role}</b>",
+        "konchi_kill_reason": "Maden tuzağına düştü.",
+        "konchi_win": "⛏ Maden {no}: {count} 💎 çıkardınız!",
+        "gazabdor_warn": "🧌 Cezalandırıcı sizi hedef aldı!",
+        "day_vote_prompt": "🗳 <b>Gündüz</b> — Kimi asıyoruz?",
+        "day_no_vote": "🗳 Bugün kimse asılmadı.",
+        "day_tie_vote": "🗳 Oylar eşit — bugün kimse asılmadı.",
+        "advokat_protect": "⚖️ Avukat {name} kişisini savundu — asılmadı!",
+        "lynched_msg": "🪢 {name} halk tarafından asıldı!\nRolü: <b>{role}</b>",
+        "actor_msg": "🎭 <b>Aktör</b>: Bu geceki rolünüz: <b>{role}</b>!",
+        "mimic_win": "🎭 <b>Taklitçi</b>: Ölen oyuncunun rolünü aldınız!\nYangi rolünüz: <b>{role}</b>",
+        "mimic_wait": "🎭 <b>Taklitçi</b>: Henüz kimse ölmedi — ilk ölen oyuncuyu bekliyorsunuz.",
+        "passive_msg": "🌙 <b>Gece oldu.</b>\nRolünüz: {role}\n\nGece eyleminiz yok — sabaha kadar bekleyin.",
+    }
+}
 # ------------------------------------------------------------------
 async def _name_map(user_ids: List[int]) -> Dict[int, str]:
     """user_id -> ko'rsatiladigan ism"""
@@ -303,16 +382,83 @@ async def _kill(game_id: int, uid: int, by_uid: Dict, bot: Bot, chat: Chat, name
     return p
 
 
+async def _user_lang_map(uids: List[int]) -> Dict[int, str]:
+    try:
+        users = await User.filter(user_id__in=uids).all()
+        return {u.user_id: (u.lang or "uz").lower() for u in users}
+    except Exception:
+        return {}
+
+
 async def process_night_results(game_id: int, night_num: int, players: List, bot: Bot, chat: Chat) -> None:
     """Tungi harakatlarni qo'llash: o'ldirish, davolash, himoya, tekshiruv va h.k."""
-    names = await _name_map([p.user_id for p in players])
+    all_uids = [p.user_id for p in players]
+    names = await _name_map(all_uids)
+    lang_map = await _user_lang_map(all_uids)
     by_uid = {p.user_id: p for p in players}
     actions = await ActionService.get_phase_actions(game_id, night_num)
+
+    def get_msg(uid: int, key: str, **kwargs) -> str:
+        code = lang_map.get(uid, "uz")
+        if code not in ("uz", "ru", "en", "tr"):
+            code = "uz"
+        msg = NIGHT_STRINGS.get(code, NIGHT_STRINGS["uz"]).get(key, NIGHT_STRINGS["uz"].get(key, ""))
+        return msg.format(**kwargs) if kwargs else msg
+
+    # --- Reverser: 3-Pass Deterministik harakatni burish va Nishon Validatsiyasi ---
+    reverser_actions = [a for a in actions if a.get("action_type") in ("reverser_source", "reverser_target")]
+    rev_actors = sorted(list({a["actor_id"] for a in reverser_actions}))
+    
+    # 1-Pass: Reverser meta-redireksiyalari (Reverser boshqa Reverserni nishonga olganda)
+    for rev_uid in rev_actors:
+        src_act = next((a for a in reverser_actions if a["actor_id"] == rev_uid and a["action_type"] == "reverser_source"), None)
+        tgt_act = next((a for a in reverser_actions if a["actor_id"] == rev_uid and a["action_type"] == "reverser_target"), None)
+        if src_act and tgt_act and src_act.get("target_id") and tgt_act.get("target_id"):
+            src_id = src_act["target_id"]
+            dst_id = tgt_act["target_id"]
+            if src_id in rev_actors:
+                for other_act in reverser_actions:
+                    if other_act["actor_id"] == src_id and other_act["action_type"] == "reverser_target":
+                        other_act["target_id"] = dst_id
+
+    # 2-Pass: Asosiy tungi harakatlarni yo'naltirish
+    for rev_uid in rev_actors:
+        src_act = next((a for a in reverser_actions if a["actor_id"] == rev_uid and a["action_type"] == "reverser_source"), None)
+        tgt_act = next((a for a in reverser_actions if a["actor_id"] == rev_uid and a["action_type"] == "reverser_target"), None)
+        if src_act and tgt_act and src_act.get("target_id") and tgt_act.get("target_id"):
+            src_id = src_act["target_id"]
+            dst_id = tgt_act["target_id"]
+            for act in actions:
+                if act["actor_id"] == src_id and act.get("action_type") not in ("reverser_source", "reverser_target"):
+                    act["target_id"] = dst_id
+
+    # 3-Pass: Burilgan nishonlarni validatsiya qilish (tiriklik va noqonuniy o'ziga qaratish)
+    for act in actions:
+        if act.get("action_type") in ("reverser_source", "reverser_target"):
+            continue
+        tgt_id = act.get("target_id")
+        if tgt_id is not None:
+            target_player = by_uid.get(tgt_id)
+            if not target_player or not target_player.is_alive:
+                act["target_id"] = None
+            elif target_player.user_id == act["actor_id"]:
+                actor_player = by_uid.get(act["actor_id"])
+                if actor_player and actor_player.role in (RoleNames.DON, RoleNames.MAFIA, RoleNames.QOTIL, RoleNames.OVCHI, RoleNames.KOMISSAR):
+                    act["target_id"] = None
+
+    # --- Kezuvchi (Sleep) aniqlash ---
+    slept = set()
+    for a in actions:
+        if a.get("action_type") == "sleep" and a.get("target_id"):
+            slept.add(a["target_id"])
+
+    # Kezuvchi tomonidan uxlatilganlar tungi harakat bajara olmaydi
+    valid_actions = [a for a in actions if a["actor_id"] not in slept or a.get("action_type") == "sleep"]
 
     mafia_votes: Dict[int, int] = {}
     qotil_target = None
     ovchi_target = None
-    healed, protected, slept = set(), set(), set()
+    healed, protected = set(), set()
     zanjir: Dict[int, list] = {}
     swaps: Dict[int, list] = {}
     xoyin: Dict[int, int] = {}
@@ -323,25 +469,9 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
     konchi = []
     gazabdor_targets = []
 
-    # --- Reverser: Harakatni manbadan (1-nishon) yangi nishonga (2-nishon) yo'naltirish ---
-    reverser_sources: Dict[int, int] = {}
-    reverser_targets: Dict[int, int] = {}
-    for a in actions:
-        if a.get("action_type") == "reverser_source" and a.get("target_id"):
-            reverser_sources[a["actor_id"]] = a["target_id"]
-        elif a.get("action_type") == "reverser_target" and a.get("target_id"):
-            reverser_targets[a["actor_id"]] = a["target_id"]
-
-    for rev_uid, source_id in reverser_sources.items():
-        new_target_id = reverser_targets.get(rev_uid)
-        if source_id and new_target_id:
-            for a in actions:
-                if a["actor_id"] == source_id and a.get("target_id"):
-                    a["target_id"] = new_target_id
-
-    for a in actions:
+    for a in valid_actions:
         actor = by_uid.get(a["actor_id"])
-        if not actor:
+        if not actor or not actor.is_alive:
             continue
         actor_role_raw = await r.get(f"game:{game_id}:night:{night_num}:actor_role:{actor.user_id}")
         role = actor_role_raw.decode() if isinstance(actor_role_raw, bytes) else actor_role_raw if actor_role_raw else actor.role
@@ -358,8 +488,6 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
             healed.add(tgt)
         elif atype == "protect" and tgt:
             protected.add(tgt)
-        elif atype == "sleep" and tgt:
-            slept.add(tgt)
         elif atype == "zanjir" and tgt:
             zanjir.setdefault(actor.user_id, []).append(tgt)
         elif atype == "sehrgar" and tgt:
@@ -398,13 +526,13 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
                 await player_repo.save_player(x)
                 await player_repo.save_player(y)
 
-    # --- Kezuvchi: uxlash ---
+    # --- Kezuvchi: uxlash belgisini o'rnatish ---
     for uid in slept:
         sp = by_uid.get(uid)
         if sp:
             sp.is_sleep = True
             await player_repo.save_player(sp)
-            await _send_private(bot, uid, "💤 Sizni uyqu dorisi bilan uxlatishdi — bu tun uxlaysiz.")
+            await _send_private(bot, uid, get_msg(uid, "slept"))
 
     # --- O'lim nomzodlari ---
     dead_uids = []
@@ -428,11 +556,11 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
         if t.role in MAFIA_ROLES:
             actor.role = RoleNames.MAFIA
             await player_repo.save_player(actor)
-            await _send_private(bot, actor_uid, "👺 Siz mafiyani topdingiz va endi mafiyaga aylandingiz!")
+            await _send_private(bot, actor_uid, get_msg(actor_uid, "xoyin_win"))
         else:
             actor.missed_nights = (getattr(actor, "missed_nights", 0) or 0) + 1
             await player_repo.save_player(actor)
-            await _send_private(bot, actor_uid, f"👺 Topa olmadingiz ({actor.missed_nights}/3).")
+            await _send_private(bot, actor_uid, get_msg(actor_uid, "xoyin_miss", miss=actor.missed_nights))
             if actor.missed_nights >= 3:
                 dead_uids.append(actor_uid)
 
@@ -445,6 +573,9 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
     for uid in dict.fromkeys(dead_uids):
         await _kill(game_id, uid, by_uid, bot, chat, names)
 
+    # --- Vorislik (Role succession) ---
+    await _check_role_succession(by_uid, lang_map, bot)
+
     # --- Tekshiruv natijalari ---
     for actor_uid, tgt in investigates:
         actor = by_uid.get(actor_uid)
@@ -454,14 +585,15 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
         actor_role_raw = await r.get(f"game:{game_id}:night:{night_num}:actor_role:{actor.user_id}")
         act_role = actor_role_raw.decode() if isinstance(actor_role_raw, bytes) else actor_role_raw if actor_role_raw else actor.role
         shown = RoleNames.MAFIA if t.role == RoleNames.SOTQIN else t.role
+        disp_shown = role_display(shown)
         if act_role == RoleNames.KOMISSAR:
-            await _send_private(bot, actor_uid, f"🔍 Natija: {names.get(tgt)} → <b>{role_display(shown)}</b>")
+            await _send_private(bot, actor_uid, get_msg(actor_uid, "investigate_res", name=names.get(tgt), role=disp_shown))
         elif act_role == RoleNames.JURNALIST:
-            await _send_private(bot, actor_uid, f"📰 Ma'lumot: {names.get(tgt)} → <b>{role_display(shown)}</b>")
+            await _send_private(bot, actor_uid, get_msg(actor_uid, "jurnalist_res", name=names.get(tgt), role=disp_shown))
         elif act_role == RoleNames.AYGOQCHI:
             don = next((p for p in players if p.role == RoleNames.DON and p.is_alive), None)
             if don:
-                await _send_private(bot, don.user_id, f"🦇 Ayg'oqchi: {names.get(tgt)} → <b>{role_display(shown)}</b>")
+                await _send_private(bot, don.user_id, get_msg(don.user_id, "aygoqchi_res", name=names.get(tgt), role=disp_shown))
 
     # --- Konchi ---
     for actor_uid, kon_no in konchi:
@@ -469,14 +601,14 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
         if not actor or not actor.is_alive:
             continue
         if random.random() < 0.25:
-            await _kill(game_id, actor_uid, by_uid, bot, chat, names, reason="Kon tuzog'iga tushdi.")
+            await _kill(game_id, actor_uid, by_uid, bot, chat, names, reason=get_msg(actor_uid, "konchi_kill_reason"))
         else:
-            await _send_private(bot, actor_uid, f"⛏ Kon {kon_no}: {random.choice([1, 2, 3])} 💎 qazib oldingiz!")
+            await _send_private(bot, actor_uid, get_msg(actor_uid, "konchi_win", no=kon_no, count=random.choice([1, 2, 3])))
 
     # --- Gazabdor ogohlantirishi ---
     for uid in gazabdor_targets:
         if by_uid.get(uid):
-            await _send_private(bot, uid, "🧌 Sizni G'azabkor nishonga oldi!")
+            await _send_private(bot, uid, get_msg(uid, "gazabdor_warn"))
 
     # --- Himoyalarni tozalash ---
     await ActionService.clear_protections(game_id)
@@ -501,9 +633,60 @@ async def send_day_votes(game_id: int, day_num: int, players: List, bot: Bot, ch
         await _send_private(bot, p.user_id, "🗳 <b>Kun</b> — kimni osamiz?", kb.as_markup())
 
 
+async def _check_role_succession(by_uid: Dict, lang_map: Dict, bot: Bot) -> None:
+    """O'limlardan so'ng vorislik zanjirini tekshirish (Serjant, Hamshira, Mafia Don)."""
+    alive_pl = [p for p in by_uid.values() if p.is_alive]
+    don_alive = any(p.role == RoleNames.DON for p in alive_pl)
+    kom_alive = any(p.role == RoleNames.KOMISSAR for p in alive_pl)
+    dok_alive = any(p.role == RoleNames.DOKTOR for p in alive_pl)
+    mafia_alive = any(p.role == RoleNames.MAFIA for p in alive_pl)
+    serjant_alive = any(p.role == RoleNames.SERJANT for p in alive_pl)
+    hamshira_alive = any(p.role == RoleNames.HAMSHIRA for p in alive_pl)
+
+    if not don_alive and mafia_alive:
+        suc = next(p for p in alive_pl if p.role == RoleNames.MAFIA)
+        suc.role = RoleNames.DON
+        await player_repo.save_player(suc)
+        l_code = lang_map.get(suc.user_id, "uz")
+        suc_msg = {
+            "uz": f"🤵🏼 <b>Siz endi {role_display(RoleNames.DON)} bo'ldingiz!</b>",
+            "ru": f"🤵🏼 <b>Теперь вы — {role_display(RoleNames.DON)}!</b>",
+            "en": f"🤵🏼 <b>You are now the {role_display(RoleNames.DON)}!</b>",
+            "tr": f"🤵🏼 <b>Artık {role_display(RoleNames.DON)} oldunuz!"
+        }
+        await _send_private(bot, suc.user_id, suc_msg.get(l_code, suc_msg["uz"]))
+
+    if not kom_alive and serjant_alive:
+        suc = next(p for p in alive_pl if p.role == RoleNames.SERJANT)
+        suc.role = RoleNames.KOMISSAR
+        await player_repo.save_player(suc)
+        l_code = lang_map.get(suc.user_id, "uz")
+        suc_msg = {
+            "uz": f"👮‍♂️ <b>Siz endi {role_display(RoleNames.KOMISSAR)} bo'ldingiz!</b>",
+            "ru": f"👮‍♂️ <b>Теперь вы — {role_display(RoleNames.KOMISSAR)}!</b>",
+            "en": f"👮‍♂️ <b>You are now the {role_display(RoleNames.KOMISSAR)}!</b>",
+            "tr": f"👮‍♂️ <b>Artık {role_display(RoleNames.KOMISSAR)} oldunuz!"
+        }
+        await _send_private(bot, suc.user_id, suc_msg.get(l_code, suc_msg["uz"]))
+
+    if not dok_alive and hamshira_alive:
+        suc = next(p for p in alive_pl if p.role == RoleNames.HAMSHIRA)
+        suc.role = RoleNames.DOKTOR
+        await player_repo.save_player(suc)
+        l_code = lang_map.get(suc.user_id, "uz")
+        suc_msg = {
+            "uz": f"👨‍⚕️ <b>Siz endi {role_display(RoleNames.DOKTOR)} bo'ldingiz!</b>",
+            "ru": f"👨‍⚕️ <b>Теперь вы — {role_display(RoleNames.DOKTOR)}!</b>",
+            "en": f"👨‍⚕️ <b>You are now the {role_display(RoleNames.DOKTOR)}!</b>",
+            "tr": f"👨‍⚕️ <b>Artık {role_display(RoleNames.DOKTOR)} oldunuz!"
+        }
+        await _send_private(bot, suc.user_id, suc_msg.get(l_code, suc_msg["uz"]))
+
+
 async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot, chat: Chat) -> None:
     all_players = await player_repo.get_all_players(game_id)
     names = await _name_map([p.user_id for p in all_players])
+    lang_map = await _user_lang_map([p.user_id for p in all_players])
     by_uid = {p.user_id: p for p in all_players}
     votes = await VoteService.get_all_votes(game_id, day_num)
 
@@ -538,4 +721,6 @@ async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot,
         f"🪢 {names.get(victim.user_id)} xalq tomonidan osildi!\nU edi — <b>{role_display(victim.role)}</b>",
         parse_mode="HTML"
     )
+    # Kunduzgi osishdan so'ng ham vorislikni tekshirish
+    await _check_role_succession(by_uid, lang_map, bot)
 

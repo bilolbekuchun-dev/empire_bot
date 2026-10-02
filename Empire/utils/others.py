@@ -77,35 +77,57 @@ async def check_user_balance(message: Message):
     user, profile = await _get_user_and_profile(message.from_user.id)
     await message.answer(f"💳 Sizning balansingiz: {profile.dollar}$ / {profile.diamond} 💎", parse_mode="HTML")
 
-def _build_roles_text() -> list:
+def _build_roles_text(lang: str = "uz") -> list:
     """Botdagi barcha rollarni toifalar bo'yicha ro'yxat qilib qaytaradi."""
     from config import tinch_rollar, mafia_rollar, yakka_rollar
     from utils.premium_emojis import role_display
     from utils.roles_text import Roles as RolesText
     from utils.telegram_utils import split_long_message
 
+    titles = {
+        "uz": {"header": "🎭 <b>BOTDAGI BARCHA ROLLAR</b>", "tinch": "👨🏼 Tinch aholi", "mafia": "🤵 Mafia", "yakka": "🃏 Yakkalar"},
+        "ru": {"header": "🎭 <b>ВСЕ РОЛИ В БОТЕ</b>", "tinch": "👨🏼 Мирные жители", "mafia": "🤵 Мафия", "yakka": "🃏 Одиночки"},
+        "en": {"header": "🎭 <b>ALL ROLES IN BOT</b>", "tinch": "👨🏼 Civilians", "mafia": "🤵 Mafia", "yakka": "🃏 Neutrals"},
+        "tr": {"header": "🎭 <b>BOTTAKİ TÜM ROLLER</b>", "tinch": "👨🏼 Siviller", "mafia": "🤵 Mafya", "yakka": "🃏 Yalnızlar"},
+    }
+    t = titles.get((lang or "uz").lower(), titles["uz"])
+
     def block(title: str, roles: list) -> str:
-        lines = [f"<b>{title} ({len(roles)} ta):</b>"]
+        lines = [f"<b>{title} ({len(roles)}):</b>"]
         for r in roles:
-            lines.append(f"• <b>{role_display(r)}</b> — {RolesText.get_description(r)}")
+            lines.append(f"• <b>{role_display(r)}</b> — {RolesText.get_description(r, lang=lang)}")
         return "\n".join(lines)
 
     total = len(tinch_rollar) + len(mafia_rollar) + len(yakka_rollar)
     text = (
-        f"🎭 <b>BOTDAGI BARCHA ROLLAR ({total} ta)</b>\n\n"
-        + block("👨🏼 Tinch aholi", tinch_rollar) + "\n\n"
-        + block("🤵 Mafia", mafia_rollar) + "\n\n"
-        + block("🃏 Yakkalar", yakka_rollar)
+        f"{t['header']} ({total})\n\n"
+        + block(t["tinch"], tinch_rollar) + "\n\n"
+        + block(t["mafia"], mafia_rollar) + "\n\n"
+        + block(t["yakka"], yakka_rollar)
     )
     return split_long_message(text)
 
 
 async def role_names_handler(message: Message):
-    for chunk in _build_roles_text():
+    from models.user import User
+    user_id = message.from_user.id if message.from_user else None
+    lang = "uz"
+    if user_id:
+        user = await User.filter(user_id=user_id).first()
+        if user and user.lang:
+            lang = user.lang
+    for chunk in _build_roles_text(lang=lang):
         await message.answer(chunk, parse_mode="HTML")
 
 async def get_roles_text(message: Message):
-    for chunk in _build_roles_text():
+    from models.user import User
+    user_id = message.from_user.id if message.from_user else None
+    lang = "uz"
+    if user_id:
+        user = await User.filter(user_id=user_id).first()
+        if user and user.lang:
+            lang = user.lang
+    for chunk in _build_roles_text(lang=lang):
         await message.answer(chunk, parse_mode="HTML")
 
 async def get_role_text(call: CallbackQuery):
@@ -259,3 +281,70 @@ async def get_premium_groups_on_start(call: CallbackQuery, bot: Bot):
 
 async def get_premium_groups_on_profile(call: CallbackQuery, bot: Bot):
     await call.message.edit_text("🌟 <b>Premium Guruhlar:</b>\n\nSiz a'zo bo'lgan guruhlar.", parse_mode="HTML")
+
+async def lang_command_handler(message: Message):
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    from models.user import User
+
+    user_id = message.from_user.id if message.from_user else None
+    user = await User.filter(user_id=user_id).first() if user_id else None
+    curr_lang = user.lang if (user and user.lang) else "uz"
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🇺🇿 O'zbekcha" + (" ✅" if curr_lang == "uz" else ""), callback_data="setlang_uz"),
+            InlineKeyboardButton(text="🇷🇺 Русский" + (" ✅" if curr_lang == "ru" else ""), callback_data="setlang_ru"),
+        ],
+        [
+            InlineKeyboardButton(text="🇬🇧 English" + (" ✅" if curr_lang == "en" else ""), callback_data="setlang_en"),
+            InlineKeyboardButton(text="🇹🇷 Türkçe" + (" ✅" if curr_lang == "tr" else ""), callback_data="setlang_tr"),
+        ]
+    ])
+
+    text_map = {
+        "uz": "🌐 <b>Bot tilini tanlang / Cho’se language:</b>",
+        "ru": "🌐 <b>Выберите язык бота:</b>",
+        "en": "🌐 <b>Choose bot language:</b>",
+        "tr": "🌐 <b>Bot dilini seçin:</b>"
+    }
+    await message.answer(text_map.get(curr_lang, text_map["uz"]), reply_markup=kb, parse_mode="HTML")
+
+async def set_lang_callback(call: CallbackQuery):
+    from models.user import User
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+
+    lang = call.data.split("_")[1]
+    if lang not in ["uz", "ru", "en", "tr"]:
+        lang = "uz"
+
+    user_id = call.from_user.id
+    await User.filter(user_id=user_id).update(lang=lang)
+
+    confirm_map = {
+        "uz": "✅ Bot tili O'zbek tiliga o'zgartirildi!",
+        "ru": "✅ Язык бота изменен на Русский!",
+        "en": "✅ Bot language changed to English!",
+        "tr": "✅ Bot dili Türkçe olarak değiştirildi!"
+    }
+    await call.answer(confirm_map.get(lang, confirm_map["uz"]))
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🇺🇿 O'zbekcha" + (" ✅" if lang == "uz" else ""), callback_data="setlang_uz"),
+            InlineKeyboardButton(text="🇷🇺 Русский" + (" ✅" if lang == "ru" else ""), callback_data="setlang_ru"),
+        ],
+        [
+            InlineKeyboardButton(text="🇬🇧 English" + (" ✅" if lang == "en" else ""), callback_data="setlang_en"),
+            InlineKeyboardButton(text="🇹🇷 Türkçe" + (" ✅" if lang == "tr" else ""), callback_data="setlang_tr"),
+        ]
+    ])
+    text_map = {
+        "uz": "🌐 <b>Bot tilini tanlang / Cho’se language:</b>",
+        "ru": "🌐 <b>Выберите язык бота:</b>",
+        "en": "🌐 <b>Choose bot language:</b>",
+        "tr": "🌐 <b>Bot dilini seçin:</b>"
+    }
+    try:
+        await call.message.edit_text(text_map.get(lang, text_map["uz"]), reply_markup=kb, parse_mode="HTML")
+    except Exception:
+        pass

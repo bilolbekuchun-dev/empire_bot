@@ -333,7 +333,12 @@ def setup_webapp_routes(app: web.Application, static_dir: str, bot=None):
             payload = await request.json()
         except Exception:
             payload = {}
-        lang = str(payload.get("lang") or "uz")[:8]
+        lang = str(payload.get("lang") or "uz")[:8].lower()
+        if lang not in ["uz", "ru", "en", "tr"]:
+            lang = "uz"
+        user_id = extract_user_id_from_payload(payload)
+        if user_id:
+            await User.filter(user_id=user_id).update(lang=lang)
         return web.json_response({"ok": True, "lang": lang, "ui": get_ui_strings(lang)})
 
     app.router.add_post("/webapp/api/set_lang", set_lang_handler)
