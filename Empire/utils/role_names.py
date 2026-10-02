@@ -43,6 +43,8 @@ class RoleNames:
     AKTYOR = "🎭 Aktyor"
     JIN = "🧞 Jin"
     SAVDOGAR = "🏪 Savdogar"
+    TAQLIDCHI = "🎭 Taqlidchi"
+    REVERSER = "🔄 Reverser"
 
     @classmethod
     def all(cls):
@@ -53,9 +55,10 @@ class RoleNames:
             cls.XOYIN, cls.QORIQCHI, cls.ZANJIR,
             # Mafia (6)
             cls.DON, cls.MAFIA, cls.ADVOKAT, cls.OVCHI, cls.JURNALIST, cls.AYGOQCHI,
-            # Yakkalar (11)
+            # Yakkalar (13)
             cls.QOTIL, cls.BORI, cls.AFERIST, cls.GAZABDOR, cls.SEHRGAR,
-            cls.SUIDSID, cls.QASOSKOR, cls.QAROQCHI, cls.AKTYOR, cls.JIN, cls.KONCHI
+            cls.SUIDSID, cls.QASOSKOR, cls.QAROQCHI, cls.AKTYOR, cls.JIN, cls.KONCHI,
+            cls.TAQLIDCHI, cls.REVERSER
         ]
     @classmethod
     def get_by_role(cls, clean_name: str) -> str:
@@ -104,6 +107,9 @@ class RoleNames:
             "Zanjir": cls.ZANJIR,
             "aktyor": cls.AKTYOR,
             "jin": cls.JIN,
-            "Savdogar": cls.SAVDOGAR
+            "Savdogar": cls.SAVDOGAR,
+            "taqlidchi": cls.TAQLIDCHI,
+            "mimic": cls.TAQLIDCHI,
+            "reverser": cls.REVERSER
         }
         return mapping.get(clean_name, clean_name)

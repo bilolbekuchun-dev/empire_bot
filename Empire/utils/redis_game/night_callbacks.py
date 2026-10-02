@@ -24,7 +24,13 @@ CODE_ROLE = {v: k for k, v in ROLE_CODE.items()}
 async def _alive_targets(gid: int, exclude_uid=None):
     players = await player_repo.get_alive_players(gid)
     names = await _name_map([p.user_id for p in players])
-    return players, [(p.user_id, names.get(p.user_id)) for p in players if p.user_id != exclude_uid]
+    if isinstance(exclude_uid, (list, tuple, set)):
+        excludes = {int(x) for x in exclude_uid if x is not None}
+    elif exclude_uid is not None:
+        excludes = {int(exclude_uid)}
+    else:
+        excludes = set()
+    return players, [(p.user_id, names.get(p.user_id)) for p in players if p.user_id not in excludes]
 
 
 async def _set_last_visited(gid, uid, target):
@@ -85,27 +91,34 @@ async def night_action_cb(call: CallbackQuery, bot=None):
             pass
         return
 
-    # Zanjir / Sehrgar: 1-nishon -> 2-nishon
-    if code in ("zj", "se") and kind == "t":
+    # Zanjir / Sehrgar / Reverser: 1-nishon -> 2-nishon
+    if code in ("zj", "se", "rv") and kind == "t":
         await r.set(f"game:{gid}:tmp:{uid}:first", str(target), ex=3600)
-        _p, tg = await _alive_targets(gid)
+        exclude = {uid, int(target)} if code == "rv" else None
+        _p, tg = await _alive_targets(gid, exclude_uid=exclude)
         kb = InlineKeyboardBuilder()
         for tuid, label in tg:
             kb.button(text=label, callback_data=f"na|{code}|{gid}|{ph}|2|{tuid}")
         kb.button(text="🚷 O'tkazib yuborish", callback_data=f"na|{code}|{gid}|{ph}|s|0")
         kb.adjust(1)
+        title = "Endi 2-o'yinchi (yangi nishon)ni tanlang:" if code == "rv" else "Endi 2-nishonni tanlang:"
         try:
-            await call.message.edit_text("Endi 2-nishonni tanlang:", reply_markup=kb.as_markup())
+            await call.message.edit_text(title, reply_markup=kb.as_markup())
         except Exception:
             pass
         await call.answer()
         return
-    if code in ("zj", "se") and kind == "2":
+    if code in ("zj", "se", "rv") and kind == "2":
         first = await r.get(f"game:{gid}:tmp:{uid}:first")
-        atype = "zanjir" if code == "zj" else "sehrgar"
-        if first:
-            await ActionService.save_action(gid, ph, uid, int(first), atype)
-        await ActionService.save_action(gid, ph, uid, int(target), atype)
+        if code == "rv":
+            if first:
+                await ActionService.save_action(gid, ph, uid, int(first), "reverser_source")
+            await ActionService.save_action(gid, ph, uid, int(target), "reverser_target")
+        else:
+            atype = "zanjir" if code == "zj" else "sehrgar"
+            if first:
+                await ActionService.save_action(gid, ph, uid, int(first), atype)
+            await ActionService.save_action(gid, ph, uid, int(target), atype)
         await call.answer("✅ Qabul qilindi")
         try:
             await call.message.edit_text("✅ Tanlov qabul qilindi")

@@ -81,7 +81,8 @@ ACTIVE_ROLES_YAKKA = [
     RoleNames.QOTIL, RoleNames.BORI, RoleNames.AFERIST,
     RoleNames.GAZABDOR, RoleNames.SEHRGAR, RoleNames.SUIDSID,
     RoleNames.QASOSKOR, RoleNames.QAROQCHI, RoleNames.AKTYOR,
-    RoleNames.JIN, RoleNames.KONCHI
+    RoleNames.JIN, RoleNames.KONCHI, RoleNames.TAQLIDCHI,
+    RoleNames.REVERSER
 ]
 
 ALL_ACTIVE_ROLES = ACTIVE_ROLES_TINCH + ACTIVE_ROLES_MAFIA + ACTIVE_ROLES_YAKKA
@@ -196,6 +197,9 @@ ROLE_CLEAN_MAP = {
     "ayg'oqchi": RoleNames.AYGOQCHI,
     "qaroqchi": RoleNames.QAROQCHI,
     "hamshira": RoleNames.HAMSHIRA,
+    "taqlidchi": RoleNames.TAQLIDCHI,
+    "mimic": RoleNames.TAQLIDCHI,
+    "reverser": RoleNames.REVERSER,
 }
 
 def role_display(role: str) -> str:

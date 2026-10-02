@@ -32,7 +32,9 @@ class Roles:
         RoleNames.QAROQCHI: "Tunda kimgadir borib pul yoki olmosini olasiz, topolmasangiz do'pposlab qaytasiz.",
         RoleNames.AKTYOR: "Har tun bot tomonidan sizga yangi rol beriladi va o'sha rolda o'ynaysiz.",
         RoleNames.JIN: "Tunda 1 kishiga tanlov berasiz:\n1. Hayot - u omon qoladi.\n2. Pul - unga pul yoki olmos.\n3. Qotillik - u so'ragan ishtirokchini o'ldirib berasiz.",
-        RoleNames.KONCHI: "Tunda maxfiy shaxtalardan boylik (dollar va olmos) qazib olasiz, ammo ehtiyot bo'ling — ba'zi konlarda o'lim tuzog'i bor!"
+        RoleNames.KONCHI: "Tunda maxfiy shaxtalardan boylik (dollar va olmos) qazib olasiz, ammo ehtiyot bo'ling — ba'zi konlarda o'lim tuzog'i bor!",
+        RoleNames.TAQLIDCHI: "O'yin boshida maxsus rolingiz yo'q. Birinchi o'lik o'yinchining rolini egallaysiz va keyinchalik o'sha rolda o'ynaysiz.",
+        RoleNames.REVERSER: "Neytral rol. Har tun bir o'yinchining (1-nishon) tungi harakatini boshqa bir o'yinchiga (2-nishon) yo'naltiradi (Reverse)!"
     }
 
     @classmethod

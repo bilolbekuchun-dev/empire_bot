@@ -80,5 +80,6 @@ mafia_rollar = [
 yakka_rollar = [
     RoleNames.AFERIST, RoleNames.BORI, RoleNames.GAZABDOR,
     RoleNames.QOTIL, RoleNames.SEHRGAR, RoleNames.SUIDSID,
-    RoleNames.QAROQCHI, RoleNames.AKTYOR, RoleNames.JIN, RoleNames.KONCHI
+    RoleNames.QAROQCHI, RoleNames.AKTYOR, RoleNames.JIN, RoleNames.KONCHI,
+    RoleNames.TAQLIDCHI, RoleNames.REVERSER
 ]

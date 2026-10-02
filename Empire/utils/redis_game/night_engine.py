@@ -58,6 +58,7 @@ ROLE_CODE: Dict[str, str] = {
     RoleNames.KONCHI: "kn",
     RoleNames.QAROQCHI: "qa",
     RoleNames.JIN: "ji",
+    RoleNames.REVERSER: "rv",
 }
 
 # Tungi harakati bor rollar (tugma oladi)
@@ -86,6 +87,7 @@ ROLE_ACTION_TYPE: Dict[str, str] = {
     RoleNames.KONCHI: "konchi",
     RoleNames.QAROQCHI: "qaroqchi",
     RoleNames.JIN: "jin",
+    RoleNames.REVERSER: "reverser",
 }
 
 # Qotillik harakatlari (uyqu/tegilmagan bo'lsa o'ldiradi)
@@ -155,6 +157,44 @@ async def send_night_actions(
     for p in alive:
         role = p.role
         uid = p.user_id
+
+        # Aktyor har tunda yangi (tasodifiy) faol rolga kiradi
+        if role == RoleNames.AKTYOR:
+            possible_actor_roles = [r for r in ROLE_CODE.keys() if r != RoleNames.AKTYOR]
+            actor_night_role = random.choice(possible_actor_roles)
+            await r.set(f"game:{game_id}:night:{night_num}:actor_role:{uid}", actor_night_role, ex=3600)
+            await _send_private(
+                bot, uid,
+                f"🎭 <b>Aktyor</b>: Siz bu tun <b>{role_display(actor_night_role)}</b> roliga kirdingiz!"
+            )
+            role = actor_night_role
+
+        # Taqlidchi (Mimic): Birinchi halok bo'lgan o'yinchining rolini egallaydi
+        if role == RoleNames.TAQLIDCHI:
+            copied = await r.get(f"game:{game_id}:player:{uid}:copied_role")
+            if copied:
+                role = copied.decode() if isinstance(copied, bytes) else copied
+            else:
+                all_pl = await player_repo.get_all_players(game_id)
+                dead = [q for q in all_pl if not q.is_alive and q.role != RoleNames.TAQLIDCHI]
+                if dead:
+                    new_role = dead[-1].role
+                    await r.set(f"game:{game_id}:player:{uid}:copied_role", new_role)
+                    p.role = new_role
+                    await player_repo.save_player(p)
+                    await _send_private(
+                        bot, uid,
+                        f"🎭 <b>Taqlidchi</b>: Siz halok bo'lgan o'yinchining rolini egalladingiz!\n"
+                        f"Yangi rolingiz: <b>{role_display(new_role)}</b>"
+                    )
+                    role = new_role
+                else:
+                    await _send_private(
+                        bot, uid,
+                        "🎭 <b>Taqlidchi</b>: Hali hech kim halok bo'lmadi — birinchi o'lik o'yinchining rolini kutmoqdasiz."
+                    )
+                    continue
+
         code = ROLE_CODE.get(role)
 
         # Passiv rollar uchun oddiy xabar
@@ -224,11 +264,14 @@ async def send_night_actions(
             )
             continue
 
-        # --- Zanjir / Sehrgar: 2 nishonli (1-qadam) ---
-        if role in (RoleNames.ZANJIR, RoleNames.SEHRGAR):
-            tcode = "zj" if role == RoleNames.ZANJIR else "se"
-            label = "⛓ <b>Zanjir</b>: bog'lash uchun <b>1-nishon</b>ni tanlang." if role == RoleNames.ZANJIR \
-                else "🧙 <b>Sehrgar</b>: almashtirish uchun <b>1-nishon</b>ni tanlang."
+        # --- Zanjir / Sehrgar / Reverser: 2 nishonli (1-qadam) ---
+        if role in (RoleNames.ZANJIR, RoleNames.SEHRGAR, RoleNames.REVERSER):
+            if role == RoleNames.ZANJIR:
+                tcode, label = "zj", "⛓ <b>Zanjir</b>: bog'lash uchun <b>1-nishon</b>ni tanlang."
+            elif role == RoleNames.SEHRGAR:
+                tcode, label = "se", "🧙 <b>Sehrgar</b>: almashtirish uchun <b>1-nishon</b>ni tanlang."
+            else:
+                tcode, label = "rv", "🔄 <b>Reverser</b>: harakatini burmoqchi bo'lgan <b>1-o'yinchi (Manba)</b>ni tanlang:"
             await _send_private(bot, uid, label, _target_kb(tcode, game_id, night_num, mk_targets))
             continue
 
@@ -280,11 +323,28 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
     konchi = []
     gazabdor_targets = []
 
+    # --- Reverser: Harakatni manbadan (1-nishon) yangi nishonga (2-nishon) yo'naltirish ---
+    reverser_sources: Dict[int, int] = {}
+    reverser_targets: Dict[int, int] = {}
+    for a in actions:
+        if a.get("action_type") == "reverser_source" and a.get("target_id"):
+            reverser_sources[a["actor_id"]] = a["target_id"]
+        elif a.get("action_type") == "reverser_target" and a.get("target_id"):
+            reverser_targets[a["actor_id"]] = a["target_id"]
+
+    for rev_uid, source_id in reverser_sources.items():
+        new_target_id = reverser_targets.get(rev_uid)
+        if source_id and new_target_id:
+            for a in actions:
+                if a["actor_id"] == source_id and a.get("target_id"):
+                    a["target_id"] = new_target_id
+
     for a in actions:
         actor = by_uid.get(a["actor_id"])
         if not actor:
             continue
-        role = actor.role
+        actor_role_raw = await r.get(f"game:{game_id}:night:{night_num}:actor_role:{actor.user_id}")
+        role = actor_role_raw.decode() if isinstance(actor_role_raw, bytes) else actor_role_raw if actor_role_raw else actor.role
         tgt = a["target_id"]
         atype = a["action_type"]
 
@@ -391,12 +451,14 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
         t = by_uid.get(tgt)
         if not actor or not t:
             continue
+        actor_role_raw = await r.get(f"game:{game_id}:night:{night_num}:actor_role:{actor.user_id}")
+        act_role = actor_role_raw.decode() if isinstance(actor_role_raw, bytes) else actor_role_raw if actor_role_raw else actor.role
         shown = RoleNames.MAFIA if t.role == RoleNames.SOTQIN else t.role
-        if actor.role == RoleNames.KOMISSAR:
+        if act_role == RoleNames.KOMISSAR:
             await _send_private(bot, actor_uid, f"🔍 Natija: {names.get(tgt)} → <b>{role_display(shown)}</b>")
-        elif actor.role == RoleNames.JURNALIST:
+        elif act_role == RoleNames.JURNALIST:
             await _send_private(bot, actor_uid, f"📰 Ma'lumot: {names.get(tgt)} → <b>{role_display(shown)}</b>")
-        elif actor.role == RoleNames.AYGOQCHI:
+        elif act_role == RoleNames.AYGOQCHI:
             don = next((p for p in players if p.role == RoleNames.DON and p.is_alive), None)
             if don:
                 await _send_private(bot, don.user_id, f"🦇 Ayg'oqchi: {names.get(tgt)} → <b>{role_display(shown)}</b>")

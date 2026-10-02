@@ -29,7 +29,9 @@
     "⚔️ Qaroqchi": "<tg-emoji emoji-id='5206412167129115072'>⚔️</tg-emoji>",
     "🎭 Aktyor": "<tg-emoji emoji-id='5206658719726741982'>🎭</tg-emoji>",
     "🧞 Jin": "<tg-emoji emoji-id='5206575178317866664'>🧞</tg-emoji>",
-    "👷🏻‍♂️ Konchi": "<tg-emoji emoji-id='5210993217901733758'>👷‍♂️</tg-emoji>"
+    "👷🏻‍♂️ Konchi": "<tg-emoji emoji-id='5210993217901733758'>👷‍♂️</tg-emoji>",
+    "🎭 Taqlidchi": "<tg-emoji emoji-id='5206658719726741982'>🎭</tg-emoji>",
+    "🔄 Reverser": "<tg-emoji emoji-id='5206422084208598163'>🔄</tg-emoji>"
   },
   "weapons": {
     "miltiq": null,
