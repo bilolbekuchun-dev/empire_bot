@@ -2,6 +2,8 @@ import html
 import logging
 import unicodedata
 from typing import Any, Optional
+from collections import OrderedDict
+from time import monotonic, time
 
 from aiogram import BaseMiddleware, types
 from aiogram.enums import ChatType, ChatMemberStatus
@@ -14,11 +16,33 @@ from models.game_data import Chat, Game, GamePlayer, GamePhase
 from models.user import User, Blocked_user
 from models.game_set import WriteGroupPermis
 from config import ADMINS
-import time
 
 logger = logging.getLogger(__name__)
 
-bot_admin_cache = {}
+# LRU cache for bot admin status - prevents unbounded growth
+_MAX_ADMIN_CACHE_SIZE = 1000
+_ADMIN_CACHE_TTL = 300  # 5 minutes
+bot_admin_cache = OrderedDict()
+
+def _get_bot_admin_status(chat_id: int, is_admin: bool, can_delete: bool) -> dict:
+    """Get or set bot admin status with LRU eviction."""
+    now = monotonic()
+    
+    # Evict old entries
+    while len(bot_admin_cache) > _MAX_ADMIN_CACHE_SIZE:
+        bot_admin_cache.popitem(last=False)
+    
+    # Remove entries older than TTL
+    expired_keys = [cid for cid, data in bot_admin_cache.items() 
+                   if now - data['time'] > _ADMIN_CACHE_TTL]
+    for cid in expired_keys:
+        bot_admin_cache.pop(cid, None)
+    
+    # Add or update entry
+    bot_admin_cache[chat_id] = {'time': now, 'is_admin': is_admin, 'can_delete': can_delete}
+    bot_admin_cache.move_to_end(chat_id)
+    
+    return bot_admin_cache[chat_id]
 
 class GroupWriteGuardMiddleware(BaseMiddleware):
     """
@@ -39,6 +63,10 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
         """
         super().__init__()
         self.warn_user_if_cant_delete = warn_user_if_cant_delete
+        self._user_sync_cache: dict[int, float] = {}
+        self._chat_sync_cache: dict[int, float] = {}
+        self._blocked_users_cache: set[int] = set()
+        self._last_blocked_cache_time: float = 0.0
 
     # --------------- Yordamchi funksiyalar ---------------
 
@@ -48,24 +76,12 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
 
     @staticmethod
     def _is_admin_status(status_value: Any) -> bool:
-        # ChatMemberStatus (str, Enum) bo'lgani uchun str(...) uning nomini
-        # ("ChatMemberStatus.ADMINISTRATOR") qaytaradi, qiymatini emas — shu sabab
-        # to'g'ridan-to'g'ri .value (yoki oddiy string) bilan solishtiramiz.
         sv = status_value.value if isinstance(status_value, ChatMemberStatus) else str(status_value)
         sv = sv.lower()
-        # 'creator' (eski), 'owner' (yangi), 'administrator' — hammasini qo‘llab
         return sv in {ChatMemberStatus.CREATOR.value, ChatMemberStatus.ADMINISTRATOR.value}
 
     @staticmethod
     def _sanitize_display_name(name: str) -> str:
-        """
-        Ba'zi foydalanuvchilar ismini "zalgo" uslubida — ko'plab birikuvchi
-        (combining) belgilar bilan — yozadi. Bunday ismni <a href=...>NAME</a>
-        HTML mention ichiga qo'yilganda Telegram ba'zan "ENTITY_TEXT_INVALID"
-        xatosi bilan BUTUN xabarni rad etadi (tungi o'yinchilar ro'yxati,
-        "kimga ovoz berasiz" kabi xabarlar shu sabab yuborilmay qoladi).
-        Shu sabab combining belgilarni olib tashlaymiz.
-        """
         if not name:
             return name
         cleaned = "".join(ch for ch in name if unicodedata.category(ch) not in ("Mn", "Me", "Mc"))
@@ -79,24 +95,17 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
             pass
 
     async def _bot_admin_and_can_delete(self, message: types.Message, force: bool = False) -> tuple[bool, bool]:
-        """
-        Bot guruhda bormi / adminmi va xabar o‘chirish ruxsati bormi?
-        (is_admin, can_delete)
-        `force=True` — keshni chetlab, Telegram'dan darhol qayta so'raydi
-        (masalan, bot hozirgina admin qilingan bo'lishi mumkin bo'lgan holatda).
-        """
-        now = time.time()
+        now = monotonic()
         chat_id = message.chat.id
-        if not force and chat_id in bot_admin_cache and now - bot_admin_cache[chat_id]['time'] < 300:
+        if not force and chat_id in bot_admin_cache and now - bot_admin_cache[chat_id]['time'] < _ADMIN_CACHE_TTL:
             return bot_admin_cache[chat_id]['is_admin'], bot_admin_cache[chat_id]['can_delete']
 
         try:
             me = await message.bot.get_chat_member(message.chat.id, message.bot.id)
         except (TelegramForbiddenError, TelegramBadRequest):
-            bot_admin_cache[chat_id] = {'time': now, 'is_admin': False, 'can_delete': False}
+            _get_bot_admin_status(chat_id, False, False)
             return False, False
         except Exception as e:
-            # Vaqtinchalik xato (tarmoq, rate-limit) — "admin emas" deb keshlab guruhni bloklamaymiz
             logger.warning("Bot admin check failed transiently for chat %s: %r", chat_id, e)
             if chat_id in bot_admin_cache:
                 return bot_admin_cache[chat_id]['is_admin'], bot_admin_cache[chat_id]['can_delete']
@@ -110,25 +119,28 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
                 can_delete = True
 
         is_admin = self._is_admin_status(getattr(me, "status", ""))
-        bot_admin_cache[chat_id] = {'time': now, 'is_admin': is_admin, 'can_delete': can_delete}
+        _get_bot_admin_status(chat_id, is_admin, can_delete)
         return is_admin, can_delete
 
     async def _sync_chat_db(self, message: types.Message) -> None:
         """
-        Chat nomi DB bilan sinxronlash (API chaqiruvlarsiz).
+        Chat nomi DB bilan sinxronlash (300s TTL kesh bilan).
         """
+        now = monotonic()
+        chat_id = message.chat.id
+        if chat_id in self._chat_sync_cache and now - self._chat_sync_cache[chat_id] < 300:
+            return
+
         chat, _ = await Chat.get_or_create(
-            chat_id=message.chat.id,
+            chat_id=chat_id,
             defaults={"title": message.chat.title, "type": str(message.chat.type)},
         )
 
         updated = False
-        # Title o‘zgargan bo‘lsa yangilaymiz
         if message.chat.title and message.chat.title != chat.title:
             chat.title = message.chat.title
             updated = True
 
-        # Username orqali invite link aniqlash
         if message.chat.username:
             new_link = f"https://t.me/{message.chat.username}"
             if new_link != chat.invite_link:
@@ -138,47 +150,49 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
         if updated:
             await chat.save()
 
+        self._chat_sync_cache[chat_id] = now
+
     async def _sync_user_db_or_blocked(self, message: types.Message) -> bool:
         """
-        Userni DB bilan sinxronlash, bloklangan bo‘lsa True qaytaradi (ya'ni to‘xtash kerak).
+        Userni DB bilan sinxronlash (300s TTL kesh bilan).
         """
         if not message.from_user:
-            # sender_chat orqali kelgan xabarlar (kanal nomidan), xavfsiz variant — to‘xtatamiz
             return True
 
         fu = message.from_user
-        clean_full_name = html.escape(self._sanitize_display_name((fu.full_name or "")[:100]))
-        mention = fu.mention_html(clean_full_name)
+        now = monotonic()
 
-        user, _ = await User.get_or_create(
-            user_id=fu.id,
-            defaults={"full_name": clean_full_name, "mention": mention, "is_bot": fu.is_bot},
-        )
+        if fu.id not in self._user_sync_cache or (now - self._user_sync_cache[fu.id] >= 300):
+            clean_full_name = html.escape(self._sanitize_display_name((fu.full_name or "")[:100]))
+            mention = fu.mention_html(clean_full_name)
 
-        updated = False
-        if user.full_name != clean_full_name:
-            user.full_name = clean_full_name
-            updated = True
-        if user.mention != mention:
-            user.mention = mention
-            updated = True
-        if updated:
-            await user.save()
+            user, _ = await User.get_or_create(
+                user_id=fu.id,
+                defaults={"full_name": clean_full_name, "mention": mention, "is_bot": fu.is_bot},
+            )
 
-        # Bloklanganmi?
-        if await Blocked_user.filter(user=user).first():
-            return True
+            updated = False
+            if user.full_name != clean_full_name:
+                user.full_name = clean_full_name
+                updated = True
+            if user.mention != mention:
+                user.mention = mention
+                updated = True
+            if updated:
+                await user.save()
 
-        return False
+            self._user_sync_cache[fu.id] = now
+
+        # Refresh blocked users cache every 60 seconds
+        if now - self._last_blocked_cache_time > 60:
+            blocked_rows = await Blocked_user.all().prefetch_related('user').values_list('user__user_id', flat=True)
+            self._blocked_users_cache = set(blocked_rows)
+            self._last_blocked_cache_time = now
+
+        return fu.id in self._blocked_users_cache
 
     @staticmethod
     def _admin_command_allowed(phase: str | None, group_perm: Optional[WriteGroupPermis]) -> bool:
-        """
-        Adminlar uchun '!' buyruqlariga ruxsat siyosati:
-        - night faza: group_perm.night != "ega" bo‘lsa ruxsat
-        - day/afternoon: group_perm.day  != "ega" bo‘lsa ruxsat
-        - boshqa hollarda: default False (faqat o‘yin fazalarida ishlasin)
-        """
         if not group_perm:
             return False
         if phase == "night":
@@ -189,14 +203,7 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
 
     @staticmethod
     def _who_can_write(mode_value: Optional[str], *, is_player: bool, is_alive: bool) -> bool:
-        """
-        'all'    → hamma
-        'member' → faqat o‘yinchilar (tirik/ölgan farqi yo‘q)
-        'alive'  → faqat tirik o‘yinchilar
-        boshqasi → ruxsat yo‘q
-        """
         if not mode_value:
-            # Sozlanmagan bo‘lsa, default ruxsat beramiz (bahsli, ammo amaliy)
             return True
         mode_value = mode_value.lower()
         if mode_value == "all":
@@ -205,17 +212,19 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
             return is_player
         if mode_value == "alive":
             return is_player and is_alive
-        # 'ega' yoki noma'lum qiymatlar — ruxsat yo‘q (faqat admin '!' bo‘lishi mumkin)
         return False
 
     async def _phase_info(self, game: Game) -> tuple[Optional[str], bool]:
         """
         Joriy fazani aniqlash:
-        - Agar night is_end=False bo‘lsa → 'night'
-        - Agar day/afternoon is_end=False bo‘lsa → 'day' (yoki 'afternoon' ni ham 'day' deb olamiz)
-        - Aks holda: game.phase stringidan qaytamiz (masalan, 'waiting' va h.k.)
-        return: (phase_key, is_waiting)
+        Pervichno game.phase dan foydalanadi (night, day, afternoon, waiting), 
+        kerak bo'lganda GamePhase holatini tekshiradi.
         """
+        is_waiting = getattr(game, "phase", "") == "waiting"
+        phase_key = getattr(game, "phase", None)
+        if phase_key in ("night", "day", "afternoon", "waiting"):
+            return phase_key, is_waiting
+
         night_phase = await GamePhase.filter(game=game, phase_type="night", is_end=False).first()
         if night_phase:
             return "night", False
@@ -224,12 +233,8 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
             game=game, phase_type__in=["day", "afternoon"], is_end=False
         ).first()
         if day_or_afternoon:
-            # ichki farqlash kerak bo‘lsa day_or_afternoon.phase_type ni qaytaring
             return day_or_afternoon.phase_type, False
 
-        # Hech biri ochiq emas — game.phase ga tayansak bo‘ladi
-        is_waiting = getattr(game, "phase", "") == "waiting"
-        phase_key = getattr(game, "phase", None)
         return phase_key, is_waiting
 
     # --------------- Asosiy chaqiruv ---------------

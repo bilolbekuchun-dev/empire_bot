@@ -64,7 +64,54 @@ async def create_game_handler_redis(message: Message, bot: Bot):
         return
 
 import asyncio
-redis_join_locks = {}
+from collections import OrderedDict
+from time import monotonic
+
+# LRU cache for join locks - prevents unbounded growth
+_redis_join_locks = OrderedDict()
+_MAX_JOIN_LOCKS = 1000
+_LOCK_TTL = 300  # 5 minutes
+
+def _get_join_lock(user_id: int) -> asyncio.Lock:
+    """Get or create a join lock for a user with LRU eviction."""
+    now = monotonic()
+    
+    # Evict least-recently-used locks, but NEVER evict a lock that is in use.
+    # If the oldest entry is held we must skip it and try the next one, otherwise
+    # a single held lock sitting at the front of the LRU would let the dict grow
+    # without bound under heavy load (every new user would append forever).
+    while len(_redis_join_locks) > _MAX_JOIN_LOCKS:
+        evicted = False
+        for oldest_uid in list(_redis_join_locks.keys()):
+            oldest_lock, _created = _redis_join_locks[oldest_uid]
+            if not oldest_lock.locked():
+                del _redis_join_locks[oldest_uid]
+                evicted = True
+                break
+        if not evicted:
+            # Every tracked lock is currently held - nothing safe to evict.
+            break
+    
+    # Remove locks older than TTL - but only if not currently locked
+    expired_keys = []
+    for uid, (lock, created) in _redis_join_locks.items():
+        if now - created > _LOCK_TTL and not lock.locked():
+            expired_keys.append(uid)
+    
+    for uid in expired_keys:
+        _redis_join_locks.pop(uid, None)
+    
+    if user_id not in _redis_join_locks:
+        _redis_join_locks[user_id] = (asyncio.Lock(), now)
+        # Move to end (most recently used)
+        _redis_join_locks.move_to_end(user_id)
+    else:
+        # Update timestamp and move to end
+        lock, _ = _redis_join_locks[user_id]
+        _redis_join_locks[user_id] = (lock, now)
+        _redis_join_locks.move_to_end(user_id)
+    
+    return _redis_join_locks[user_id][0]
 
 async def _join_game_handler_redis_core(message: Message, bot: Bot, state: FSMContext):
     """
@@ -141,33 +188,23 @@ async def _join_game_handler_redis_core(message: Message, bot: Bot, state: FSMCo
         )
         return
     
-    # Check if player is in another active game
-    # Scan all active games to see if player already in one
-    cursor = 0
-    player_in_another_game = False
-    while True:
-        cursor, keys = await redis_client.scan(cursor, match="game:*:state", count=100)
-        for key in keys:
-            other_game_id = int(key.split(":")[1])
-            if other_game_id != game_id:
-                other_player = await player_repo.load_player(other_game_id, message.from_user.id)
-                if other_player and other_player.is_alive:
-                    player_in_another_game = True
-                    break
-        if cursor == 0 or player_in_another_game:
-            break
+    # Check if player is in another active game - use service instead of scanning
+    from utils.redis_game.services.player_service import player_service
+    other_game_result = await player_service.find_player_active_game(message.from_user.id)
     
-    if player_in_another_game:
-        other_game_state = await game_repo.load_game(other_game_id)
-        if other_game_state and other_game_state.phase == "waiting":
-            await player_repo.delete_player(other_game_id, message.from_user.id)
-            try:
-                await update_players_list_redis(other_game_id, bot)
-            except Exception:
-                pass
-        else:
-            await message.answer("Siz hozirda boshqa guruhdagi faol o'yindasiz! Avvalgi o'yin yakunlanishini kuting.")
-            return
+    if other_game_result:
+        other_game_id, other_player = other_game_result
+        if other_game_id != game_id:
+            other_game_state = await game_repo.load_game(other_game_id)
+            if other_game_state and other_game_state.phase == "waiting":
+                await player_repo.delete_player(other_game_id, message.from_user.id)
+                try:
+                    await update_players_list_redis(other_game_id, bot)
+                except Exception:
+                    pass
+            else:
+                await message.answer("Siz hozirda boshqa guruhdagi faol o'yindasiz! Avvalgi o'yin yakunlanishini kuting.")
+                return
     
     # VS game logic
     if ":vsgame" in game_state.mode:
@@ -231,13 +268,12 @@ async def _join_game_handler_redis_core(message: Message, bot: Bot, state: FSMCo
 
 async def join_game_handler_redis(message: Message, bot: Bot, state: FSMContext):
     user_id = message.from_user.id
-    if user_id not in redis_join_locks:
-        redis_join_locks[user_id] = asyncio.Lock()
-    async with redis_join_locks[user_id]:
+    lock = _get_join_lock(user_id)
+    async with lock:
         await _join_game_handler_redis_core(message, bot, state)
 
 
-async def update_players_list_redis(game_id: str, bot: Bot, new_msg: bool = False):
+async def update_players_list_redis(game_id: str, bot: Bot, new_msg: bool = False, *, _locked: bool = False):
     """
     Redis version of update_players_list.
     Updates the player list message in the chat.
@@ -301,36 +337,65 @@ async def update_players_list_redis(game_id: str, bot: Bot, new_msg: bool = Fals
     except Exception:
         pass
     
-    if new_msg:
-        # Create new message
-        try:
-            msg = await bot.send_message(
-                chat_id=game_state.chat_id,
-                text=message_text,
-                reply_markup=join_markup,
-                parse_mode="HTML"
-            )
-            try:
-                await msg.pin()
-            except:
-                pass
-            # Update message_id
-            await game_repo.update_game_field(game_id, "message_id", msg.message_id)
-        except:
-            pass
-    else:
-        # Edit existing message
+    # All menu message mutations go through the canonical manager so that
+    # joins/leaves/refreshes can never orphan or duplicate the /game menu.
+    from utils.redis_game.menu_manager import (
+        get_chat_lock, replace_menu_locked, get_canonical_message_id,
+    )
+
+    async def _send_new_menu():
+        return await bot.send_message(
+            chat_id=game_state.chat_id,
+            text=message_text,
+            reply_markup=join_markup,
+            parse_mode="HTML",
+        )
+
+    async def _apply_menu_update():
+        if new_msg:
+            # Replace the canonical menu (delete old -> send new -> store id)
+            msg = await replace_menu_locked(game_state.chat_id, bot, _send_new_menu, game_id=game_id)
+            if msg:
+                try:
+                    await msg.pin()
+                except Exception as exc:
+                    print(f"Menu pin failed (game={game_id}): {exc}")
+            return
+
+        # Edit the existing canonical message in place
+        menu_id = await get_canonical_message_id(game_state.chat_id) or game_state.message_id
+        if not menu_id:
+            msg = await replace_menu_locked(game_state.chat_id, bot, _send_new_menu, game_id=game_id)
+            if msg:
+                try:
+                    await msg.pin()
+                except Exception as exc:
+                    print(f"Menu pin failed (game={game_id}): {exc}")
+            return
         try:
             await bot.edit_message_text(
                 chat_id=game_state.chat_id,
-                message_id=game_state.message_id,
+                message_id=menu_id,
                 text=message_text,
                 reply_markup=join_markup,
-                parse_mode="HTML"
+                parse_mode="HTML",
             )
-        except:
-            # If edit fails, try creating new message
-            await update_players_list_redis(game_id, bot, new_msg=True)
+        except Exception as exc:
+            # Stale/inaccessible message -> publish a fresh canonical menu.
+            print(f"Menu edit failed, replacing (game={game_id}): {exc}")
+            msg = await replace_menu_locked(game_state.chat_id, bot, _send_new_menu, game_id=game_id)
+            if msg:
+                try:
+                    await msg.pin()
+                except Exception as pin_exc:
+                    print(f"Menu pin failed (game={game_id}): {pin_exc}")
+
+    if _locked:
+        # Caller already holds the per-chat menu lock.
+        await _apply_menu_update()
+    else:
+        async with get_chat_lock(game_state.chat_id):
+            await _apply_menu_update()
 
 
 async def kick_player_redis(message: Message, bot: Bot):
@@ -501,9 +566,38 @@ async def leave_game_redis(message: Message, bot: Bot):
 
 async def start_game_handler_redis(message: Message, bot: Bot, state):
     """
-    Redis version of start_game_handler.
-    Initiates game start - checks permissions and player count.
+    `/start` (start-the-game) entry point with an arbitration window.
+
+    Waits up to ``START_ARBITRATION_WINDOW_MS`` (default 500 ms). If a `/game`
+    arrives for the same chat during that window, `/game` wins and this
+    `/start` is cancelled. `/start + /start` -> only one lifecycle proceeds.
+
+    The decision uses high-resolution server-side arrival time
+    (``time.monotonic_ns()``) and is committed atomically via Redis SET NX.
     """
+    from utils.redis_game.start_arbitration import (
+        begin_start_window, await_start_window, finish_start,
+    )
+    chat_id = message.chat.id
+
+    window = await begin_start_window(chat_id)
+    if window is None:
+        # Another /start is already arbitrating -> only one lifecycle wins.
+        return
+    token, _arrival_ns = window
+
+    if not await await_start_window(chat_id, token):
+        # A /game arrived inside the window -> /game wins, /start cancelled.
+        return
+
+    try:
+        await _start_game_handler_redis_impl(message, bot, state)
+    finally:
+        await finish_start(chat_id, token)
+
+
+async def _start_game_handler_redis_impl(message: Message, bot: Bot, state):
+    """Redis version of start_game_handler body (arbitration handled by caller)."""
     
     chat, _ = await Chat.get_or_create(
         chat_id=message.chat.id, 
@@ -660,14 +754,24 @@ async def starting_game_redis(game_id: str, message: Message, bot: Bot, start=Fa
             await bot.delete_message(chat_id, message_id=game_state.message_id)
         except:
             pass
+        # The lobby menu is gone -> drop the canonical pointer.
+        try:
+            from utils.redis_game.menu_manager import clear_canonical_message_id
+            await clear_canonical_message_id(chat_id)
+        except Exception as exc:
+            print(f"Canonical clear failed (chat={chat_id}): {exc}")
         
-        # Send game start message
-        await bot.send_message(
-            chat_id=chat_id,
-            text=f"<b>O'yin boshlandi!</b>\nMode: {game_state.mode}",
-            parse_mode="HTML",
-            reply_markup=bot_link_markup
-        )
+        # Game-start presentation (state already transitioned + persisted above).
+        # Presentation failures must never interrupt or roll back the game loop.
+        try:
+            from utils.redis_game.presentation import send_game_start_presentation
+            await send_game_start_presentation(
+                bot, chat_id, game_id,
+                phase=game_state.phase, number=1,
+                reply_markup=bot_link_markup,
+            )
+        except Exception as e:
+            print(f"O'yin boshlash taqdimotini yuborishda xato: {e}")
         
         # Get all players
         players = await player_repo.get_alive_players(game_id)
@@ -833,6 +937,12 @@ async def stop_game_handler_redis(message: Message, bot: Bot):
             await bot.delete_message(chat.chat_id, game_state.message_id)
         except:
             pass
+        # Lobby menu is gone -> drop the canonical pointer.
+        try:
+            from utils.redis_game.menu_manager import clear_canonical_message_id
+            await clear_canonical_message_id(message.chat.id)
+        except Exception as exc:
+            print(f"Canonical clear failed (chat={message.chat.id}): {exc}")
         
         # Mark all players as dead
         all_players = await player_repo.get_all_players(active_game_id)
@@ -842,6 +952,11 @@ async def stop_game_handler_redis(message: Message, bot: Bot):
         
         # Remove from active games
         await game_repo.remove_active_game(message.chat.id, active_game_id)
+        # Remove from global active games index (prevents stale-set growth)
+        try:
+            await redis_client.srem("global:active_games", str(active_game_id))
+        except Exception:
+            pass
         
         # Cleanup Redis data (after 1 hour TTL)
         # Data will auto-expire, but we can cleanup immediately if needed

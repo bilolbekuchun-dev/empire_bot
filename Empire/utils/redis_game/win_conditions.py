@@ -4,9 +4,36 @@ Win conditions checker for Redis-based game.
 from aiogram import Bot
 from models.game_data import Chat
 from utils.redis_game.repositories.game_repository import game_repository as game_repo
+from utils.redis_game.repositories.player_repository import player_repository as player_repo
+from utils.database import redis_client as _redis
 from utils.role_names import RoleNames
 from collections import defaultdict
 from config import tinch_rollar as tinchlar, mafia_rollar as mafialar, yakka_rollar as yakkalar
+
+
+# After a game ends its Redis records are kept briefly (so the final screen and
+# any stats read them) and then auto-expire. Without a TTL the game state and
+# player records of every finished game would live forever.
+_ENDED_TTL = 86400
+
+
+async def _clear_active_indexes(game_id, chat_id=None):
+    """Remove a finished game from every active-game index (idempotent, best-effort).
+
+    Without this, ended games leak forever in ``chat:{id}:active_games`` and the
+    process-wide ``global:active_games`` set, making ``find_player_active_game``
+    scan an ever-growing list of dead games.
+    """
+    try:
+        if chat_id is None:
+            game_state = await game_repo.load_game(game_id)
+            chat_id = game_state.chat_id if game_state else None
+        if chat_id is not None:
+            await _redis.srem(f"chat:{chat_id}:active_games", str(game_id))
+        await _redis.srem("global:active_games", str(game_id))
+    except Exception:
+        # Index cleanup must never break game ending.
+        pass
 
 async def check_win_conditions_redis(
     game_id: str,
@@ -294,7 +321,11 @@ async def announce_game_result_redis(
     if game_state:
         game_state.phase = "end"
         game_state.is_active = False
-        await game_repo.save_game(game_state)
+        # Keep the finished state briefly, then let it expire (no permanent leak).
+        await game_repo.save_game(game_state, ttl_sec=_ENDED_TTL)
+
+    # Drop this game from the active-game indexes (idempotent)
+    await _clear_active_indexes(game_id, getattr(chat, "chat_id", None))
     
     # Send result message (simplified)
     winners_text = ", ".join(winner_roles)
@@ -318,13 +349,17 @@ async def cleanup_game_redis(game_id: str):
     Args:
         game_id: O'yin ID
     """
+    # Remove from active indexes first (idempotent), so a partially-failed
+    # cleanup below can never leave the game stuck in the active list.
+    await _clear_active_indexes(game_id)
+
     # Mark all players as dead
     from utils.redis_game.repositories.player_repository import player_repository as player_repo
     
     players = await player_repo.get_all_players(game_id)
     for player in players:
         player.is_alive = False
-        await player_repo.save_player(player)
+        await player_repo.save_player(player, ttl_sec=_ENDED_TTL)
     
     # TODO: Clean up phases and actions
     # TODO: Remove from active games list

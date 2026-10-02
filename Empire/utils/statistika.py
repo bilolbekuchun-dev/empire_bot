@@ -1,23 +1,14 @@
 from tortoise.expressions import Q
 from datetime import datetime, timedelta
 from models.game_set import GroupBalance, CommandPermissionsChat
-from models.game_data import Game,  GamePlayer, Chat, GiveTopChat, PlayersGameBall
+from models.game_data import Game, GamePlayer, Chat, GiveTopChat, PlayersGameBall
 from models.user import Profile, VipUser, User
 from aiogram.types import Message
 from aiogram.enums import ChatMemberStatus
 from aiogram import Bot
 from config import ADMINS
-from datetime import datetime, timedelta
-from tortoise.functions import Count
-from datetime import datetime, timedelta
-from tortoise.functions import Count
-from datetime import datetime, timedelta
+from tortoise.functions import Count, Sum
 from tortoise.transactions import in_transaction
-from tortoise.functions import Count
-
-BATCH_SIZE_GAMES = 1000
-
-from tortoise.functions import Sum
 
 async def bozor_statistikasi(message: Message):
     if message.from_user.id not in ADMINS:
@@ -47,7 +38,7 @@ async def bozor_statistikasi(message: Message):
         parse_mode="HTML"
     )
 
-BATCH_SIZE_GAMES = 500  # batch hajmi
+BATCH_SIZE_GAMES = 500
 
 def _chunks(lst, n):
     for i in range(0, len(lst), n):
@@ -223,13 +214,7 @@ async def gtop_global(message, bot):
         await message.answer("\n".join(lines), parse_mode="HTML")
 
 
-def _chunks(lst, n):
-    for i in range(0, len(lst), n):
-        yield lst[i:i+n]
-
-def _render_bar(p: float, width: int = 20) -> str:
-    fill = int(p * width)
-    return "█" * fill + "░" * (width - fill)
+# _chunks and _render_bar already defined above
 
 async def get_stat_global(message: Message, bot: Bot):
     """
@@ -596,13 +581,7 @@ async def get_stat(message: Message, bot: Bot):
         top_lines.append(f"{prefix} {item['name']} – {item['score']} ball")
 
     await msg.edit_text("\n".join(top_lines), parse_mode="HTML")
-from tortoise.expressions import Q
-
 BOT_ADMIN_IDS = ADMINS
-
-from datetime import datetime, timedelta
-from tortoise.functions import Count
-from tortoise.expressions import Q
 
 async def give_stat(message: Message, bot: Bot):
     if message.chat.type == "private":
@@ -788,18 +767,22 @@ async def show_richest_users(message: Message):
 
     dollar_tops = await Profile.all().prefetch_related("user").order_by("-dollar").limit(10)
     diamond_tops = await Profile.all().prefetch_related("user").order_by("-diamond").limit(10)
-
-    text = "<b>💵 Eng boylar (Dollar bo‘yicha)</b>\n"
-    for idx, prof in enumerate(dollar_tops, 1):
-        is_vip = await VipUser.get_or_none(user=prof.user)
-        text += f"{'⭐' if is_vip else idx}. {prof.user.full_name} — {prof.dollar}💵\n"
-
-    text += "\n<b>💎 Eng boylar (Olmos bo‘yicha)</b>\n"
-    for idx, prof in enumerate(diamond_tops, 1):
-        is_vip = await VipUser.get_or_none(user=prof.user)
-        text += f"{'⭐' if is_vip else idx}. {prof.user.full_name} — {prof.diamond}💎\n"
-
-    await message.answer(text, parse_mode="HTML")
+
+    # Batch VIP check instead of N+1 queries
+    all_user_ids = {p.user_id for p in dollar_tops} | {p.user_id for p in diamond_tops}
+    vip_ids = set(await VipUser.filter(user_id__in=all_user_ids).values_list("user_id", flat=True)) if all_user_ids else set()
+
+    text = "<b>💵 Eng boylar (Dollar bo‘yicha)</b>\n"
+    for idx, prof in enumerate(dollar_tops, 1):
+        is_vip = prof.user_id in vip_ids
+        text += f"{'⭐' if is_vip else idx}. {prof.user.full_name} — {prof.dollar}💵\n"
+
+    text += "\n<b>💎 Eng boylar (Olmos bo‘yicha)</b>\n"
+    for idx, prof in enumerate(diamond_tops, 1):
+        is_vip = prof.user_id in vip_ids
+        text += f"{'⭐' if is_vip else idx}. {prof.user.full_name} — {prof.diamond}💎\n"
+
+    await message.answer(text, parse_mode="HTML")
 
 async def show_richest_users_in_this_chat(message: Message):
     if message.from_user.id not in ADMINS:

@@ -56,14 +56,16 @@ async def execute_night_phase_redis(
         # TODO: check_paralar_lst_redis
         pass
     
-    # Send night message
-    await bot.send_photo(
-        chat_id=chat.chat_id,
-        photo="https://i2.paste.pics/20ba68d2f84c3ca290a6bdac678b3f72.png",
-        caption="🌚 🌃<b>Tun</b>\nKo'chaga faqat jasur va qo'rqmas odamlar chiqishdi. Ertalab tirik qolganlarni sanaymiz...",
-        parse_mode="HTML",
-        reply_markup=bot_link_markup
-    )
+    # Night presentation (state transitioned + persisted by the caller first).
+    # Idempotent + failure-isolated: never raises into the game loop.
+    try:
+        from utils.redis_game.presentation import send_night_presentation
+        await send_night_presentation(
+            bot, chat.chat_id, int(game_id), night_number,
+            reply_markup=bot_link_markup,
+        )
+    except Exception as e:
+        print(f"Tungi taqdimotni yuborishda xato: {e}")
     
     # Show players list
     try:
@@ -99,13 +101,9 @@ async def execute_night_phase_redis(
     except Exception as e:
         print(f"Tungi natijalarni qo'llashda xato: {e}")
     
-    # Morning message
-    await bot.send_photo(
-        chat_id=chat.chat_id,
-        photo="https://i2.paste.pics/3b5539fcec39e34050bc1365701a66b7.png",
-        caption=f"Xayrli tong🌝\n🌄<b>Kun</b>: {night_number}\nShamollar tundagi mish-mishlarni butun shaharga yetkazmoqda..",
-        parse_mode="HTML",
-    )
+    # Day dawn presentation is emitted when the game actually enters the "day"
+    # phase (execute_day_phase_redis), i.e. AFTER the state transition is
+    # persisted -- not here. See utils/redis_game/presentation.py.
     
     # Show night results
     try:
@@ -152,6 +150,14 @@ async def execute_day_phase_redis(
         is_end=False,
         created_at=datetime.now(timezone.utc)
     )
+
+    # Day presentation (state transitioned + persisted by the caller first).
+    # Idempotent + failure-isolated: never raises into the game loop.
+    try:
+        from utils.redis_game.presentation import send_day_presentation
+        await send_day_presentation(bot, chat.chat_id, int(game_id), day_number)
+    except Exception as e:
+        print(f"Kunni taqdim etishda xato: {e}")
     
     # Check paralar
     if paralar and "para" in (await game_repo.load_game(game_id)).mode:

@@ -82,7 +82,7 @@ class PlayerService:
         return await player_repository.load_player(game_id, user_id)
     
     @staticmethod
-    async def find_player_active_game(user_id: int) -> Optional[tuple[str, PlayerState]]:
+    async def find_player_active_game(user_id: int) -> Optional[tuple[int, PlayerState]]:
         """
         User ning faol o'yinini topish.
         
@@ -92,22 +92,22 @@ class PlayerService:
         """
         from utils.database import redis_client
         
-        # Get all active game IDs
-        # Optimizatsiya: Kelajakda user:*:active_game key ishlatish mumkin
-        active_games = []
-        cursor = 0
-        while True:
-            cursor, keys = await redis_client.scan(cursor, match="game:*:state", count=100)
-            active_games.extend(keys)
-            if cursor == 0:
-                break
+        # Optimized: Use global active games set instead of scanning all games
+        # This is O(1) for the set lookup instead of O(N) scan
+        active_game_ids = await redis_client.smembers("global:active_games")
         
-        # Har bir o'yinda player ni topishga harakat qilish
-        for game_key in active_games:
-            # game_key bytes yoki string bo'lishi mumkin
-            if isinstance(game_key, bytes):
-                game_key = game_key.decode()
-            game_id = game_key.split(":")[1]
+        if not active_game_ids:
+            return None
+        
+        # Har bir faol o'yinda player ni topishga harakat qilish
+        for game_id_str in active_game_ids:
+            if isinstance(game_id_str, bytes):
+                game_id_str = game_id_str.decode()
+            try:
+                game_id = int(game_id_str)
+            except (TypeError, ValueError):
+                # Stale / malformed index entry — skip it safely
+                continue
             player = await player_repository.load_player(game_id, user_id)
             if player and player.is_alive:
                 return (game_id, player)

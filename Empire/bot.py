@@ -54,11 +54,6 @@ async def shutdown(bot: Bot):
         print(f"{i}-chat")
         i += 1
 
-async def kunlik_tasks(bot: Bot):
-    while True:
-        await daily_balance_task(bot)
-        await sleep(86400)
-
 async def nft_catalog_autosync_task():
     """Telegramning sovg'a katalogini har soatda avtomatik qayta sinxronlaydi —
     yangi chiqqan yoki qayta to'ldirilgan sovg'alar qo'lda bosmasdan paydo bo'lishi uchun."""
@@ -70,13 +65,6 @@ async def nft_catalog_autosync_task():
             logging.warning(f"NFT katalog avto-sinxronlash xato: {e}")
         await sleep(3600)
 
-
-import logging
-
-@dp.message.outer_middleware()
-async def log_all_messages(handler, event, data):
-    logging.info(f"RECEIVED MESSAGE: {event.text} from {event.from_user.id} in chat {event.chat.id}")
-    return await handler(event, data)
 
 async def main():
     # session = AiohttpSession(api=local_server)
@@ -120,15 +108,12 @@ async def main():
             await bot.set_my_commands(admin_commands, scope={"type": "chat", "chat_id": admin_id})  # Admin ID ni kiriting
         except: continue
     await bot.set_my_commands(private_commands, scope={"type": "all_private_chats"})
-    # dp.callback_query.middleware(MyThrottlingMiddleware())
-    # dp.message.middleware(MyErrorHandler())
-    # dp.startup.register(startup)
-    # dp.shutdown.register(shutdown)
+
     dp.message.middleware(MyThrottlingMiddleware())
     dp.callback_query.middleware(MyThrottlingMiddleware())
     dp.message.middleware(GroupWriteGuardMiddleware())
     dp.include_router(router)
-    create_task(kunlik_tasks(bot))
+    create_task(daily_balance_task(bot=bot))
     create_task(long_games_attack(bot=bot))
     create_task(check_vip_users(bot=bot))
     create_task(nft_catalog_autosync_task())

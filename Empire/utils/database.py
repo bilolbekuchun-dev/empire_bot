@@ -88,7 +88,7 @@ async def init():
     )
     await Tortoise.generate_schemas(safe=True)
     
-    # Migrations
+    # Migrations - only run if migration tracking table doesn't exist
     try:
         conn = Tortoise.get_connection("default")
         # Transfers table
@@ -187,27 +187,6 @@ async def init():
         print(f"ℹ️ Migration (tournament.banner_text -> TEXT): {e}")
 
     await Tortoise.generate_schemas()
-    # Dublikat geroylarni tozalash (bitta egaga bir necha Geroys bo'lsa)
-    geroys = await Geroys.all().prefetch_related('user')
-    user_geroys = {}
-    
-    for geroy in geroys:
-        user_id = geroy.user.user_id if geroy.user else None
-        if user_id:
-            if user_id not in user_geroys:
-                user_geroys[user_id] = []
-            user_geroys[user_id].append(geroy)
-    
-    # Har bir foydalanuvchi uchun eng ko'p ballga ega geroy qoldiriladi
-    for user_id, geroy_list in user_geroys.items():
-        if len(geroy_list) > 1:
-            # Ball bo'yicha tartiblash (eng ko'p ball birinchi)
-            geroy_list.sort(key=lambda x: x.ball, reverse=True)
-            # Birinchisidan tashqari hammasini o'chirish
-            for geroy in geroy_list[1:]:
-                await geroy.delete()
-            print(f"✅ User {user_id} uchun {len(geroy_list)-1} ta dublikat geroy o'chirildi.")
-
     print("🎉 Database initialization muvaffaqiyatli tugadi!")
 
 
