@@ -2,16 +2,43 @@
 Game phase handlers for Redis-based game.
 Bu modul o'yin fazalarini (night, day) boshqaradi.
 """
+import html
+import asyncio
+from datetime import datetime, timezone
+
 from aiogram import Bot
 from aiogram.types import Message
-from datetime import datetime, timezone
+
+from config import BOT_URL
 from models.game_data import Chat
 from models.game_set import GameSetTime, GameSetWeapons, GroupMoreSet
+from models.user import User
 from utils.redis_game.repositories.game_repository import game_repository as game_repo
-from utils.redis_game.repositories.player_repository import player_repository as player_repo
 from keyboards.main_keyboard import bot_link_markup
-from utils.role_names import RoleNames
-import asyncio
+
+
+async def _alive_players_text(players: list) -> str:
+    """Tirik o'yinchilar ro'yxatini ism/mention bilan yig'ish."""
+    lines = ["<b>Tirik o'yinchilar:</b>"]
+    user_ids = [p.user_id for p in players if getattr(p, "user_id", None)]
+    users = {}
+    if user_ids:
+        for user in await User.filter(user_id__in=list(set(user_ids))):
+            users[user.user_id] = user
+
+    for i, player in enumerate(players, 1):
+        uid = getattr(player, "user_id", None)
+        user = users.get(uid)
+        if user and user.mention:
+            label = user.mention
+        else:
+            name = html.escape(
+                (user.full_name if user and user.full_name else getattr(player, "first_name", None))
+                or "O'yinchi"
+            )
+            label = f"<a href='tg://user?id={uid}'>{name}</a>" if uid else name
+        lines.append(f"{i}. {label}")
+    return "\n".join(lines)
 
 
 async def execute_night_phase_redis(
@@ -69,11 +96,8 @@ async def execute_night_phase_redis(
     
     # Show players list
     try:
-        # TODO: view_players_list_redis
-        players_text = f"<b>Tirik o'yinchilar:</b>\n"
-        for i, player in enumerate(players, 1):
-            players_text += f"{i}. O'yinchi\n"  # Placeholder
-        players_text += f"\nTonggacha ⏳ {game_times.night_time} sekund qoldi"
+        players_text = await _alive_players_text(players)
+        players_text += f"\n\nTonggacha ⏳ {game_times.night_time} sekund qoldi"
         await bot.send_message(chat.chat_id, players_text, parse_mode="HTML", reply_markup=bot_link_markup)
     except Exception as e:
         print(f"O'yinchilar ro'yxatini ko'rsatishda xato: {e}")
@@ -84,7 +108,6 @@ async def execute_night_phase_redis(
         await send_night_actions(int(game_id), night_number, players, bot, chat)
     except Exception as e:
         print(f"Tungi harakatlarni yuborishda xato: {e}")
-    await bot.send_message(chat.chat_id, "⏳ Tungi harakatlar boshlandi...")
     
     # Wait for night time
     await asyncio.sleep(game_times.night_time)
@@ -104,13 +127,6 @@ async def execute_night_phase_redis(
     # Day dawn presentation is emitted when the game actually enters the "day"
     # phase (execute_day_phase_redis), i.e. AFTER the state transition is
     # persisted -- not here. See utils/redis_game/presentation.py.
-    
-    # Show night results
-    try:
-        # TODO: view_night_results_redis
-        await bot.send_message(chat.chat_id, "📊 Tungi natijalar ko'rsatilmoqda...")
-    except Exception as e:
-        print(f"Tungi natijalarni ko'rsatishda xato: {e}")
     
     # Mark phase as ended
     night_phase.is_end = True
@@ -168,13 +184,9 @@ async def execute_day_phase_redis(
     more_set, _ = await GroupMoreSet.get_or_create(chat_id=chat.chat_id)
     weapons_set, _ = await GameSetWeapons.get_or_create(chat_id=chat.chat_id)
     
-    # Show players list with roles
+    # Show players list
     try:
-        # TODO: view_players_list_redis with roles
-        players_text = f"<b>Tirik o'yinchilar:</b>\n"
-        for i, player in enumerate(players, 1):
-            players_text += f"{i}. O'yinchi\n"  # Placeholder
-        players_text += "\nEndi kechaning natijalarini muhokama qilamiz..."
+        players_text = await _alive_players_text(players)
         await bot.send_message(chat.chat_id, players_text, parse_mode="HTML")
     except Exception as e:
         print(f"O'yinchilar ro'yxatini ko'rsatishda xato: {e}")
@@ -207,9 +219,10 @@ async def execute_day_phase_redis(
             print(f"Geroy natijalarini ko'rsatishda xato: {e}")
     
     # Voting message
+    vote_url = BOT_URL if BOT_URL and BOT_URL.startswith("http") else "https://t.me/Empire_testbot"
     await bot.send_message(
         chat.chat_id,
-        f"<b>Aybdorlarni aniqlash va jazolash vaqti keldi.</b>\nOvoz berish uchun {game_times.vote_time} sekund\n<a href='https://T.me/Empire_testbot'>Ovoz berish</a>",
+        f"<b>Aybdorlarni aniqlash va jazolash vaqti keldi.</b>\nOvoz berish uchun {game_times.vote_time} sekund\n<a href='{vote_url}'>Ovoz berish</a>",
         parse_mode="HTML",
         reply_markup=bot_link_markup,
         disable_web_page_preview=True
@@ -235,10 +248,6 @@ async def execute_day_phase_redis(
     if paralar and "para" in (await game_repo.load_game(game_id)).mode:
         # TODO: check_paralar_lst_redis
         pass
-    
-    # Day voting
-    # TODO: day_action_redis
-    await bot.send_message(chat.chat_id, "🗳 Ovoz berish boshlandi...")
     
     # Wait for voting
     await asyncio.sleep(game_times.vote_time)
@@ -269,13 +278,6 @@ async def execute_day_phase_redis(
     
     # Check joker card selection
     # TODO: joker_card_check_redis
-    
-    # Vote like action (hanging)
-    try:
-        # TODO: vote_like_action_redis
-        await bot.send_message(chat.chat_id, "📊 Ovoz berish natijalari...")
-    except Exception as e:
-        print(f"Ovoz berish natijalarini ko'rsatishda xato: {e}")
     
     # Check if game is still active
     game_state = await game_repo.load_game(game_id)

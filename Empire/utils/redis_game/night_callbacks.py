@@ -5,20 +5,99 @@ Callback formatlari:
     na|{code}|{gid}|{ph}|{kind}|{target}   -> tungi harakat
     nv|{gid}|{day}|{target}                -> kunduzgi ovoz
 """
+import html
+
 from aiogram import Router, F
 from aiogram.types import CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from utils.premium_emojis import role_display
+from utils.role_names import RoleNames
 from utils.redis_game.night_engine import (
     ROLE_CODE, ROLE_ACTION_TYPE, _name_map
 )
 from utils.redis_game.services.action_service import ActionService
 from utils.redis_game.services.vote_service import VoteService
 from utils.redis_game.repositories.player_repository import player_repository as player_repo
+from utils.redis_game.repositories.game_repository import game_repository as game_repo
 from utils.database import redis_client as r
 
 router = Router()
 CODE_ROLE = {v: k for k, v in ROLE_CODE.items()}
+
+
+def _redis_str(val):
+    if val is None:
+        return None
+    return val.decode() if isinstance(val, bytes) else str(val)
+
+
+def _choice_text(role: str, choice: str) -> str:
+    header = role_display(role) if role else ""
+    return f"{header}\nSizning tanlovingiz: {choice}"
+
+
+async def _player_name(uid: int) -> str:
+    names = await _name_map([int(uid)])
+    return html.escape(names.get(int(uid)) or str(uid))
+
+
+async def _confirm_choice(call: CallbackQuery, role: str, choice: str) -> None:
+    text = _choice_text(role, choice)
+    await call.answer()
+    try:
+        await call.message.edit_text(text, parse_mode="HTML")
+    except Exception:
+        try:
+            await call.message.edit_text(text)
+        except Exception:
+            pass
+
+
+NIGHT_ACTION_ANNOUNCE = {
+    RoleNames.DOKTOR: "{role} tungi navbatchilikka ketdi...",
+    RoleNames.KOMISSAR: "{role} tungi tekshiruvga chiqdi...",
+    RoleNames.DON: "{role} o'z odamlarini yig'di...",
+    RoleNames.MAFIA: "{role} ovga chiqdi...",
+    RoleNames.AYGOQCHI: "{role} kuzatuvga chiqdi...",
+    RoleNames.QOTIL: "{role} qurbon izlab ketdi...",
+    RoleNames.OVCHI: "{role} nishon oldi...",
+    RoleNames.DAYDI: "{role} ko'chalarni kezmoqda...",
+    RoleNames.KEZUVCHI: "{role} tungi sayrga chiqdi...",
+    RoleNames.ZANJIR: "{role} zanjirlarini tashladi...",
+    RoleNames.XOYIN: "{role} qidiruvga chiqdi...",
+    RoleNames.QORIQCHI: "{role} postga chiqdi...",
+    RoleNames.ADVOKAT: "{role} ish qog'ozlarini ochdi...",
+    RoleNames.GAZABDOR: "{role} g'azabini yashirdi...",
+    RoleNames.AFERIST: "{role} tungi rejasini tuzdi...",
+    RoleNames.SEHRGAR: "{role} sehr tayyorlamoqda...",
+    RoleNames.JURNALIST: "{role} ma'lumot yig'ishga chiqdi...",
+    RoleNames.SOTQIN: "{role} jimjit harakat qildi...",
+    RoleNames.KONCHI: "{role} shaxtaga tushdi...",
+    RoleNames.QAROQCHI: "{role} o'lja izlab ketdi...",
+    RoleNames.JIN: "{role} lampa yonida paydo bo'ldi...",
+    RoleNames.REVERSER: "{role} taqdirni burishga chiqdi...",
+}
+
+
+async def _announce_night_action(call: CallbackQuery, gid: int, ph: int, uid: int, role: str, *, skipped: bool = False) -> None:
+    """Guruhga tungi harakat e'lonini bir marta yuborish (nishon ochilmaydi)."""
+    key = f"game:{gid}:night:{ph}:announced:{uid}"
+    try:
+        if not await r.set(key, "1", nx=True, ex=7200):
+            return
+        game_state = await game_repo.load_game(gid)
+        if not game_state:
+            return
+        shown = role_display(role)
+        if skipped:
+            text = f"{shown} bugun dam oladi!"
+        else:
+            tmpl = NIGHT_ACTION_ANNOUNCE.get(role, "{role} tungi ishga chiqdi...")
+            text = tmpl.format(role=shown)
+        await call.bot.send_message(game_state.chat_id, text, parse_mode="HTML")
+    except Exception:
+        pass
 
 
 async def _alive_targets(gid: int, exclude_uid=None):
@@ -56,11 +135,8 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         return
 
     if kind == "s":
-        await call.answer("O'tkazib yuborildi")
-        try:
-            await call.message.edit_text("🚷 O'tkazib yubordingiz.")
-        except Exception:
-            pass
+        await _announce_night_action(call, gid, ph, uid, role, skipped=True)
+        await _confirm_choice(call, role, "O'tkazib yuborish")
         return
 
     # Komissar: rejim tugmasi (target==0) -> nishon ro'yxati
@@ -84,11 +160,8 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         atype = "investigate" if kind == "c" else "kill"
         await ActionService.save_action(gid, ph, uid, int(target), atype)
         await _set_last_visited(gid, uid, int(target))
-        await call.answer("✅ Qabul qilindi")
-        try:
-            await call.message.edit_text("✅ Tanlov qabul qilindi")
-        except Exception:
-            pass
+        await _announce_night_action(call, gid, ph, uid, role)
+        await _confirm_choice(call, role, await _player_name(int(target)))
         return
 
     # Zanjir / Sehrgar / Reverser: 1-nishon -> 2-nishon
@@ -111,7 +184,7 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         return
     if code in ("zj", "se", "rv") and kind == "2":
         await ActionService.clear_player_actions(gid, ph, uid)
-        first = await r.get(f"game:{gid}:tmp:{uid}:first")
+        first = _redis_str(await r.get(f"game:{gid}:tmp:{uid}:first"))
         if code == "rv":
             if first:
                 await ActionService.save_action(gid, ph, uid, int(first), "reverser_source")
@@ -121,11 +194,10 @@ async def night_action_cb(call: CallbackQuery, bot=None):
             if first:
                 await ActionService.save_action(gid, ph, uid, int(first), atype)
             await ActionService.save_action(gid, ph, uid, int(target), atype)
-        await call.answer("✅ Qabul qilindi")
-        try:
-            await call.message.edit_text("✅ Tanlov qabul qilindi")
-        except Exception:
-            pass
+        n1 = await _player_name(int(first)) if first else "?"
+        n2 = await _player_name(int(target))
+        await _announce_night_action(call, gid, ph, uid, role)
+        await _confirm_choice(call, role, f"{n1}, {n2}")
         return
 
 
@@ -146,15 +218,14 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         return
     if code == "ji" and kind in ("jh", "jp", "jq"):
         await ActionService.clear_player_actions(gid, ph, uid)
-        first = await r.get(f"game:{gid}:tmp:{uid}:first")
+        first = _redis_str(await r.get(f"game:{gid}:tmp:{uid}:first"))
         atype = {"jh": "jin_hayot", "jp": "jin_pul", "jq": "jin_qotil"}[kind]
         if first:
             await ActionService.save_action(gid, ph, uid, int(first), atype)
-        await call.answer("✅ Qabul qilindi")
-        try:
-            await call.message.edit_text("✅ Tanlov qabul qilindi")
-        except Exception:
-            pass
+        gift = {"jh": "Hayot", "jp": "Pul", "jq": "Qotillik"}[kind]
+        name = await _player_name(int(first)) if first else "?"
+        await _announce_night_action(call, gid, ph, uid, role)
+        await _confirm_choice(call, role, f"{name} ({gift})")
         return
 
     # Oddiy nishonli harakat
@@ -162,11 +233,12 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         atype = ROLE_ACTION_TYPE.get(role, "action")
         await ActionService.save_action(gid, ph, uid, int(target), atype)
         await _set_last_visited(gid, uid, int(target))
-        await call.answer("✅ Qabul qilindi")
-        try:
-            await call.message.edit_text("✅ Tanlov qabul qilindi")
-        except Exception:
-            pass
+        if code == "kn":
+            choice = f"Kon {int(target)}"
+        else:
+            choice = await _player_name(int(target))
+        await _announce_night_action(call, gid, ph, uid, role)
+        await _confirm_choice(call, role, choice)
         return
 
     await call.answer()
@@ -183,17 +255,22 @@ async def day_vote_cb(call: CallbackQuery, bot=None):
 
     uid = call.from_user.id
     if target == "s":
-        await call.answer("O'tkazib yuborildi")
+        await call.answer()
         try:
-            await call.message.edit_text("🚷 O'kazib yubordingiz.")
+            await call.message.edit_text("Sizning tanlovingiz: O'tkazib yuborish")
         except Exception:
             pass
         return
 
     await VoteService.save_vote(gid, day, uid, int(target))
-    await call.answer("✅ Ovoz qabul qilindi")
+    name = await _player_name(int(target))
+    await call.answer()
+    text = f"Sizning tanlovingiz: {name}"
     try:
-        await call.message.edit_text("✅ Ovozingiz qabul qilindi.")
+        await call.message.edit_text(text, parse_mode="HTML")
     except Exception:
-        pass
+        try:
+            await call.message.edit_text(text)
+        except Exception:
+            pass
 
