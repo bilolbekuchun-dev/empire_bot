@@ -1,12 +1,18 @@
 """
 Win conditions checker for Redis-based game.
 """
+import html
+from datetime import datetime, timezone
+from typing import Optional
+
 from aiogram import Bot
 from models.game_data import Chat
+from models.user import User
 from utils.redis_game.repositories.game_repository import game_repository as game_repo
 from utils.redis_game.repositories.player_repository import player_repository as player_repo
 from utils.database import redis_client as _redis
 from utils.role_names import RoleNames
+from utils.premium_emojis import role_display
 from collections import defaultdict
 from config import tinch_rollar as tinchlar, mafia_rollar as mafialar, yakka_rollar as yakkalar
 
@@ -299,6 +305,38 @@ def check_mafialar_list(mafiyalar: list) -> bool:
     return False
 
 
+def _duration_text(started_at) -> Optional[str]:
+    if not started_at:
+        return None
+    start = started_at
+    if getattr(start, "tzinfo", None) is None:
+        start = start.replace(tzinfo=timezone.utc)
+    total = max(0, int((datetime.now(timezone.utc) - start).total_seconds()))
+    hours, rem = divmod(total, 3600)
+    mins, secs = divmod(rem, 60)
+    parts = []
+    if hours:
+        parts.append(f"{hours} soat")
+    if mins or hours:
+        parts.append(f"{mins} daqiqa")
+    parts.append(f"{secs} soniya")
+    return " ".join(parts)
+
+
+async def _player_mentions(user_ids: list) -> dict:
+    result = {}
+    ids = list({int(u) for u in user_ids if u is not None})
+    if not ids:
+        return result
+    users = await User.filter(user_id__in=ids)
+    for u in users:
+        name = html.escape(u.full_name or u.username or str(u.user_id))
+        result[u.user_id] = f'<a href="tg://user?id={u.user_id}">{name}</a>'
+    for uid in ids:
+        result.setdefault(uid, f'<a href="tg://user?id={uid}">{uid}</a>')
+    return result
+
+
 async def announce_game_result_redis(
     game_id: str,
     bot: Bot,
@@ -311,35 +349,62 @@ async def announce_game_result_redis(
     winning_team=None,
     real_mode=False
 ):
-    """
-    O'yin natijalarini e'lon qilish.
-    
-    TODO: Bu funksiya to'liq implement qilinishi kerak.
-    """
-    # Mark game as ended
+    """O'yin natijalarini e'lon qilish: g'oliblar + qolganlar + davomiylik."""
     game_state = await game_repo.load_game(game_id)
     if game_state:
         game_state.phase = "end"
         game_state.is_active = False
-        # Keep the finished state briefly, then let it expire (no permanent leak).
         await game_repo.save_game(game_state, ttl_sec=_ENDED_TTL)
 
-    # Drop this game from the active-game indexes (idempotent)
     await _clear_active_indexes(game_id, getattr(chat, "chat_id", None))
-    
-    # Send result message (simplified)
-    winners_text = ", ".join(winner_roles)
+
+    all_players = await player_repo.get_all_players(game_id)
+    if para and para_winners:
+        winner_ids = {p.user_id for p in para_winners}
+        winners = [p for p in all_players if p.user_id in winner_ids]
+    elif vsgame and winning_team is not None:
+        winners = [p for p in all_players if p.team == winning_team]
+    else:
+        winner_set = set(winner_roles or [])
+        winners = [p for p in all_players if p.role in winner_set]
+
+    winner_id_set = {p.user_id for p in winners}
+    others = [p for p in all_players if p.user_id not in winner_id_set]
+    mentions = await _player_mentions([p.user_id for p in all_players])
+
+    lines = ["<b>🎉 O'yin tugadi!</b>", "<b>G'oliblar:</b>"]
+    n = 1
+    if winners:
+        for p in winners:
+            lines.append(f"{n}. {mentions.get(p.user_id, p.user_id)} - {role_display(p.role)}")
+            n += 1
+            p.win = True
+            try:
+                await player_repo.save_player(p, ttl_sec=_ENDED_TTL)
+            except Exception:
+                pass
+    else:
+        lines.append("—")
+
+    if others:
+        lines.append("")
+        lines.append("<b>Qolgan o'yinchilar:</b>")
+        for p in others:
+            lines.append(f"{n}. {mentions.get(p.user_id, p.user_id)} - {role_display(p.role)}")
+            n += 1
+
+    started = getattr(game_state, "started_at", None) or getattr(game_state, "created_at", None) if game_state else None
+    duration = _duration_text(started)
+    if duration:
+        lines.append("")
+        lines.append(f"<b>O'yin davomiyligi:</b> {duration}")
+
     await bot.send_message(
         chat.chat_id,
-        f"<b>🎉 O'yin tugadi!</b>\n\n<b>G'oliblar:</b> {winners_text}",
-        parse_mode="HTML"
+        "\n".join(lines),
+        parse_mode="HTML",
+        disable_web_page_preview=True,
     )
-    
-    # TODO: Full implementation
-    # - Calculate player statistics
-    # - Update profiles
-    # - Send detailed results
-    # - Award prizes
 
 
 async def cleanup_game_redis(game_id: str):

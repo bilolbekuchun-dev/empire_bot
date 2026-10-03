@@ -257,10 +257,13 @@ async def execute_day_phase_redis(
     if not game_state or not game_state.is_active:
         return
 
-    # Ovozlarni sanab, osishni qo'llash
+    # Ovozlarni sanab, like/dislike orqali osishni qo'llash
     try:
         from utils.redis_game.night_engine import process_day_votes
-        await process_day_votes(int(game_id), day_number, players, bot, chat)
+        await process_day_votes(
+            int(game_id), day_number, players, bot, chat,
+            like_time=int(getattr(game_times, "like_time", 30) or 0),
+        )
     except Exception as e:
         print(f"Ovozlarni qayta ishlashda xato: {e}")
     

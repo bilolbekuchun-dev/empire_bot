@@ -4,6 +4,7 @@ Night/Day callback handlers (Redis).
 Callback formatlari:
     na|{code}|{gid}|{ph}|{kind}|{target}   -> tungi harakat
     nv|{gid}|{day}|{target}                -> kunduzgi ovoz
+    vl|{gid}|{day}|{target}|1/0            -> osish like/dislike
 """
 import html
 
@@ -14,7 +15,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from utils.premium_emojis import role_display
 from utils.role_names import RoleNames
 from utils.redis_game.night_engine import (
-    ROLE_CODE, ROLE_ACTION_TYPE, _name_map
+    ROLE_CODE, ROLE_ACTION_TYPE, _name_map, lynch_confirm_kb
 )
 from utils.redis_game.services.action_service import ActionService
 from utils.redis_game.services.vote_service import VoteService
@@ -42,6 +43,11 @@ async def _player_name(uid: int) -> str:
     return html.escape(names.get(int(uid)) or str(uid))
 
 
+async def _player_mention(uid: int) -> str:
+    name = await _player_name(uid)
+    return f'<a href="tg://user?id={int(uid)}">{name}</a>'
+
+
 async def _confirm_choice(call: CallbackQuery, role: str, choice: str) -> None:
     text = _choice_text(role, choice)
     await call.answer()
@@ -56,8 +62,8 @@ async def _confirm_choice(call: CallbackQuery, role: str, choice: str) -> None:
 
 NIGHT_ACTION_ANNOUNCE = {
     RoleNames.DOKTOR: "{role} tungi navbatchilikka ketdi...",
-    RoleNames.KOMISSAR: "{role} tungi tekshiruvga chiqdi...",
-    RoleNames.DON: "{role} o'z odamlarini yig'di...",
+    RoleNames.KOMISSAR: "{role} kimnidir tekshirishga ketdi...",
+    RoleNames.DON: "{role} o'ljasini tanladi...",
     RoleNames.MAFIA: "{role} ovga chiqdi...",
     RoleNames.AYGOQCHI: "{role} kuzatuvga chiqdi...",
     RoleNames.QOTIL: "{role} qurbon izlab ketdi...",
@@ -244,6 +250,27 @@ async def night_action_cb(call: CallbackQuery, bot=None):
     await call.answer()
 
 
+async def _announce_day_vote(call: CallbackQuery, gid: int, uid: int, target_uid=None, *, skipped: bool = False) -> None:
+    try:
+        game_state = await game_repo.load_game(gid)
+        if not game_state:
+            return
+        voter = await _player_mention(uid)
+        if skipped:
+            text = f"🚷 {voter} hech kimni tanlamaslikka qaror qildi!"
+        else:
+            target = await _player_mention(int(target_uid))
+            text = f"{voter} - {target}ga ovoz berdi"
+        await call.bot.send_message(
+            game_state.chat_id,
+            text,
+            parse_mode="HTML",
+            disable_web_page_preview=True,
+        )
+    except Exception:
+        pass
+
+
 @router.callback_query(F.data.startswith("nv|"))
 async def day_vote_cb(call: CallbackQuery, bot=None):
     try:
@@ -255,6 +282,7 @@ async def day_vote_cb(call: CallbackQuery, bot=None):
 
     uid = call.from_user.id
     if target == "s":
+        await _announce_day_vote(call, gid, uid, skipped=True)
         await call.answer()
         try:
             await call.message.edit_text("Sizning tanlovingiz: O'tkazib yuborish")
@@ -264,6 +292,7 @@ async def day_vote_cb(call: CallbackQuery, bot=None):
 
     await VoteService.save_vote(gid, day, uid, int(target))
     name = await _player_name(int(target))
+    await _announce_day_vote(call, gid, uid, int(target))
     await call.answer()
     text = f"Sizning tanlovingiz: {name}"
     try:
@@ -273,4 +302,38 @@ async def day_vote_cb(call: CallbackQuery, bot=None):
             await call.message.edit_text(text)
         except Exception:
             pass
+
+
+@router.callback_query(F.data.startswith("vl|"))
+async def vote_like_cb(call: CallbackQuery, bot=None):
+    try:
+        _, gid, day, tid, flag = call.data.split("|")
+        gid, day, tid = int(gid), int(day), int(tid)
+        is_like = flag == "1"
+    except ValueError:
+        await call.answer()
+        return
+
+    uid = call.from_user.id
+    player = await player_repo.load_player(gid, uid)
+    if not player or not player.is_alive:
+        await call.answer("Siz ovoz bera olmaysiz.", show_alert=True)
+        return
+
+    expected = await r.get(f"game:{gid}:phase:{day}:like_target")
+    if expected is not None and int(expected) != tid:
+        await call.answer()
+        return
+
+    await VoteService.save_vote_like(gid, day, uid, tid, is_like)
+    tally = await VoteService.get_vote_like_results(gid, day, tid)
+    likes = tally.get("likes", 0)
+    dislikes = tally.get("dislikes", 0)
+    try:
+        await call.message.edit_reply_markup(
+            reply_markup=lynch_confirm_kb(gid, day, tid, likes, dislikes)
+        )
+    except Exception:
+        pass
+    await call.answer("👍" if is_like else "👎")
 

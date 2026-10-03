@@ -14,6 +14,7 @@ Callback formati (<=64 bayt):
     - kind   : t=target, s=skip, c=check, k=kill, 1=first, 2=second, pul/jon (qaroqchi)
 """
 import asyncio
+import html
 import random
 from datetime import datetime, timezone
 from typing import List, Optional, Dict
@@ -363,7 +364,7 @@ async def send_night_actions(
 # NATIJALARNI QAYTA ISHLASH
 # ==================================================================
 async def _kill(game_id: int, uid: int, by_uid: Dict, bot: Bot, chat: Chat, names: Dict,
-                reason: str = "") -> Optional[object]:
+                reason: str = "", killer_role: Optional[str] = None) -> Optional[object]:
     p = by_uid.get(uid)
     if not p or not p.is_alive:
         return None
@@ -371,12 +372,14 @@ async def _kill(game_id: int, uid: int, by_uid: Dict, bot: Bot, chat: Chat, name
     p.deaded_at = datetime.now(timezone.utc)
     await player_repo.save_player(p)
     try:
-        suffix = f"\n{reason}" if reason else ""
-        await bot.send_message(
-            chat.chat_id,
-            f"💀 {names.get(uid)} o'ldirildi.{suffix}\nU edi — <b>{role_display(p.role)}</b>",
-            parse_mode="HTML"
-        )
+        victim_name = html.escape(str(names.get(uid) or uid))
+        mention = f'<a href="tg://user?id={int(uid)}">{victim_name}</a>'
+        text = f"Tunda {role_display(p.role)} {mention} vaxshiylarcha o'ldirildi!"
+        if killer_role:
+            text += f"\nAytishlaricha unikiga {role_display(killer_role)} kelgan ekan..."
+        elif reason:
+            text += f"\n{reason}"
+        await bot.send_message(chat.chat_id, text, parse_mode="HTML", disable_web_page_preview=True)
     except Exception:
         pass
     return p
@@ -456,6 +459,7 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
     valid_actions = [a for a in actions if a["actor_id"] not in slept or a.get("action_type") == "sleep"]
 
     mafia_votes: Dict[int, int] = {}
+    don_target = None
     qotil_target = None
     ovchi_target = None
     healed, protected = set(), set()
@@ -478,12 +482,15 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
         tgt = a["target_id"]
         atype = a["action_type"]
 
-        if role in MAFIA_ROLES and atype == "kill" and tgt:
-            mafia_votes[tgt] = mafia_votes.get(tgt, 0) + 1
-        elif role == RoleNames.QOTIL and atype == "kill" and tgt:
-            qotil_target = tgt
-        elif role == RoleNames.OVCHI and atype == "kill" and tgt:
-            ovchi_target = tgt
+        if atype == "kill" and tgt:
+            if role == RoleNames.DON:
+                don_target = tgt
+            elif role == RoleNames.MAFIA:
+                mafia_votes[tgt] = mafia_votes.get(tgt, 0) + 1
+            elif role == RoleNames.QOTIL:
+                qotil_target = tgt
+            elif role == RoleNames.OVCHI:
+                ovchi_target = tgt
         elif atype == "heal" and tgt:
             healed.add(tgt)
         elif atype == "protect" and tgt:
@@ -509,11 +516,18 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
         elif atype == "konchi":
             konchi.append((actor.user_id, tgt))
 
-    mafia_target = None
-    if mafia_votes:
+    # Don tanlovi mafia ovozlaridan ustun. Don yurmasa — eng ko'p mafia ovozi.
+    family_target = None
+    family_killer = None
+    if don_target:
+        family_target = don_target
+        family_killer = RoleNames.DON
+    elif mafia_votes:
         mx = max(mafia_votes.values())
         top = [t for t, c in mafia_votes.items() if c == mx]
-        mafia_target = top[0] if len(top) == 1 else None
+        if len(top) == 1:
+            family_target = top[0]
+            family_killer = RoleNames.MAFIA
 
     protected |= set(jin_protect)
 
@@ -536,9 +550,16 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
 
     # --- O'lim nomzodlari ---
     dead_uids = []
-    for target in (mafia_target, qotil_target, ovchi_target):
+    kill_sources: Dict[int, str] = {}
+    for target, killer in (
+        (family_target, family_killer),
+        (qotil_target, RoleNames.QOTIL),
+        (ovchi_target, RoleNames.OVCHI),
+    ):
         if target and target not in healed and target not in protected:
             dead_uids.append(target)
+            if killer:
+                kill_sources[target] = killer
 
     # --- Zanjir: juftlikdan biri o'lsa, ikkinchisi ham ---
     for actor_uid, tgts in zanjir.items():
@@ -568,10 +589,11 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
     for target in jin_kill:
         if target not in healed and target not in protected:
             dead_uids.append(target)
+            kill_sources.setdefault(target, RoleNames.JIN)
 
     # --- Qotilliklarni qo'llash ---
     for uid in dict.fromkeys(dead_uids):
-        await _kill(game_id, uid, by_uid, bot, chat, names)
+        await _kill(game_id, uid, by_uid, bot, chat, names, killer_role=kill_sources.get(uid))
 
     # --- Vorislik (Role succession) ---
     await _check_role_succession(by_uid, lang_map, bot)
@@ -683,7 +705,20 @@ async def _check_role_succession(by_uid: Dict, lang_map: Dict, bot: Bot) -> None
         await _send_private(bot, suc.user_id, suc_msg.get(l_code, suc_msg["uz"]))
 
 
-async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot, chat: Chat) -> None:
+def _mention_html(uid: int, names: Dict) -> str:
+    name = html.escape(str(names.get(uid) or uid))
+    return f'<a href="tg://user?id={int(uid)}">{name}</a>'
+
+
+def lynch_confirm_kb(game_id: int, day_num: int, target_id: int, likes: int = 0, dislikes: int = 0):
+    kb = InlineKeyboardBuilder()
+    kb.button(text=f"👍 {likes}", callback_data=f"vl|{game_id}|{day_num}|{target_id}|1")
+    kb.button(text=f"👎 {dislikes}", callback_data=f"vl|{game_id}|{day_num}|{target_id}|0")
+    kb.adjust(2)
+    return kb.as_markup()
+
+
+async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot, chat: Chat, like_time: int = 30) -> None:
     all_players = await player_repo.get_all_players(game_id)
     names = await _name_map([p.user_id for p in all_players])
     lang_map = await _user_lang_map([p.user_id for p in all_players])
@@ -708,8 +743,43 @@ async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot,
     if not victim or not victim.is_alive:
         return
 
+    mention = _mention_html(victim.user_id, names)
+    confirm_text = f"Rostdan ham {mention}ni osmoqchimisiz?"
+    msg = await bot.send_message(
+        chat.chat_id,
+        confirm_text,
+        parse_mode="HTML",
+        reply_markup=lynch_confirm_kb(game_id, day_num, victim.user_id),
+        disable_web_page_preview=True,
+    )
+    await r.set(f"game:{game_id}:phase:{day_num}:like_msg", str(msg.message_id), ex=7200)
+    await r.set(f"game:{game_id}:phase:{day_num}:like_target", str(victim.user_id), ex=7200)
+
+    await asyncio.sleep(max(0, int(like_time or 0)))
+
+    game_state = await game_repo.load_game(game_id)
+    if not game_state or not game_state.is_active:
+        return
+
+    # Tugmalarni yig'ish
+    try:
+        await bot.edit_message_reply_markup(chat.chat_id, msg.message_id, reply_markup=None)
+    except Exception:
+        pass
+
+    tally = await VoteService.get_vote_like_results(game_id, day_num, victim.user_id)
+    likes = tally.get("likes", 0)
+    dislikes = tally.get("dislikes", 0)
+
+    if likes <= dislikes:
+        await bot.send_message(
+            chat.chat_id,
+            f"Aholi kelisha olmadi ({likes} 👍 | {dislikes} 👎 )... Kelisha olmagani uchun hech kim osilmadi."
+        )
+        return
+
     if await r.get(f"game:{game_id}:adv_osish:{victim.user_id}"):
-        await bot.send_message(chat.chat_id, f"⚖️ Advokat {names.get(victim.user_id)} ni himoya qildi — u osilmadi!")
+        await bot.send_message(chat.chat_id, f"⚖️ Advokat {mention} ni himoya qildi — u osilmadi!", parse_mode="HTML")
         return
 
     victim.is_alive = False
@@ -718,9 +788,11 @@ async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot,
     await player_repo.save_player(victim)
     await bot.send_message(
         chat.chat_id,
-        f"🪢 {names.get(victim.user_id)} xalq tomonidan osildi!\nU edi — <b>{role_display(victim.role)}</b>",
-        parse_mode="HTML"
+        f"Ovoz berish natijalari:\n{likes} 👍  |  {dislikes} 👎\n\n"
+        f"{mention} kunduzgi yig'ilishda osildi!\n"
+        f"U edi {role_display(victim.role)}.",
+        parse_mode="HTML",
+        disable_web_page_preview=True,
     )
-    # Kunduzgi osishdan so'ng ham vorislikni tekshirish
     await _check_role_succession(by_uid, lang_map, bot)
 
