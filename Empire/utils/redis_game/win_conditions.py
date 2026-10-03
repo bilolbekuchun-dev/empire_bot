@@ -350,6 +350,14 @@ async def announce_game_result_redis(
     real_mode=False
 ):
     """O'yin natijalarini e'lon qilish: g'oliblar + qolganlar + davomiylik."""
+    # Agar o'yin TUNDA tugagan bo'lsa — tong kelmaydi, shuning uchun navbatdagi
+    # o'lim xabarlarini o'yin natijasidan OLDIN yuboramiz (yo'qolib ketmasligi uchun).
+    try:
+        from utils.redis_game.night_engine import flush_pending_deaths
+        await flush_pending_deaths(game_id, bot, chat)
+    except Exception:
+        pass
+
     game_state = await game_repo.load_game(game_id)
     if game_state:
         game_state.phase = "end"

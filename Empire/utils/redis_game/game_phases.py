@@ -9,16 +9,28 @@ from datetime import datetime, timezone
 from aiogram import Bot
 from aiogram.types import Message
 
-from config import BOT_URL
+from config import BOT_URL, tinch_rollar, mafia_rollar, yakka_rollar
 from models.game_data import Chat
 from models.game_set import GameSetTime, GameSetWeapons, GroupMoreSet
 from models.user import User
 from utils.redis_game.repositories.game_repository import game_repository as game_repo
 from keyboards.main_keyboard import bot_link_markup
+from utils.premium_emojis import role_display
+from utils.database import redis_client as r
 
 
-async def _alive_players_text(players: list) -> str:
-    """Tirik o'yinchilar ro'yxatini ism/mention bilan yig'ish."""
+def _player_mention_label(uid, user, player) -> str:
+    if user and user.mention:
+        return user.mention
+    name = html.escape(
+        (user.full_name if user and user.full_name else getattr(player, "first_name", None))
+        or "O'yinchi"
+    )
+    return f'<a href="tg://user?id={uid}">{name}</a>' if uid else name
+
+
+async def _alive_players_text(players: list, *, dawn: bool = False) -> str:
+    """Tirik o'yinchilar ro'yxati. Tongda rollar guruhi ham chiqadi."""
     lines = ["<b>Tirik o'yinchilar:</b>"]
     user_ids = [p.user_id for p in players if getattr(p, "user_id", None)]
     users = {}
@@ -26,18 +38,40 @@ async def _alive_players_text(players: list) -> str:
         for user in await User.filter(user_id__in=list(set(user_ids))):
             users[user.user_id] = user
 
-    for i, player in enumerate(players, 1):
+    numbered = []
+    for idx, player in enumerate(players, 1):
+        num = getattr(player, "maxsus_raqam", None) or idx
+        numbered.append((int(num), player))
+    numbered.sort(key=lambda x: x[0])
+
+    for num, player in numbered:
         uid = getattr(player, "user_id", None)
-        user = users.get(uid)
-        if user and user.mention:
-            label = user.mention
-        else:
-            name = html.escape(
-                (user.full_name if user and user.full_name else getattr(player, "first_name", None))
-                or "O'yinchi"
-            )
-            label = f"<a href='tg://user?id={uid}'>{name}</a>" if uid else name
-        lines.append(f"{i}. {label}")
+        lines.append(f"{num}. {_player_mention_label(uid, users.get(uid), player)}")
+
+    if not dawn:
+        return "\n".join(lines)
+
+    tinch_set, mafia_set, yakka_set = set(tinch_rollar), set(mafia_rollar), set(yakka_rollar)
+    tinch = [p for p in players if p.role in tinch_set]
+    mafia = [p for p in players if p.role in mafia_set]
+    yakka = [p for p in players if p.role in yakka_set]
+    leftover = [p for p in players if p.role not in tinch_set | mafia_set | yakka_set]
+    yakka.extend(leftover)
+
+    def faction_block(title: str, group: list) -> list:
+        if not group:
+            return []
+        block = [f"\n<b>{title} - {len(group)}:</b>"]
+        for p in group:
+            block.append(role_display(p.role))
+        return block
+
+    lines.append("")
+    lines.extend(faction_block("Tinchlar", tinch))
+    lines.extend(faction_block("Mafiyalar", mafia))
+    lines.extend(faction_block("Yakkalar", yakka))
+    lines.append(f"\n<b>Jami:</b> {len(players)} ta")
+    lines.append("\nEndi kechaning natijalarini muhokama qilamiz...")
     return "\n".join(lines)
 
 
@@ -94,6 +128,11 @@ async def execute_night_phase_redis(
     except Exception as e:
         print(f"Tungi taqdimotni yuborishda xato: {e}")
     
+    try:
+        await r.set(f"game:{game_id}:night_num", str(night_number), ex=86400)
+    except Exception:
+        pass
+
     # Show players list
     try:
         players_text = await _alive_players_text(players)
@@ -174,7 +213,14 @@ async def execute_day_phase_redis(
         await send_day_presentation(bot, chat.chat_id, int(game_id), day_number)
     except Exception as e:
         print(f"Kunni taqdim etishda xato: {e}")
-    
+
+    # TO'G'RI NAVBAT: 1) tong habari (yuborildi) → 2) tunda o'lganlar → 3) tirik o'yinchilar
+    try:
+        from utils.redis_game.night_engine import flush_pending_deaths
+        await flush_pending_deaths(int(game_id), bot, chat)
+    except Exception as e:
+        print(f"Tunda o'lganlar xabarini yuborishda xato: {e}")
+
     # Check paralar
     if paralar and "para" in (await game_repo.load_game(game_id)).mode:
         # TODO: check_paralar_lst_redis
@@ -186,8 +232,8 @@ async def execute_day_phase_redis(
     
     # Show players list
     try:
-        players_text = await _alive_players_text(players)
-        await bot.send_message(chat.chat_id, players_text, parse_mode="HTML")
+        players_text = await _alive_players_text(players, dawn=True)
+        await bot.send_message(chat.chat_id, players_text, parse_mode="HTML", disable_web_page_preview=True)
     except Exception as e:
         print(f"O'yinchilar ro'yxatini ko'rsatishda xato: {e}")
     

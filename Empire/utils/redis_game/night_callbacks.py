@@ -125,6 +125,30 @@ async def _set_last_visited(gid, uid, target):
         pass
 
 
+async def _ensure_night_phase(call: CallbackQuery, gid: int, ph: int) -> bool:
+    """Tungi tugmalar faqat joriy tun davomida ishlasin."""
+    game_state = await game_repo.load_game(gid)
+    if not game_state or not game_state.is_active or game_state.phase != "night":
+        await call.answer("Bu harakat faqat tunda ishlaydi. Kunduzi oddiy ovoz bering.", show_alert=True)
+        try:
+            await call.message.edit_text("🌙 Tun tugadi. Kunduzi lichkadagi ovoz tugmalaridan foydalaning.")
+        except Exception:
+            try:
+                await call.message.edit_reply_markup(reply_markup=None)
+            except Exception:
+                pass
+        return False
+    cur = await r.get(f"game:{gid}:night_num")
+    if cur is not None and int(cur) != int(ph):
+        await call.answer("Bu tun allaqachon tugagan.", show_alert=True)
+        try:
+            await call.message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+        return False
+    return True
+
+
 @router.callback_query(F.data.startswith("na|"))
 async def night_action_cb(call: CallbackQuery, bot=None):
     try:
@@ -132,6 +156,9 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         gid, ph = int(gid), int(ph)
     except ValueError:
         await call.answer()
+        return
+
+    if not await _ensure_night_phase(call, gid, ph):
         return
 
     uid = call.from_user.id
@@ -251,14 +278,29 @@ async def night_action_cb(call: CallbackQuery, bot=None):
 
 
 async def _announce_day_vote(call: CallbackQuery, gid: int, uid: int, target_uid=None, *, skipped: bool = False) -> None:
+    """Kunduzgi ovoz e'loni — har bir ovozchi kuniga faqat 1 marta e'lon qiladi."""
     try:
         game_state = await game_repo.load_game(gid)
         if not game_state:
             return
+        day_raw = await r.get(f"game:{gid}:day_num")
+        day_num = int(day_raw) if day_raw is not None else 0
+        # Dedup: qayta-qayta bosganda guruhga spam ketmasin
+        dup_key = f"game:{gid}:day:{day_num}:vote_announced:{uid}"
+        try:
+            first_time = await r.set(dup_key, "1", nx=True, ex=7200)
+            if not first_time:
+                return
+        except Exception:
+            pass
         voter = await _player_mention(uid)
         if skipped:
             text = f"🚷 {voter} hech kimni tanlamaslikka qaror qildi!"
         else:
+            # KUNDUZI: faqat ismlar — rol nomi chiqmasligi shart.
+            # Masalan: "Diyorbek - Valiga ovoz berdi"
+            # (Tunda esa _announce_night_action rol nomi bilan e'lon qiladi:
+            #  "Don o'ljasini tanladi...")
             target = await _player_mention(int(target_uid))
             text = f"{voter} - {target}ga ovoz berdi"
         await call.bot.send_message(
@@ -271,6 +313,31 @@ async def _announce_day_vote(call: CallbackQuery, gid: int, uid: int, target_uid
         pass
 
 
+async def _ensure_day_phase(call: CallbackQuery, gid: int, day: int) -> bool:
+    """Kunduzgi ovoz faqat joriy kun davomida va tirik o'yinchidan qabul qilinadi."""
+    game_state = await game_repo.load_game(gid)
+    if not game_state or not game_state.is_active or game_state.phase != "day":
+        await call.answer("Ovoz berish vaqti emas.", show_alert=True)
+        try:
+            await call.message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+        return False
+    cur = await r.get(f"game:{gid}:day_num")
+    if cur is not None and int(cur) != int(day):
+        await call.answer("Bu kun allaqachon tugagan.", show_alert=True)
+        try:
+            await call.message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+        return False
+    player = await player_repo.load_player(gid, call.from_user.id)
+    if not player or not player.is_alive:
+        await call.answer("Siz ovoz bera olmaysiz.", show_alert=True)
+        return False
+    return True
+
+
 @router.callback_query(F.data.startswith("nv|"))
 async def day_vote_cb(call: CallbackQuery, bot=None):
     try:
@@ -280,21 +347,43 @@ async def day_vote_cb(call: CallbackQuery, bot=None):
         await call.answer()
         return
 
+    if not await _ensure_day_phase(call, gid, day):
+        return
+
     uid = call.from_user.id
     if target == "s":
+        await VoteService.save_vote(gid, day, uid, 0)
         await _announce_day_vote(call, gid, uid, skipped=True)
-        await call.answer()
+        await call.answer("O'tkazib yuborildi")
         try:
-            await call.message.edit_text("Sizning tanlovingiz: O'tkazib yuborish")
+            await call.message.edit_text("Kimga ovoz berasiz?\n\nSizning tanlovingiz: 🚷 O'tkazib yuborish")
         except Exception:
             pass
         return
 
-    await VoteService.save_vote(gid, day, uid, int(target))
-    name = await _player_name(int(target))
-    await _announce_day_vote(call, gid, uid, int(target))
-    await call.answer()
-    text = f"Sizning tanlovingiz: {name}"
+    try:
+        target_id = int(target)
+    except (TypeError, ValueError):
+        await call.answer()
+        return
+
+    if target_id == uid:
+        await call.answer("O'zingizga ovoz bera olmaysiz.", show_alert=True)
+        return
+
+    try:
+        target_player = await player_repo.load_player(gid, target_id)
+        if not target_player or not target_player.is_alive:
+            await call.answer("Bu o'yinchi allaqachon o'yindan chiqqan.", show_alert=True)
+            return
+    except Exception:
+        pass
+
+    await VoteService.save_vote(gid, day, uid, target_id)
+    name = await _player_name(target_id)
+    await _announce_day_vote(call, gid, uid, target_id)
+    await call.answer(f"Siz {name}ga ovoz berdingiz")
+    text = f"Kimga ovoz berasiz?\n\nSizning tanlovingiz: {name}"
     try:
         await call.message.edit_text(text, parse_mode="HTML")
     except Exception:

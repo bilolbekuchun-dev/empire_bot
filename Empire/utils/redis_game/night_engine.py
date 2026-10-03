@@ -98,7 +98,7 @@ MAFIA_ROLES = {RoleNames.DON, RoleNames.MAFIA, RoleNames.AYGOQCHI}
 
 NIGHT_STRINGS = {
     "uz": {
-        "slept": "💤 Sizni uyqu dorisi bilan uxlatishdi — bu tun uxlaysiz.",
+        "slept": "Ana, dori ta'sir qilishni boshladi, endi bir kun uxlaysan... dedi Kezuvchi.",
         "xoyin_win": "👺 Siz mafiyani topdingiz va endi mafiyaga aylandingiz!",
         "xoyin_miss": "👺 Topa olmadingiz ({miss}/3).",
         "investigate_res": "🔍 Natija: {name} → <b>{role}</b>",
@@ -106,16 +106,15 @@ NIGHT_STRINGS = {
         "aygoqchi_res": "🦇 Ayg'oqchi: {name} → <b>{role}</b>",
         "konchi_kill_reason": "Kon tuzog'iga tushdi.",
         "konchi_win": "⛏ Kon {no}: {count} 💎 qazib oldingiz!",
-        "gazabdor_warn": "🧌 Sizni G'azabkor nishonga oldi!",
-        "day_vote_prompt": "🗳 <b>Kun</b> — kimni osamiz?",
-        "day_no_vote": "🗳 Bugun hech kim osilmadi.",
-        "day_tie_vote": "🗳 Ovozlar teng bo'ldi — bugun hech kim osilmadi.",
+        "day_vote_prompt": "Kimga ovoz berasiz?",
+        "day_no_vote": "Bugun hech kim osilmadi.",
+        "day_tie_vote": "Ovozlar teng bo'ldi — bugun hech kim osilmadi.",
         "advokat_protect": "⚖️ Advokat {name} ni himoya qildi — u osilmadi!",
         "lynched_msg": "🪢 {name} xalq tomonidan osildi!\nU edi — <b>{role}</b>",
         "actor_msg": "🎭 <b>Aktyor</b>: Siz bu tun <b>{role}</b> roliga kirdingiz!",
         "mimic_win": "🎭 <b>Taqlidchi</b>: Siz halok bo'lgan o'yinchining rolini egalladingiz!\nYangi rolingiz: <b>{role}</b>",
-        "mimic_wait": "🎭 <b>Taqlidchi</b>: Hali hech kim halok bo'lmadi — birinchi o'lik o'yinchining rolini kutmoqdasiz.",
-        "passive_msg": "🌙 <b>Kecha bo'ldi.</b>\nRolingiz: {role}\n\nBu tunda maxsus harakatingiz yo'q — tonggacha kuting.",
+        "mimic_wait": "🎭 <b>Taqlidchi</b>: Hali hech kim halok bo'lmadi — birinchi o'lik o'yinchining rolini kuting.",
+        "passive_msg": "🌙 <b>Tun bo'ldi.</b>\nRolingiz: {role}\n\nBu tunda maxsus harakatingiz yo'q — tonggacha kuting.",
     },
     "ru": {
         "slept": "💤 Вас усыпили снотворным — этой ночью вы спите.",
@@ -126,10 +125,9 @@ NIGHT_STRINGS = {
         "aygoqchi_res": "🦇 Шпион: {name} → <b>{role}</b>",
         "konchi_kill_reason": "Попал в ловушку в шахте.",
         "konchi_win": "⛏ Шахта {no}: вы добыли {count} 💎!",
-        "gazabdor_warn": "🧌 Каратель взял вас на прицел!",
-        "day_vote_prompt": "🗳 <b>День</b> — кого повесим?",
-        "day_no_vote": "🗳 Сегодня никто не был повешен.",
-        "day_tie_vote": "🗳 Голоса разделились поровну — никто не повешен.",
+        "day_vote_prompt": "<b>День</b> — кого повесим?",
+        "day_no_vote": "Сегодня никто не был повешен.",
+        "day_tie_vote": "Голоса разделились поровну — никто не повешен.",
         "advokat_protect": "⚖️ Адвокат защитил {name} — его не повесили!",
         "lynched_msg": "🪢 {name} был повешен обществом!\nОн был — <b>{role}</b>",
         "actor_msg": "🎭 <b>Актер</b>: На эту ночь ваша роль — <b>{role}</b>!",
@@ -146,10 +144,9 @@ NIGHT_STRINGS = {
         "aygoqchi_res": "🦇 Spy: {name} → <b>{role}</b>",
         "konchi_kill_reason": "Fell into a mine trap.",
         "konchi_win": "⛏ Mine {no}: You mined {count} 💎!",
-        "gazabdor_warn": "🧌 The Avenger has targeted you!",
-        "day_vote_prompt": "🗳 <b>Day</b> — Who shall we lynch?",
-        "day_no_vote": "🗳 No one was lynched today.",
-        "day_tie_vote": "🗳 Tie vote — no one was lynched today.",
+        "day_vote_prompt": "<b>Day</b> — Who shall we lynch?",
+        "day_no_vote": "No one was lynched today.",
+        "day_tie_vote": "Tie vote — no one was lynched today.",
         "advokat_protect": "⚖️ The Lawyer defended {name} — lynch prevented!",
         "lynched_msg": "🪢 {name} was lynched by the town!\nThey were — <b>{role}</b>",
         "actor_msg": "🎭 <b>Actor</b>: For tonight, your role is <b>{role}</b>!",
@@ -166,10 +163,9 @@ NIGHT_STRINGS = {
         "aygoqchi_res": "🦇 Ajan: {name} → <b>{role}</b>",
         "konchi_kill_reason": "Maden tuzağına düştü.",
         "konchi_win": "⛏ Maden {no}: {count} 💎 çıkardınız!",
-        "gazabdor_warn": "🧌 Cezalandırıcı sizi hedef aldı!",
-        "day_vote_prompt": "🗳 <b>Gündüz</b> — Kimi asıyoruz?",
-        "day_no_vote": "🗳 Bugün kimse asılmadı.",
-        "day_tie_vote": "🗳 Oylar eşit — bugün kimse asılmadı.",
+        "day_vote_prompt": "<b>Gündüz</b> — Kimi asıyoruz?",
+        "day_no_vote": "Bugün kimse asılmadı.",
+        "day_tie_vote": "Oylar eşit — bugün kimse asılmadı.",
         "advokat_protect": "⚖️ Avukat {name} kişisini savundu — asılmadı!",
         "lynched_msg": "🪢 {name} halk tarafından asıldı!\nRolü: <b>{role}</b>",
         "actor_msg": "🎭 <b>Aktör</b>: Bu geceki rolünüz: <b>{role}</b>!",
@@ -271,7 +267,7 @@ async def send_night_actions(
                 else:
                     await _send_private(
                         bot, uid,
-                        "🎭 <b>Taqlidchi</b>: Hali hech kim halok bo'lmadi — birinchi o'lik o'yinchining rolini kutmoqdasiz."
+                        "🎭 <b>Taqlidchi</b>: Hali hech kim halok bo'lmadi — birinchi o'lik o'yinchining rolini kuting."
                     )
                     continue
 
@@ -281,7 +277,7 @@ async def send_night_actions(
         if code is None:
             await _send_private(
                 bot, uid,
-                f"🌙 <b>Kecha bo'ldi.</b>\nRolingiz: {role_display(role)}\n\n"
+                f"🌙 <b>Tun bo'ldi.</b>\nRolingiz: {role_display(role)}\n\n"
                 f"Bu tunda maxsus harakatingiz yo'q — tonggacha kuting."
             )
             continue
@@ -379,10 +375,44 @@ async def _kill(game_id: int, uid: int, by_uid: Dict, bot: Bot, chat: Chat, name
             text += f"\nAytishlaricha unikiga {role_display(killer_role)} kelgan ekan..."
         elif reason:
             text += f"\n{reason}"
-        await bot.send_message(chat.chat_id, text, parse_mode="HTML", disable_web_page_preview=True)
+        # Xabar darhol emas, TONGDAN KEYIN yuboriladi (navbatga qo'yiladi).
+        await queue_death_message(game_id, text)
     except Exception:
         pass
     return p
+
+
+# ==================================================================
+# TUNGA KECHIKTIRILGAN O'LIM XABARLARI (tongdan keyin chiqadi)
+# ==================================================================
+async def queue_death_message(game_id: int, text: str) -> None:
+    """O'lim xabarini navbatga qo'yish — tong habaridan KEYIN yuboriladi."""
+    try:
+        key = f"game:{game_id}:pending_deaths"
+        await r.rpush(key, text)
+        await r.expire(key, 3600)
+    except Exception:
+        pass
+
+
+async def flush_pending_deaths(game_id: int, bot: Bot, chat: Chat) -> None:
+    """Yig'ilgan o'lim xabarlarini guruhga yuborish (tongdan keyin, ro'yxatdan oldin)."""
+    try:
+        key = f"game:{game_id}:pending_deaths"
+        items = await r.lrange(key, 0, -1)
+        if not items:
+            return
+        await r.delete(key)
+    except Exception:
+        return
+    for raw in items:
+        text = raw.decode() if isinstance(raw, bytes) else raw
+        try:
+            await bot.send_message(
+                chat.chat_id, text, parse_mode="HTML", disable_web_page_preview=True
+            )
+        except Exception:
+            pass
 
 
 async def _user_lang_map(uids: List[int]) -> Dict[int, str]:
@@ -627,10 +657,10 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
         else:
             await _send_private(bot, actor_uid, get_msg(actor_uid, "konchi_win", no=kon_no, count=random.choice([1, 2, 3])))
 
-    # --- Gazabdor ogohlantirishi ---
-    for uid in gazabdor_targets:
-        if by_uid.get(uid):
-            await _send_private(bot, uid, get_msg(uid, "gazabdor_warn"))
+    # --- Gazabdor ogohlantirishi O'CHIRILGAN ---
+    # Qoida: nishondagi odam G'azabkor uni nishonga olganini BILMASLIGI kerak.
+    # Shuning uchun hech qanday warn xabar yuborilmaydi.
+    # gazabdor_targets ro'yxati yig'iladi, lekin hech kimga xabar ketmaydi.
 
     # --- Himoyalarni tozalash ---
     await ActionService.clear_protections(game_id)
@@ -652,7 +682,8 @@ async def send_day_votes(game_id: int, day_num: int, players: List, bot: Bot, ch
             kb.button(text=names.get(q.user_id), callback_data=f"nv|{game_id}|{day_num}|{q.user_id}")
         kb.button(text="🚷 O'tkazib yuborish", callback_data=f"nv|{game_id}|{day_num}|s")
         kb.adjust(1)
-        await _send_private(bot, p.user_id, "🗳 <b>Kun</b> — kimni osamiz?", kb.as_markup())
+        day_head = "Kimga ovoz berasiz?"
+        await _send_private(bot, p.user_id, day_head, kb.as_markup())
 
 
 async def _check_role_succession(by_uid: Dict, lang_map: Dict, bot: Bot) -> None:
@@ -730,13 +761,13 @@ async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot,
         counts[target] = counts.get(target, 0) + 1
 
     if not counts:
-        await bot.send_message(chat.chat_id, "🗳 Bugun hech kim osilmadi.")
+        await bot.send_message(chat.chat_id, "Bugun hech kim osilmadi.")
         return
 
     mx = max(counts.values())
     top = [t for t, c in counts.items() if c == mx]
     if len(top) != 1:
-        await bot.send_message(chat.chat_id, "🗳 Ovozlar teng bo'ldi — bugun hech kim osilmadi.")
+        await bot.send_message(chat.chat_id, "Ovozlar teng bo'ldi — bugun hech kim osilmadi.")
         return
 
     victim = by_uid.get(top[0])
