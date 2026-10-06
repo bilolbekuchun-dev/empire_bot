@@ -80,11 +80,13 @@ class DelCommands(Filter):
                     chat = await Chat.create(chat_id=message.chat.id, title=message.chat.title, type=str(message.chat.type))
 
             updated = False
+            update_fields = []
             if message.chat.username:
                 new_link = f"https://t.me/{message.chat.username}"
                 if chat.invite_link != new_link:
                     chat.invite_link = new_link
                     updated = True
+                    if "invite_link" not in update_fields: update_fields.append("invite_link")
             elif not chat.invite_link:
                 try:
                     from utils.telegram_utils import get_chat_join_link
@@ -92,15 +94,17 @@ class DelCommands(Filter):
                     if link:
                         chat.invite_link = link
                         updated = True
+                        if "invite_link" not in update_fields: update_fields.append("invite_link")
                 except Exception:
                     pass
                     
             if message.chat.title and message.chat.title != chat.title:
                 chat.title = message.chat.title
                 updated = True
+                if "title" not in update_fields: update_fields.append("title")
                 
             if updated:
-                await chat.save()
+                await chat.save(update_fields=update_fields)
         
         if message.from_user:
             from_user = message.from_user
@@ -143,17 +147,20 @@ class DelCommands(Filter):
             if user_is_blocked:
                 return True
             updated = False
+            update_fields = []
 
             if user.full_name != clean_full_name:
                 user.full_name = clean_full_name
                 updated = True
+                update_fields.append("full_name")
 
             if user.mention != mention:
                 user.mention = mention
                 updated = True
+                update_fields.append("mention")
                 
             if updated:
-                await user.save()
+                await user.save(update_fields=update_fields)
 
         if message.chat.type == ChatType.PRIVATE:
             return
