@@ -150,6 +150,8 @@ async def init():
         webapp_migrations = [
             ('user', 'created_at', "TIMESTAMPTZ DEFAULT NOW()"),
             ('user', 'lang', "VARCHAR(5) DEFAULT 'uz'"),
+            ('chat', 'lang', "VARCHAR(5) DEFAULT 'uz'"),
+            ('tournament', 'lang', "VARCHAR(5) DEFAULT ''"),
             ('profile', 'daily_streak', "INT DEFAULT 0"),
             ('profile', 'last_claim_date', "DATE"),
             ('geroys', 'photo_url', "VARCHAR(500) DEFAULT ''"),
