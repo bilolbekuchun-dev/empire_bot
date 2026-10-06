@@ -1,0 +1,6 @@
+{
+  "_comment": "Day/Night presentation media config. Set 'file_id' to a Telegram file_id (preferred) or 'path' to a local asset. 'type' is photo|animation|video. Env overrides: MAFIA_DAY_MEDIA / MAFIA_NIGHT_MEDIA / MAFIA_START_MEDIA (and *_MEDIA_TYPE).",
+  "day": { "type": "photo", "file_id": "", "path": "gifs/day.jpg" },
+  "night": { "type": "photo", "file_id": "", "path": "gifs/night.jpg" },
+  "start": { "type": "photo", "file_id": "", "path": "" }
+}

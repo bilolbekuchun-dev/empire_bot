@@ -1,0 +1,219 @@
+"""
+Player Service - Player management (join, leave, statistics).
+"""
+from typing import Optional
+from datetime import datetime, timezone
+
+from utils.redis_game.game_models_schema import PlayerState
+from utils.redis_game.repositories import game_repository, player_repository
+from models.user import User, Profile
+
+
+class PlayerService:
+    """Player management service."""
+    
+    @staticmethod
+    async def join_game(
+        game_id: int,
+        user_id: int,
+        team: Optional[str] = None
+    ) -> bool:
+        """
+        O'yinga player qo'shish.
+        
+        Returns:
+            True - muvaffaqiyatli
+            False - xatolik
+        """
+        # O'yin mavjudligi va waiting fazada ekanligini tekshirish
+        game = await game_repository.load_game(game_id)
+        if not game or game.phase != "waiting":
+            return False
+        
+        # Player allaqachon qo'shilgan yoki yo'q
+        if await player_repository.player_exists(game_id, user_id):
+            return False
+        
+        # Player yaratish
+        player_state = PlayerState(
+            game_id=game_id,
+            user_id=user_id,
+            role="",  # Start vaqtida beriladi
+            team=team,
+            is_alive=True,
+            is_sleep=False,
+            life=100,
+            joined_at=datetime.now(timezone.utc)
+        )
+        
+        # Redis ga saqlash
+        await player_repository.save_player(player_state, ttl_sec=86400)
+        await player_repository.add_player_to_set(game_id, user_id)
+        
+        return True
+    
+    @staticmethod
+    async def leave_game(game_id: int, user_id: int) -> bool:
+        """
+        O'yindan chiqish.
+        
+        Returns:
+            True - muvaffaqiyatli
+            False - xatolik
+        """
+        # Player mavjudligini tekshirish
+        if not await player_repository.player_exists(game_id, user_id):
+            return False
+        
+        # O'yin boshlangan bo'lsa chiqib bo'lmaydi
+        game = await game_repository.load_game(game_id)
+        if not game or game.phase != "waiting":
+            return False
+        
+        # Redis dan o'chirish
+        await player_repository.delete_player(game_id, user_id)
+        await player_repository.remove_player_from_set(game_id, user_id)
+        
+        return True
+    
+    @staticmethod
+    async def get_player(game_id: int, user_id: int) -> Optional[PlayerState]:
+        """Player ma'lumotlarini olish."""
+        return await player_repository.load_player(game_id, user_id)
+    
+    @staticmethod
+    async def find_player_active_game(user_id: int) -> Optional[tuple[str, PlayerState]]:
+        """
+        User ning faol o'yinini topish.
+        
+        Returns:
+            (game_id, player_state) - agar topilsa
+            None - agar topilmasa yoki player tirik emas
+        """
+        from utils.database import redis_client
+        
+        # Get all active game IDs
+        # Optimizatsiya: Kelajakda user:*:active_game key ishlatish mumkin
+        active_games = []
+        cursor = 0
+        while True:
+            cursor, keys = await redis_client.scan(cursor, match="game:*:state", count=100)
+            active_games.extend(keys)
+            if cursor == 0:
+                break
+        
+        # Har bir o'yinda player ni topishga harakat qilish
+        for game_key in active_games:
+            # game_key bytes yoki string bo'lishi mumkin
+            if isinstance(game_key, bytes):
+                game_key = game_key.decode()
+            game_id = game_key.split(":")[1]
+            player = await player_repository.load_player(game_id, user_id)
+            if player and player.is_alive:
+                return (game_id, player)
+        
+        return None
+    
+    @staticmethod
+    async def find_player_dead_last_word_game(user_id: int) -> Optional[tuple[str, PlayerState]]:
+        """
+        User ning oxirgi so'z aytmagan va o'lgan o'yinini topish.
+        
+        Returns:
+            (game_id, player_state) - agar topilsa
+            None - agar topilmasa
+        """
+        from utils.database import redis_client
+        
+        active_games = []
+        cursor = 0
+        while True:
+            cursor, keys = await redis_client.scan(cursor, match="game:*:state", count=100)
+            active_games.extend(keys)
+            if cursor == 0:
+                break
+        
+        for game_key in active_games:
+            if isinstance(game_key, bytes):
+                game_key = game_key.decode()
+            game_id = game_key.split(":")[1]
+            player = await player_repository.load_player(game_id, user_id)
+            if player and not player.is_alive and not getattr(player, 'is_sayed_last_word', False):
+                return (game_id, player)
+        
+        return None
+    
+    @staticmethod
+
+    async def get_game_statistics(game_id: int) -> dict:
+        """
+        O'yin statistikasini olish.
+        
+        Returns:
+            {
+                'total_players': int,
+                'alive_players': int,
+                'dead_players': int,
+                'players': List[PlayerState]
+            }
+        """
+        players = await player_repository.get_all_players(game_id)
+        alive = await player_repository.get_alive_players(game_id)
+        dead = await player_repository.get_dead_players(game_id)
+        
+        return {
+            'total_players': len(players),
+            'alive_players': len(alive),
+            'dead_players': len(dead),
+            'players': players
+        }
+    
+    @staticmethod
+    async def update_player_profile(
+        user_id: int,
+        is_winner: bool,
+        is_member: bool = True,
+        ball: int = 0
+    ):
+        """
+        O'yin tugagandan keyin player profileini yangilash.
+        
+        Args:
+            user_id: User ID
+            is_winner: G'olib bo'lsa True
+            is_member: Guruh a'zosi bo'lsa True
+            ball: Qo'shimcha ball
+        """
+        user = await User.filter(user_id=user_id).first()
+        if not user:
+            return
+        
+        profile, _ = await Profile.get_or_create(
+            user=user,
+            defaults={
+                "dollar": 0,
+                "diamond": 0,
+                "himoya": 0,
+                "qotildan_himoya": 0,
+                "osishdan_himoya": 0,
+                "miltiq": 0,
+                "wins": 0,
+                "games_count": 0
+            }
+        )
+        
+        # Dollar qo'shish
+        if is_winner:
+            profile.dollar += 20 if is_member else 10
+            profile.wins += 1
+        else:
+            profile.dollar += 5 if is_member else 0
+        
+        profile.games_count += 1
+        await profile.save()
+        
+        return profile
+
+
+# Global instance
+player_service = PlayerService()
