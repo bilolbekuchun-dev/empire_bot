@@ -20,7 +20,7 @@ async def run():
     cp, _ = await CommandPermissionsChat.get_or_create(chat_id=chat_id)
     print(f"CommandPermissions: game={cp.game_cmd}, start={cp.start_cmd}, stop={cp.stop_cmd}")
     
-    gc, _ = await GamingOnChat.get_or_create(chat_id=chat_id, bot_id=8755769302)
+    gc, _ = await GamingOnChat.get_or_create(chat_id=chat_id, defaults={"bot_id": 8755769302})
     print(f"GamingOnChat: can_gaming={gc.can_gaming}")
     
     ms, _ = await GroupMoreSet.get_or_create(chat_id=chat_id)
