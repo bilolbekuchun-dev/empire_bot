@@ -39,7 +39,7 @@ async def can_gaming_handler(call: CallbackQuery):
     match len(points):
         case 3:
             me = await call.bot.get_me()
-            gaming_set, _ = await GamingOnChat.get_or_create(chat_id=chat_id, bot_id=me.id)
+            gaming_set, _ = await GamingOnChat.get_or_create(chat_id=chat_id, defaults={"bot_id": me.id})
             await call.message.edit_text(
                 "Guruhda o'yin o'ynashga ruxsat berilsinmi?",
                 reply_markup=can_gaming_btn(chat_id=chat_id, default=gaming_set.can_gaming)
@@ -48,7 +48,7 @@ async def can_gaming_handler(call: CallbackQuery):
         case 4:
             value = points[3]
             me = await call.bot.get_me()
-            gaming_set, _ = await GamingOnChat.get_or_create(chat_id=chat_id, bot_id=me.id)
+            gaming_set, _ = await GamingOnChat.get_or_create(chat_id=chat_id, defaults={"bot_id": me.id})
             new_value = True if value == "1" else False
             if gaming_set.can_gaming != new_value:
                 gaming_set.can_gaming = new_value

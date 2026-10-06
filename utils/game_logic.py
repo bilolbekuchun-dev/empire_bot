@@ -1014,7 +1014,7 @@ async def announce_game_result(game: Game, bot: Bot, chat: Chat, winner_roles: L
 
 async def create_vs_game_handler(message: Message, bot: Bot):
     me = await bot.get_me()
-    gaming_set, _ = await GamingOnChat.get_or_create(bot_id=me.id, chat_id=message.chat.id)
+    gaming_set, _ = await GamingOnChat.get_or_create(chat_id=message.chat.id, defaults={"bot_id": me.id})
     if not gaming_set.can_gaming:
         await message.answer(f"<b>⚠️ {message.from_user.mention_html()} bu guruhda o'yin o'ynash mumkin emas!</b>", parse_mode="HTML")
         return
@@ -1139,7 +1139,7 @@ async def create_vs_game_handler(message: Message, bot: Bot):
 
 async def create_game_handler(message: Message, bot: Bot):
     me = await bot.get_me()
-    gaming_set, _ = await GamingOnChat.get_or_create(bot_id=me.id, chat_id=message.chat.id)
+    gaming_set, _ = await GamingOnChat.get_or_create(chat_id=message.chat.id, defaults={"bot_id": me.id})
     if not gaming_set.can_gaming:
         await message.answer(f"<b>⚠️ {message.from_user.mention_html()} bu guruhda o'yin o'ynash mumkin emas!</b>", parse_mode="HTML")
         return
@@ -1263,7 +1263,7 @@ async def create_game_handler(message: Message, bot: Bot):
 
 async def create_nick_game_handler(message: Message, bot: Bot):
     me = await bot.get_me()
-    gaming_set, _ = await GamingOnChat.get_or_create(bot_id=me.id, chat_id=message.chat.id)
+    gaming_set, _ = await GamingOnChat.get_or_create(chat_id=message.chat.id, defaults={"bot_id": me.id})
     if not gaming_set.can_gaming:
         await message.answer(f"<b>⚠️ {message.from_user.mention_html()} bu guruhda o'yin o'ynash mumkin emas!</b>", parse_mode="HTML")
         return
@@ -1624,7 +1624,7 @@ async def start_game_handler(message: Message, bot: Bot, state: FSMContext = Non
     )
     
     me = await bot.get_me()
-    gaming_set, _ = await GamingOnChat.get_or_create(bot_id=me.id, chat_id=message.chat.id)
+    gaming_set, _ = await GamingOnChat.get_or_create(chat_id=message.chat.id, defaults={"bot_id": me.id})
     if not gaming_set.can_gaming:
         await message.answer(
             f"<b>⚠️ {message.from_user.mention_html()} bu guruhda o'yin o'ynash mumkin emas!</b>", 
