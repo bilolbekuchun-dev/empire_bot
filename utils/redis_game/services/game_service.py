@@ -175,17 +175,28 @@ class GameService:
             from utils.database import redis_client as r
             await r.sadd("global:active_games", str(game_id))
 
+            from utils.i18n import get_chat_lang
+            chat_lang = await get_chat_lang(message.chat.id)
+
             # Join button
             join_markup = (
                 join_vsgame_button(game_id=game_id, team_count=teams_count)
                 if is_vs_game
-                else await join_game_button(game_id)
+                else await join_game_button(game_id, lang=chat_lang)
             )
+
+            reg_start_titles = {
+                "uz": "<b>Ro'yxatdan o'tish boshlandi!</b>",
+                "ru": "<b>Регистрация началась!</b>",
+                "en": "<b>Registration started!</b>",
+                "tr": "<b>Kayıt başladı!</b>"
+            }
+            start_title = reg_start_titles.get(chat_lang, reg_start_titles["uz"])
 
             # Canonical menu send: delete old menu -> send new -> store new id.
             async def _send_menu():
                 return await message.answer(
-                    "<b>Ro'yxatdan o'tish boshlandi!</b>",
+                    start_title,
                     reply_markup=join_markup,
                     parse_mode="HTML",
                 )

@@ -1094,6 +1094,8 @@ async def set_lang_callback(call: CallbackQuery, bot: Bot = None):
         )
 
     if chat_type in ["group", "supergroup"]:
+        from utils.database import redis_client
+        await redis_client.set(f"chat:{chat_id}:lang", lang)
         chat = await Chat.filter(chat_id=chat_id).first()
         if chat:
             chat.lang = lang
