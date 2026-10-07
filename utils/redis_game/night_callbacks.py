@@ -98,9 +98,9 @@ async def _announce_night_action(call: CallbackQuery, gid: int, ph: int, uid: in
         shown = role_display(role)
         if skipped:
             text = f"{shown} bugun dam oladi!"
-        elif role == RoleNames.KOMISSAR and kind == "k":
+        elif role == RoleNames.KOMISSAR and kind in ("k", "otish", "komissar_shoot"):
             text = f"{shown} pistoletini o'qladi..."
-        elif role == RoleNames.KOMISSAR and kind == "c":
+        elif role == RoleNames.KOMISSAR and kind in ("c", "tek", "investigate"):
             text = f"{shown} kimnidir tekshirishga ketdi..."
         else:
             tmpl = NIGHT_ACTION_ANNOUNCE.get(role, "{role} tungi ishga chiqdi...")
