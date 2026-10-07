@@ -138,6 +138,40 @@ class Roles:
             RoleNames.KONCHI: "Madencisiniz. Gece elmas ve altın kazarsınız, tuzaklara dikkat edin!",
             RoleNames.TAQLIDCHI: "Taklitçisiniz. Oyuna rolsüz başlarsınız, ölen ilk oyuncunun rolünü alırsınız.",
             RoleNames.REVERSER: "Reversersiniz. Her gece 1. oyuncunun eylemini 2. oyuncuya yönlendirirsiniz."
+        },
+        "kk": {
+            RoleNames.KOMISSAR: "Сіз қаланың негізгі қорғаушысысыз. Түнде ойыншының ролін тексере аласыз немесе оны атып өлтіре аласыз.",
+            RoleNames.FUQARO: "Сіздің тапсырмаңыз — мафияны табу және дауыс беру кезінде оларды асу.",
+            RoleNames.SERJANT: "Комиссардың көмекшісісіз.",
+            RoleNames.DOKTOR: "Қала дәрігерісіз. Әр түнде бір ойыншыны емдейсіз.",
+            RoleNames.HAMSHIRA: "Медбикесіз. Егер дәрігер қаза тапса, оның орнына дәрігер боласыз.",
+            RoleNames.DAYDI: "Қаңғыбассыз. Түнде біреуді бақылап, кісі өлтіру куәгері болуыңыз мүмкін.",
+            RoleNames.KEZUVCHI: "Кезбесіз. Түнде біреуге ұйқы дәрісін беріп ұйықтатасыз.",
+            RoleNames.OMADLI: "Жолы болғыш азаматсыз. Өлімнен аман қалу ықтималдығыңыз жоғары.",
+            RoleNames.JANOB: "Мырзасыз. Дауысыңыз салмақтырақ.",
+            RoleNames.SOTQIN: "Сатқынсыз. Бейбіт тұрғынсыз, бірақ мафия сізді өз қатарында көреді.",
+            RoleNames.XOYIN: "Бүлікшісіз. Мафияны табуға тырысасыз, 3 рет таба алмасаңыз өлесіз.",
+            RoleNames.QORIQCHI: "Оққағарсыз. Әр түнде бір адамды қорғайсыз.",
+            RoleNames.ZANJIR: "Байланыстырушысыз. Екі адамды байлайсыз; біреуі өлсе, екіншісі де өледі!",
+            RoleNames.DON: "Мафия Донысыз. Түнде бұйрық бересіз.",
+            RoleNames.MAFIA: "Мафиясыз. Донның бұйрығын орындап, түнде аңшылыққа шығасыз.",
+            RoleNames.ADVOKAT: "Адвокатсыз. Дауыс беруде мафияны қорғайсыз.",
+            RoleNames.OVCHI: "Аңшысыз. Әр түнде бір адамды өлтіре аласыз. Мақсатыңыз — бәрін жою!",
+            RoleNames.JURNALIST: "Журналистсіз. Мафия агенті.",
+            RoleNames.AYGOQCHI: "Тыңшысыз. Ойыншылардың ролін мафияға білдіресіз.",
+            RoleNames.QOTIL: "Қаныпезерсіз. Сізден басқа қаладағының бәрі өлуі керек! :)",
+            RoleNames.BORI: "Қасқырсыз. Тарабыңыз сізді кім шабуылдағанына байланысты өзгереді.",
+            RoleNames.AFERIST: "Аферистсіз. Мақсатыңыз — аман қалу!",
+            RoleNames.GAZABDOR: "Жазалаушысыз. Мақсатыңыз — аман қалу және жазалау!",
+            RoleNames.SEHRGAR: "Сиқыршысыз. Түнде екі ойыншының ролін ауыстыра аласыз.",
+            RoleNames.SUIDSID: "Суицидшісіз. Сізді асып өлтipсе сіз ұтасыз! :)",
+            RoleNames.QASOSKOR: "Кек алушысыз. Бейбіт тұрғындарға көмектесіңіз.",
+            RoleNames.QAROQCHI: "Қарақшысыз. Түнде біреудің ақшасын немесе гауһарын ұрлайсыз.",
+            RoleNames.AKTYOR: "Актерсіз. Әр түнде кездейсоқ жаңа роль алып, соны ойнайсыз.",
+            RoleNames.JIN: "Жынсыз. Түнде ойыншыға 3 тілек таңдауын бересіз: 1. Өмір 2. Ақша 3. Өлтіру.",
+            RoleNames.KONCHI: "Шахтерсіз. Түнде гауһар мен алтын қазасыз, тұзақтардан сақтаныңыз!",
+            RoleNames.TAQLIDCHI: "Еліктеушісіз. Бірінші қаза тапқан ойыншының ролін аласыз.",
+            RoleNames.REVERSER: "Реверсерсіз. Әр түнде 1-ойыншының әрекетін 2-ойыншыға бұрасыз."
         }
     }
 
@@ -157,7 +191,8 @@ class Roles:
             "uz": f"Siz - <b>{disp}</b>!",
             "ru": f"Вы — <b>{disp}</b>!",
             "en": f"You are — <b>{disp}</b>!",
-            "tr": f"Sen — <b>{disp}</b>!"
+            "tr": f"Sen — <b>{disp}</b>!",
+            "kk": f"Сіз — <b>{disp}</b>!"
         }
         prefix = prefix_map.get(lang_code, prefix_map["uz"])
         return f"{prefix}\n{desc}"

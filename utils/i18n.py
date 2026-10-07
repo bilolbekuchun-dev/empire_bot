@@ -8,7 +8,8 @@ LANGUAGES = {
     "uz": "🇺🇿 O'zbekcha",
     "ru": "🇷🇺 Русский",
     "en": "🇬🇧 English",
-    "tr": "🇹🇷 Türkçe"
+    "tr": "🇹🇷 Türkçe",
+    "kk": "🇰🇿 Qazaqsha"
 }
 
 DEFAULT_LANG = "uz"
@@ -44,6 +45,12 @@ START_TEXTS = {
         "Ben Mafya Botuyum. Arkadaşlarınızla 45 kişiye kadar Mafya oynamak için beni grubunuza ekleyin! "
         "Detaylar için: {shop_user}\n\n"
         "Beni yönetici yaptıktan sonra oyunu başlatabilirsiniz.."
+    ),
+    "kk": (
+        "<b>Сәлеметсіз бе</b>\n"
+        "Мен Мафия ботымын. Достармен мафия ойнау үшін мені тобыңызға қосыңыз және "
+        "45 адамға дейінгі ойыннан ләззат алыңыз, толық ақпарат үшін: {shop_user}\n\n"
+        "Мені админ еткеннен кейін ойынды бастай аласыз.."
     )
 }
 
@@ -51,21 +58,24 @@ GENDER_PROMPT = {
     "uz": "Davom etishdan oldin jinsingizni tanlang:",
     "ru": "Выберите ваш пол перед продолжением:",
     "en": "Please select your gender before continuing:",
-    "tr": "Devam etmeden önce cinsiyetinizi seçin:"
+    "tr": "Devam etmeden önce cinsiyetinizi seçin:",
+    "kk": "Жалғастырмас бұрын жынысыңызды таңдаңыз:"
 }
 
 GENDER_MALE = {
     "uz": "👦 Yigit / Erkak",
     "ru": "👦 Парень / Мужчина",
     "en": "👦 Male / Man",
-    "tr": "👦 Erkek"
+    "tr": "👦 Erkek",
+    "kk": "👦 Ер адам"
 }
 
 GENDER_FEMALE = {
     "uz": "👧 Qiz / Ayol",
     "ru": "👧 Девушка / Женщина",
     "en": "👧 Female / Woman",
-    "tr": "👧 Kadın"
+    "tr": "👧 Kadın",
+    "kk": "👧 Әйел"
 }
 
 # --------------------------------------------------------------------------
@@ -75,31 +85,36 @@ BTN_CABINET = {
     "uz": "🌐 Shaxsiy kabinet",
     "ru": "🌐 Личный кабинет",
     "en": "🌐 Profile Cabinet",
-    "tr": "🌐 Kişisel Kabine"
+    "tr": "🌐 Kişisel Kabine",
+    "kk": "🌐 Жеке кабинет"
 }
 BTN_ADD_GROUP = {
     "uz": "✅ Guruhga qo'shish",
     "ru": "✅ Добавить в группу",
     "en": "✅ Add to group",
-    "tr": "✅ Gruba ekle"
+    "tr": "✅ Gruba ekle",
+    "kk": "✅ Топқа қосу"
 }
 BTN_PREM_GROUPS = {
     "uz": "🌟 Premium guruhlar",
     "ru": "🌟 Премиум группы",
     "en": "🌟 Premium groups",
-    "tr": "🌟 Premium gruplar"
+    "tr": "🌟 Premium gruplar",
+    "kk": "🌟 Премиум топтар"
 }
 BTN_SUPPORT = {
     "uz": "✍🏻 Savollar uchun",
     "ru": "✍🏻 Вопросы/Поддержка",
     "en": "✍🏻 Support",
-    "tr": "✍🏻 Destek için"
+    "tr": "✍🏻 Destek için",
+    "kk": "✍🏻 Қолдау"
 }
 BTN_CHANNEL = {
     "uz": "📡 Kanal",
     "ru": "📡 Канал",
     "en": "📡 Channel",
-    "tr": "📡 Kanal"
+    "tr": "📡 Kanal",
+    "kk": "📡 Канал"
 }
 
 # --------------------------------------------------------------------------
@@ -221,6 +236,35 @@ PROFILE_LABELS = {
         "btn_prem_groups": "🎲 Premium gruplar",
         "btn_news": "Haberler",
         "btn_back": "⬅️ Geri"
+    },
+    "kk": {
+        "user": "Пайдаланушы",
+        "dollar": "Доллар",
+        "diamond": "Алмаз",
+        "himoya": "Қорғау",
+        "hujjat": "Құжат",
+        "osishdan_himoya": "Асудан қорғау",
+        "qotildan_himoya": "Киллерден қорғау",
+        "miltiq": "Мылтық",
+        "doridan_himoya": "Дәріден қорғау",
+        "maska": "Маска",
+        "slip_himoya": "Сырғанаудан қорғау",
+        "geroy_himoya": "Батырдан қорғау",
+        "wins": "Жеңістер",
+        "games": "Барлық ойындар",
+        "partner": "Сіздің жұбыңыз",
+        "active_roles": "Белсенді рөлдер",
+        "none": "Жоқ",
+        "btn_protections": "🛡 Қорғаулар",
+        "btn_shop": "Дүкен",
+        "btn_para": "Менің жұбым",
+        "btn_buy_diamond": "💎 Сатып алу",
+        "btn_buy_dollar": "💵 Сатып алу",
+        "btn_buy": "Сатып алу",
+        "btn_hero": "🥷 Менің батырым",
+        "btn_prem_groups": "🎲 Премиум топтар",
+        "btn_news": "Жаңалықтар",
+        "btn_back": "⬅️ Артқа"
     }
 }
 
@@ -231,14 +275,16 @@ GAME_OVER_WINNER = {
     "uz": "🎉 <b>O'yin tugadi!</b>\n🏆 <b>Siz yutdingiz!</b> Yutganingiz uchun <b>{reward}{dollar_icon}</b> berildi!\n\n",
     "ru": "🎉 <b>Игра окончена!</b>\n🏆 <b>Вы выиграли!</b> Вам начислено <b>{reward}{dollar_icon}</b>!\n\n",
     "en": "🎉 <b>Game over!</b>\n🏆 <b>You won!</b> You received <b>{reward}{dollar_icon}</b>!\n\n",
-    "tr": "🎉 <b>Oyun bitti!</b>\n🏆 <b>Kazandınız!</b> Ödül olarak <b>{reward}{dollar_icon}</b> kazandınız!\n\n"
+    "tr": "🎉 <b>Oyun bitti!</b>\n🏆 <b>Kazandınız!</b> Ödül olarak <b>{reward}{dollar_icon}</b> kazandınız!\n\n",
+    "kk": "🎉 <b>Ойын аяқталды!</b>\n🏆 <b>Сіз жеңдіңіз!</b> Жеңіс үшін <b>{reward}{dollar_icon}</b> берілді!\n\n"
 }
 
 GAME_OVER_LOSER = {
     "uz": "💀 <b>O'yin tugadi!</b>\n❌ <b>Siz mag'lub bo'ldingiz!</b> Mag'lubiyat uchun <b>{reward}{dollar_icon}</b> berildi!\n\n",
     "ru": "💀 <b>Игра окончена!</b>\n❌ <b>Вы проиграли!</b> За участие начислено <b>{reward}{dollar_icon}</b>!\n\n",
     "en": "💀 <b>Game over!</b>\n❌ <b>You lost!</b> For participating you received <b>{reward}{dollar_icon}</b>!\n\n",
-    "tr": "💀 <b>Oyun bitti!</b>\n❌ <b>Kaybettiniz!</b> Katılımınız için <b>{reward}{dollar_icon}</b> aldınız!\n\n"
+    "tr": "💀 <b>Oyun bitti!</b>\n❌ <b>Kaybettiniz!</b> Katılımınız için <b>{reward}{dollar_icon}</b> aldınız!\n\n",
+    "kk": "💀 <b>Ойын аяқталды!</b>\n❌ <b>Сіз жеңілдіңіз!</b> Қатысқаныңыз үшін <b>{reward}{dollar_icon}</b> берілді!\n\n"
 }
 
 # --------------------------------------------------------------------------
@@ -248,14 +294,16 @@ SUB_REQUIRED_TEXT = {
     "uz": "Iltimos, quyidagi kanal(lar) ga obuna boling va pastdagi \"tekshirish\" tugmasini bosing",
     "ru": "Пожалуйста, подпишитесь на канал(ы) ниже и нажмите кнопку \"Проверить\"",
     "en": "Please subscribe to the channel(s) below and click the \"Check\" button",
-    "tr": "Lütfen aşağıdaki kanala/kanallara abone olun ve \"Kontrol et\" butonuna basın"
+    "tr": "Lütfen aşağıdaki kanala/kanallara abone olun ve \"Kontrol et\" butonuna basın",
+    "kk": "Төмендегі арналдарға жазылып, \"Тексеру\" батырмасын басыңыз"
 }
 
 SUB_CHECK_BTN = {
     "uz": "✅ Tekshirish",
     "ru": "✅ Проверить",
     "en": "✅ Check",
-    "tr": "✅ Kontrol et"
+    "tr": "✅ Kontrol et",
+    "kk": "✅ Тексеру"
 }
 
 # --------------------------------------------------------------------------
@@ -265,14 +313,16 @@ LANG_SELECT_PROMPT = {
     "uz": "🌐 <b>Bot tilini tanlang / Choose language:</b>",
     "ru": "🌐 <b>Выберите язык бота / Choose language:</b>",
     "en": "🌐 <b>Choose bot language / Select language:</b>",
-    "tr": "🌐 <b>Bot dilini seçin / Choose language:</b>"
+    "tr": "🌐 <b>Bot dilini seçin / Choose language:</b>",
+    "kk": "🌐 <b>Бот тілін таңдаңыз / Choose language:</b>"
 }
 
 LANG_CONFIRM = {
     "uz": "✅ Bot tili O'zbek tiliga o'zgartirildi!",
     "ru": "✅ Язык бота изменен на Русский!",
     "en": "✅ Bot language changed to English!",
-    "tr": "✅ Bot dili Türkçe olarak değiştirildi!"
+    "tr": "✅ Bot dili Türkçe olarak değiştirildi!",
+    "kk": "✅ Бот тілі Қазақ тіліне өзгертілді!"
 }
 
 # --------------------------------------------------------------------------
@@ -283,85 +333,99 @@ GAME_TEXTS = {
         "uz": "<b>Tirik o'yinchilar:</b>",
         "ru": "<b>Живые игроки:</b>",
         "en": "<b>Alive players:</b>",
-        "tr": "<b>Hayatta olan oyuncular:</b>"
+        "tr": "<b>Hayatta olan oyuncular:</b>",
+        "kk": "<b>Тиісті ойыншылар:</b>"
     },
     "title_dead_none": {
         "uz": "<b>Tirik o'yinchi qolmadi!</b>\n",
         "ru": "<b>Живых игроков не осталось!</b>\n",
         "en": "<b>No alive players left!</b>\n",
-        "tr": "<b>Hayatta kalan oyuncu kalmadı!</b>\n"
+        "tr": "<b>Hayatta kalan oyuncu kalmadı!</b>\n",
+        "kk": "<b>Тірі ойыншы қалмады!</b>\n"
     },
     "time_night_left": {
         "uz": "Tonggacha ⏳ {time} sekund qoldi",
         "ru": "До утра осталось ⏳ {time} сек.",
         "en": "⏳ {time} seconds left until morning",
-        "tr": "Sabaha ⏳ {time} saniye kaldı"
+        "tr": "Sabaha ⏳ {time} saniye kaldı",
+        "kk": "Таңға дейін ⏳ {time} секунд қалды"
     },
     "time_day_left": {
         "uz": "Kun tugashiga ⏳ {time} sekund qoldi",
         "ru": "До конца дня осталось ⏳ {time} сек.",
         "en": "⏳ {time} seconds left until end of day",
-        "tr": "Günün bitmesine ⏳ {time} saniye kaldı"
+        "tr": "Günün bitmesine ⏳ {time} saniye kaldı",
+        "kk": "Күннің аяқталуына ⏳ {time} секунд қалды"
     },
     "time_vote_left": {
         "uz": "Ovoz berish tugashiga ⏳ {time} sekund qoldi",
         "ru": "До конца голосования осталось ⏳ {time} сек.",
         "en": "⏳ {time} seconds left until end of voting",
-        "tr": "Oylamanın bitmesine ⏳ {time} saniye kaldı"
+        "tr": "Oylamanın bitmesine ⏳ {time} saniye kaldı",
+        "kk": "Дауыс беру аяқталуына ⏳ {time} секунд қалды"
     },
     "night_start": {
         "uz": "🌃 <b>Tun tushdi. Qorong'u tushib, shahar ahl uxlashga ketdi...</b>",
         "ru": "🌃 <b>Наступила ночь. Город заснул...</b>",
         "en": "🌃 <b>Night has fallen. The city has fallen asleep...</b>",
-        "tr": "🌃 <b>Gece oldu. Şehir uykuya daldı...</b>"
+        "tr": "🌃 <b>Gece oldu. Şehir uykuya daldı...</b>",
+        "kk": "🌃 <b>Түн түсті. Қала тұрғындары ұйқыға кетті...</b>"
     },
     "day_start": {
         "uz": "☀️ <b>Kun boshlandi!</b>",
         "ru": "☀️ <b>Наступил день!</b>",
         "en": "☀️ <b>Day has started!</b>",
-        "tr": "☀️ <b>Gündüz başladı!</b>"
+        "tr": "☀️ <b>Gündüz başladı!</b>",
+        "kk": "☀️ <b>Күн басталды!</b>"
     },
     "vote_start": {
         "uz": "<b>Kimga ovoz berasiz?</b>",
         "ru": "<b>За кого вы голосуете?</b>",
         "en": "<b>Who do you vote for?</b>",
-        "tr": "<b>Kime oy veriyorsunuz?</b>"
+        "tr": "<b>Kime oy veriyorsunuz?</b>",
+        "kk": "<b>Кімге дауыс бересіз?</b>"
     },
     "vote_result_hung": {
         "uz": "🪢 Sud qaroriga ko'ra {mention} osildi! Rol: <b>{role}</b>",
         "ru": "🪢 По решению суда {mention} был(а) повешен(а)! Роль: <b>{role}</b>",
         "en": "🪢 By court decision, {mention} was hanged! Role: <b>{role}</b>",
-        "tr": "🪢 Mahkeme kararıyla {mention} asıldı! Rol: <b>{role}</b>"
+        "tr": "🪢 Mahkeme kararıyla {mention} asıldı! Rol: <b>{role}</b>",
+        "kk": "🪢 Сот шешімі бойынша {mention} асылды! Рөлі: <b>{role}</b>"
     },
     "vote_result_tie": {
         "uz": "🤝 Ovozlar teng kelib qoldi! Bugun hech kim osilmadi.",
         "ru": "🤝 Голоса равны! Сегодня никто не повешен.",
         "en": "🤝 Votes are tied! Nobody was hanged today.",
-        "tr": "🤝 Oylar eşit çıktı! Bugün kimse asılmadı."
+        "tr": "🤝 Oylar eşit çıktı! Bugün kimse asılmadı.",
+        "kk": "🤝 Дауыстар тең түсті! Бүгін ешкім асылған жоқ."
     },
     "night_death": {
         "uz": "💀 Tunda {mention} halok bo'ldi. Rol: <b>{role}</b>",
         "ru": "💀 Ночью погиб(ла) {mention}. Роль: <b>{role}</b>",
         "en": "💀 {mention} died during the night. Role: <b>{role}</b>",
-        "tr": "💀 Gece {mention} hayatını kaybetti. Rol: <b>{role}</b>"
+        "tr": "💀 Gece {mention} hayatını kaybetti. Rol: <b>{role}</b>",
+        "kk": "💀 Түнде {mention} қаза тапты. Рөлі: <b>{role}</b>"
     },
     "night_no_deaths": {
         "uz": "🎉 Tunda hech kim halok bo'lmadi! Har kim omon qoldi.",
         "ru": "🎉 Ночью никто не погиб! Все остались живы.",
         "en": "🎉 Nobody died during the night! Everyone survived.",
-        "tr": "🎉 Gece kimse ölmedi! Herkes hayatta kaldı."
+        "tr": "🎉 Gece kimse ölmedi! Herkes hayatta kaldı.",
+        "kk": "🎉 Түнде ешкім қаза тапқан жоқ! Барлығы аман қалды."
     },
     "kom_shoot_announcement": {
         "uz": "🔫 Komissar katani pistoletini o'qladi...",
         "ru": "🔫 Комиссар взвел курок своего пистолета...",
         "en": "🔫 The Detective loaded his gun...",
-        "tr": "🔫 Komiser tabancasını doldurdu..."
+        "tr": "🔫 Komiser tabancasını doldurdu...",
+        "kk": "🔫 Комиссар тапаншасын оқтады..."
     },
     "kom_check_announcement": {
         "uz": "🔍 Komissar shubheli odamni tekshirdi...",
         "ru": "🔍 Комиссар проверил подозрительного человека...",
         "en": "🔍 The Detective investigated a suspect...",
-        "tr": "🔍 Komiser şüpheli bir kişiyi inceledi..."
+        "tr": "🔍 Komiser şüpheli bir kişiyi inceledi...",
+        "kk": "🔍 Комиссар күдікті адамды тексерді..."
     }
 }
 

@@ -550,6 +550,17 @@ body.vip-active .hist-row {
 }
 .dc-day.current .dc-check { background: var(--dollar-gold); color: #2a1a00; }
 .dc-day.current .dc-amt { color: var(--dollar-gold); }
+#daily-claim-btn:disabled,
+#daily-claim-btn.disabled {
+    background: var(--bg-2) !important;
+    color: var(--text-muted, #71717a) !important;
+    border-color: var(--border) !important;
+    opacity: 0.55 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
 
 /* tournament */
 .tournament-hero {
@@ -963,14 +974,6 @@ body.vip-active .hist-row {
 .admin-group-card .agc-meta { font-size: 12px; color: var(--text-2); margin-top: 2px; }
 .admin-group-card .agc-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-2); flex-shrink: 0; }
 .admin-group-card .agc-dot.active { background: var(--gold-bright); box-shadow: 0 0 8px var(--gold-bright); }
-.admin-group-card.is-blocked-group { border-color: #e5484d; background: rgba(229,72,77,0.08); }
-.admin-group-card .agc-blocked-tag { font-size: 11px; font-weight: 600; color: #e5484d; }
-.agc-block-btn {
-    flex-shrink: 0; border: none; cursor: pointer;
-    width: 30px; height: 30px; border-radius: 8px; font-size: 14px; line-height: 1;
-    background: rgba(229,72,77,0.15); color: #e5484d;
-}
-.agc-block-btn.unblock { background: rgba(46,160,67,0.15); color: #2ea043; }
 
 .admin-role-suggest {
     display: none;

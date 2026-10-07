@@ -257,9 +257,10 @@ async def _finalize_role_assignment(
         
         # Send role description
         try:
+            from utils.i18n import get_chat_lang
+            chat_lang = await get_chat_lang(chat_id)
+            rol_matni = Roles.get_by_role(rol, lang=chat_lang)
             user = await User.get(user_id=p.user_id)
-            user_lang = user.lang if (user and user.lang) else "uz"
-            rol_matni = Roles.get_by_role(rol, lang=user_lang)
             await bot.send_message(
                 user.user_id,
                 rol_matni,
