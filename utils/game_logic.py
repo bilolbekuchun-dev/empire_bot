@@ -282,22 +282,25 @@ async def starting_game(game: Game, message: Message, bot: Bot, start=False, par
         await _starting_game_impl(game, message, bot, start=start, paralar=paralar)
     except Exception as e:
         logger.error(f"starting_game ichida kutilmagan xato (game_id={getattr(game, 'id', '?')}): {e}")
+        was_active = False
         try:
-            game = await Game.get_or_none(id=game.id)
-            if game and game.is_active:
-                game.is_active = False
-                game.phase = "end"
-                await game.save()
+            game_obj = await Game.get_or_none(id=game.id)
+            if game_obj and game_obj.is_active:
+                was_active = True
+                game_obj.is_active = False
+                game_obj.phase = "end"
+                await game_obj.save()
         except Exception:
             pass
-        try:
-            await game.fetch_related("chat")
-            await safe_send_message(
-                bot, game.chat.chat_id,
-                "⚠️ O'yinda kutilmagan texnik xatolik yuz berdi, o'yin to'xtatildi. Iltimos, /game bilan qayta boshlang."
-            )
-        except Exception:
-            pass
+        if was_active:
+            try:
+                await game.fetch_related("chat")
+                await safe_send_message(
+                    bot, game.chat.chat_id,
+                    "⚠️ O'yinda kutilmagan texnik xatolik yuz berdi, o'yin to'xtatildi. Iltimos, /game bilan qayta boshlang."
+                )
+            except Exception:
+                pass
 
 async def resume_active_games(bot: Bot):
     """
@@ -1010,7 +1013,11 @@ async def announce_game_result(game: Game, bot: Bot, chat: Chat, winner_roles: L
 """,
         parse_mode="HTML"
     )
-    await redis_client.delete(f"game:{game.id}:actors")
+    try:
+        from utils.database import redis_client
+        await redis_client.delete(f"game:{game.id}:actors")
+    except Exception:
+        pass
 
 async def create_vs_game_handler(message: Message, bot: Bot):
     me = await bot.get_me()
