@@ -19,10 +19,17 @@ def join_vsgame_button(game_id, team_count=2):
     markup.adjust(2)
     return markup.as_markup()
 
-async def join_game_button(game_id):
+async def join_game_button(game_id, lang: str = "uz"):
     markup = InlineKeyboardBuilder()
     bot_base_url = BOT_URL.rstrip('/')
-    markup.button(text="🤵 Qo'shilish", url=f"{bot_base_url}?start=game_{game_id}")
+    btn_text = {
+        "uz": "🤵 Qo'shilish",
+        "ru": "🤵 Присоединиться",
+        "en": "🤵 Join game",
+        "tr": "🤵 Katıl"
+    }
+    btn = btn_text.get(lang, btn_text["uz"])
+    markup.button(text=btn, url=f"{bot_base_url}?start=game_{game_id}")
     markup.adjust(1)
     return markup.as_markup()
 
