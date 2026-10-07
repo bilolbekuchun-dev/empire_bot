@@ -290,6 +290,7 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
         msg_text = (message.text or message.caption or "").strip()
         phase_key = None
         is_game_active = False
+        redis_game_id = None
 
         try:
             from utils.redis_game.repositories.game_repository import game_repository
@@ -302,10 +303,6 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
         except Exception:
             pass
 
-        group_perm: Optional[WriteGroupPermis] = await WriteGroupPermis.filter(
-            chat_id=chat_id
-        ).first()
-
         game: Optional[Game] = None
         if not is_game_active:
             game = await Game.filter(chat__chat_id=chat_id, is_active=True).first()
@@ -315,9 +312,50 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
                     phase_key = p_key
                     is_game_active = True
 
-        # 5) TUN FAZASI UCHUN MAXSUS CHEKLOV:
-        # Adminlar faqat boshiga '!' qo'yib, yoki VIP obunasi borlar yozishi mumkin.
-        # Qolgan barcha xabarlar (shu jumladan owner'ning oddiy xabarlari ham) o'chiriladi!
+        group_perm: Optional[WriteGroupPermis] = await WriteGroupPermis.filter(
+            chat_id=chat_id
+        ).first()
+
+        # 5) O‘YINCHI MA’LUMOTLARINI TEKSHIRISH (Redis hamda DB o'yinlari uchun)
+        is_player = False
+        is_alive = False
+        is_sleep = False
+
+        if message.from_user and (is_game_active or game or redis_game_id):
+            user_id = message.from_user.id
+            if redis_game_id:
+                try:
+                    from utils.redis_game.repositories.player_repository import player_repository
+                    rp = await player_repository.load_player(redis_game_id, user_id)
+                    if rp:
+                        is_player = True
+                        is_alive = bool(rp.is_alive)
+                        is_sleep = bool(getattr(rp, "is_sleep", False))
+                except Exception:
+                    pass
+
+            if not is_player and game:
+                try:
+                    gp = await GamePlayer.filter(game=game, user__user_id=user_id).first()
+                    if gp:
+                        is_player = True
+                        is_alive = bool(gp.is_alive)
+                        is_sleep = bool(getattr(gp, "is_sleep", False))
+                except Exception:
+                    pass
+
+        # 6) O'LGAN YOKI UXLAYOTGAN O'YINCHI TEKSHIRUVI:
+        # O'tgan/o'lgan o'yinchi har qanday vaqtda (kunduzi ham, tunda ham) guruhda yozsa — XABARI DARHOL O'CHIRILADI!
+        if is_player and (not is_alive or is_sleep):
+            if bot_can_delete:
+                await self._delete_quietly(message)
+            return
+
+        # 7) TUN FAZASI UCHUN CHEKLOV:
+        # Tun payti faqat:
+        #   - VIP a'zolar (agar tirik bo'lsa)
+        #   - Adminlar (xabar boshiga '!' qo'yib yozsa)
+        # yozishi mumkin. Qolgan barcha oddiy xabarlar o'chiriladi!
         if is_game_active and phase_key == "night":
             is_vip = False
             if message.from_user:
@@ -344,55 +382,25 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
             if is_admin and msg_text.startswith("!"):
                 return await handler(message, data)
 
+            # Tun fazasida ruxsatsiz yozilgan har qanday xabar o'chiriladi
             if bot_can_delete:
                 await self._delete_quietly(message)
             return
 
-        # 6) Slash komandalar — o‘chiramiz va to‘g‘ridan-to‘g‘ri handlerlarga uzatamiz
+        # 8) Slash buyruqlar (/start, /profile, /give, ! va hk)
         if msg_text and (msg_text.startswith("/") or msg_text.startswith("!")):
             if bot_can_delete:
                 await self._delete_quietly(message)
             return await handler(message, data)
 
-        # 7) Superadmin aniqlash
+        # 9) Superadmin oshkora ruxsati (o'yinda faol o'yinchi bo'lmasa)
         is_superadmin = message.from_user and (message.from_user.id in set(ADMINS))
         if is_superadmin:
             return await handler(message, data)
 
-        # O‘yin bo‘lmasa — hech qanday cheklov yo‘q
+        # O‘yin bo‘lmasa — oddiy xabarlarga ruxsat
         if not is_game_active and not game:
             return await handler(message, data)
-
-        # 8) O‘yinchi ma’lumotlarini tekshirish (Redis hamda DB o'yinlari uchun)
-        is_player = False
-        is_alive = False
-        is_sleep = False
-
-        if message.from_user:
-            user_id = message.from_user.id
-            if active_redis_id:
-                try:
-                    from utils.redis_game.repositories.player_repository import player_repository
-                    rp = await player_repository.load_player(active_redis_id, user_id)
-                    if rp:
-                        is_player = True
-                        is_alive = rp.is_alive
-                        is_sleep = getattr(rp, "is_sleep", False)
-                except Exception:
-                    pass
-
-            if not is_player and game:
-                gp = await GamePlayer.filter(game=game, user__user_id=user_id).first()
-                if gp:
-                    is_player = True
-                    is_alive = gp.is_alive
-                    is_sleep = getattr(gp, "is_sleep", False)
-
-        # 9) O'lik yoki uxlayotgan o'yinchi o'yin davomida yozsa — XABARNI O'CHIRISH!
-        if is_player and (not is_alive or is_sleep):
-            if bot_can_delete:
-                await self._delete_quietly(message)
-            return
 
         # 10) Guruh ruxsatlariga mos ravishda kunduzgi yozish tekshiruvi
         if phase_key in ("day", "afternoon", "morning", "day_actions") and group_perm:
@@ -403,5 +411,4 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
                     await self._delete_quietly(message)
                 return
 
-        # Hammasi joyida: handlerlarga uzatamiz
         return await handler(message, data)
