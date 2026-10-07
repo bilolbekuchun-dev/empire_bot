@@ -265,7 +265,7 @@ async def _finalize_role_assignment(
                 user.user_id,
                 rol_matni,
                 parse_mode="HTML",
-                reply_markup=go_group_button(chat.invite_link)
+                reply_markup=go_group_button(chat.invite_link, lang=chat_lang)
             )
             
             # Increment games count

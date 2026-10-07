@@ -195,13 +195,13 @@ async def _join_game_handler_redis_core(message: Message, bot: Bot, state: FSMCo
                 await player_repo.save_player(existing_player)
                 await message.answer(
                     f"Siz jamoangizni almashtirdingiz!", 
-                    reply_markup=go_group_button(chat.invite_link)
+                    reply_markup=go_group_button(chat.invite_link, lang=user_lang)
                 )
                 await update_players_list_redis(game_id, bot)
                 return
         await message.answer(
             already_texts.get(user_lang, already_texts["uz"]), 
-            reply_markup=go_group_button(chat.invite_link)
+            reply_markup=go_group_button(chat.invite_link, lang=user_lang)
         )
         return
 
@@ -262,7 +262,7 @@ async def _join_game_handler_redis_core(message: Message, bot: Bot, state: FSMCo
         if len(team_players) >= max_team_players:
             await message.answer(
                 f"Kechirasiz, bu jamoasi to'lgan!", 
-                reply_markup=go_group_button(chat.invite_link)
+                reply_markup=go_group_button(chat.invite_link, lang=user_lang)
             )
             return
         
@@ -278,7 +278,7 @@ async def _join_game_handler_redis_core(message: Message, bot: Bot, state: FSMCo
         
         await message.answer(
             joined_texts.get(user_lang, joined_texts["uz"]), 
-            reply_markup=go_group_button(chat.invite_link)
+            reply_markup=go_group_button(chat.invite_link, lang=user_lang)
         )
     else:
         # Normal game - no team
@@ -292,7 +292,7 @@ async def _join_game_handler_redis_core(message: Message, bot: Bot, state: FSMCo
             return
         await message.answer(
             joined_texts.get(user_lang, joined_texts["uz"]), 
-            reply_markup=go_group_button(chat.invite_link)
+            reply_markup=go_group_button(chat.invite_link, lang=user_lang)
         )
     
     # Update player list
