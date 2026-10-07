@@ -217,7 +217,7 @@ async def execute_day_phase_redis(
     
     # Day voting
     # TODO: day_action_redis
-    await bot.send_message(chat.chat_id, "🗳 Ovoz berish boshlandi...")
+    await bot.send_message(chat.chat_id, "Ovoz berish boshlandi...")
     
     # Wait for voting
     await asyncio.sleep(game_times.vote_time)
