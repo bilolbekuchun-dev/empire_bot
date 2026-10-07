@@ -166,10 +166,16 @@ async def _register_action(call: CallbackQuery, default_action_type: str, alert_
                             if send_announce:
                                 await game.fetch_related("chat")
                                 if game.chat and getattr(game.chat, "chat_id", None):
-                                    announce_msg = NIGHT_ACTION_ANNOUNCEMENTS.get(
-                                        actor.role,
-                                        f"{role_display(actor.role)} tungi harakatini amalga oshirdi..."
-                                    )
+                                    if actor.role == RoleNames.KOMISSAR:
+                                        if act_type == "otish":
+                                            announce_msg = f"{role_display(actor.role)} pistoletini o'qladi..."
+                                        else:
+                                            announce_msg = f"{role_display(actor.role)} shubhali shaxsni tekshirdi..."
+                                    else:
+                                        announce_msg = NIGHT_ACTION_ANNOUNCEMENTS.get(
+                                            actor.role,
+                                            f"{role_display(actor.role)} tungi harakatini amalga oshirdi..."
+                                        )
                                     from utils.game_logic import safe_send_message
                                     await safe_send_message(call.bot, game.chat.chat_id, announce_msg, parse_mode="HTML")
                         except Exception as ge:
