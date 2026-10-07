@@ -454,25 +454,96 @@ async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
 
 # Do'kon va Valyutalar
 async def show_shop(call: CallbackQuery):
-    await call.message.edit_text("🛒 <b>Do'kon</b>\n\nBarcha xaridlar va olmoslar WebApp da mavjud!", parse_mode="HTML")
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from aiogram.types import WebAppInfo
+    from config import WEBAPP_URL
+    text = (
+        "🛒 <b>Do'kon bo'limi</b>\n\n"
+        "Barcha anjomlar, himoyalar va olmoslarni sotib olish WebApp ilovamizda mavjud!"
+    )
+    kb = InlineKeyboardBuilder()
+    if WEBAPP_URL:
+        kb.button(text="🌐 Do'konni ochish (WebApp)", web_app=WebAppInfo(url=WEBAPP_URL))
+    kb.button(text="⬅️ Orqaga", callback_data="back_profile")
+    kb.adjust(1)
+    try:
+        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    except Exception:
+        await call.message.answer(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    await call.answer()
 
 async def buy_dollar_callback(call: CallbackQuery):
     await call.answer("Dollar xarid qilish WebApp ilovasi orqali amalga oshiriladi.", show_alert=True)
 
 async def get_dollar_callback(call: CallbackQuery):
-    await call.answer("Dollar olish uchun do'kondan foydalaning.", show_alert=True)
+    await get_diamond_hamyonlar(call)
 
 async def buy_handler(call: CallbackQuery):
     await call.answer("Xarid qabul qilindi!", show_alert=True)
 
 async def open_protections_menu(call: CallbackQuery):
-    await call.message.edit_text("🛡 <b>Himoyalar bo'limi:</b>\n\nHimoyalar holati WebApp da ko'rsatilgan.", parse_mode="HTML")
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from models.user import User, Profile
+    user = await User.filter(user_id=call.from_user.id).first()
+    profile = await Profile.get_or_none(user=user) if user else None
+
+    if not profile:
+        await call.answer("Profil topilmadi.", show_alert=True)
+        return
+
+    text = (
+        "🛡 <b>Sizning himoyalaringiz va anjomlaringiz:</b>\n\n"
+        f"🔰 Tinch axoli himoyasi: <b>{profile.himoya} ta</b>\n"
+        f"🔪 Qotildan himoya: <b>{profile.qotildan_himoya} ta</b>\n"
+        f"🪢 Osishdan himoya: <b>{profile.osishdan_himoya} ta</b>\n"
+        f"🩺 Doridan himoya: <b>{profile.doridan_himoya} ta</b>\n"
+        f"🎯 Miltiq: <b>{profile.miltiq} ta</b>\n"
+        f"📄 Hujjat: <b>{profile.hujjat} ta</b>\n"
+        f"🎭 Maska: <b>{profile.maska} ta</b>\n"
+        f"🚷 Slip himoya: <b>{profile.slip_himoya} ta</b>\n"
+        f"👑 Geroy himoya: <b>{profile.geroy_himoya} ta</b>"
+    )
+
+    kb = InlineKeyboardBuilder()
+    kb.button(text="⬅️ Orqaga", callback_data="back_profile")
+
+    try:
+        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    except Exception:
+        await call.message.answer(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    await call.answer()
 
 async def back_profile(call: CallbackQuery, state):
     await call.message.edit_text("👤 Profil menyusi", reply_markup=get_start_markup())
 
 async def get_diamond_hamyonlar(call: CallbackQuery):
-    await call.answer("Hamyonlar ro'yxati!", show_alert=True)
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from aiogram.types import WebAppInfo
+    from config import WEBAPP_URL
+    from models.user import User, Profile
+    user = await User.filter(user_id=call.from_user.id).first()
+    profile = await Profile.get_or_none(user=user) if user else None
+
+    diamonds = profile.diamond if profile else 0
+    dollars = profile.dollar if profile else 0
+
+    text = (
+        "💰 <b>Balans ma'lumotlari:</b>\n\n"
+        f"💎 Olmoslar: <b>{diamonds:,} ta</b>\n"
+        f"💵 Dollar: <b>{dollars:,} $</b>\n\n"
+        "<i>Olmos va dollarlarni WebApp do'koni orqali xarid qilishingiz mumkin.</i>"
+    )
+    kb = InlineKeyboardBuilder()
+    if WEBAPP_URL:
+        kb.button(text="🛒 Do'konga o'tish (WebApp)", web_app=WebAppInfo(url=WEBAPP_URL))
+    kb.button(text="⬅️ Orqaga", callback_data="back_profile")
+    kb.adjust(1)
+
+    try:
+        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    except Exception:
+        await call.message.answer(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    await call.answer()
 
 async def buy_diamond_hamyonlar(call: CallbackQuery):
     await call.answer("Hamyondan xarid!", show_alert=True)

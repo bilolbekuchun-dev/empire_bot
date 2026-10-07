@@ -107,3 +107,19 @@ async def profile_callback_handler(call: CallbackQuery, bot: Bot):
         await call.message.edit_text(profile_text, reply_markup=kb, parse_mode="HTML")
     except Exception:
         await call.message.answer(profile_text, reply_markup=kb, parse_mode="HTML")
+
+@router.callback_query(F.data == "open_protections")
+async def open_protections_cb(call: CallbackQuery):
+    await others.open_protections_menu(call)
+
+@router.callback_query(F.data.in_(["get_diamond_hamyonlar", "get_diamond", "get_dollar", "get_dollar_hamyonlar"]))
+async def balance_cb(call: CallbackQuery):
+    await others.get_diamond_hamyonlar(call)
+
+@router.callback_query(F.data == "shop")
+async def shop_cb(call: CallbackQuery):
+    await others.show_shop(call)
+
+@router.callback_query(F.data == "prem_groups")
+async def prem_groups_cb(call: CallbackQuery, bot: Bot):
+    await others.get_premium_groups_on_profile(call, bot)
