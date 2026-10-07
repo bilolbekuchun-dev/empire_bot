@@ -34,3 +34,13 @@ def gender_keyboard(lang: str = "uz"):
     m.button(text=GENDER_FEMALE.get(code, GENDER_FEMALE["uz"]), callback_data="gender_select_f")
     m.adjust(2)
     return m.as_markup()
+
+def get_onboard_lang_keyboard():
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🇺🇿 O'zbekcha", callback_data="onboard_lang_uz")
+    builder.button(text="🇷🇺 Русский", callback_data="onboard_lang_ru")
+    builder.button(text="🇬🇧 English", callback_data="onboard_lang_en")
+    builder.button(text="🇹🇷 Türkçe", callback_data="onboard_lang_tr")
+    builder.adjust(2, 2)
+    return builder.as_markup()
+

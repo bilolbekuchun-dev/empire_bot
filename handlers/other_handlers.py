@@ -88,6 +88,51 @@ async def lang_cmd_handler(message: Message):
 async def setlang_cb_handler(call: CallbackQuery):
     await others.set_lang_callback(call)
 
+@router.callback_query(F.data.startswith("onboard_lang_"))
+async def onboard_lang_cb(call: CallbackQuery, bot: Bot, state: FSMContext):
+    from models.user import User
+    from utils.i18n import clean_lang, SUB_REQUIRED_TEXT, GENDER_PROMPT
+    from utils.subscription import get_unsubscribed_channels, build_sub_keyboard
+    from keyboards.main_keyboard import gender_keyboard
+
+    lang = clean_lang(call.data.split("_")[-1])
+    user, _ = await User.get_or_create(
+        user_id=call.from_user.id,
+        defaults={"full_name": call.from_user.full_name or f"User_{call.from_user.id}", "mention": call.from_user.mention_html()}
+    )
+    user.lang = lang
+    await user.save()
+    await state.update_data(onboard_lang_selected=True)
+
+    try:
+        await call.answer()
+    except Exception:
+        pass
+
+    # 2-bosqich: Majburiy obuna
+    unsubscribed = await get_unsubscribed_channels(bot, call.from_user.id)
+    if unsubscribed:
+        prompt = SUB_REQUIRED_TEXT.get(lang, SUB_REQUIRED_TEXT["uz"])
+        kb = build_sub_keyboard(unsubscribed, lang=lang)
+        try:
+            await call.message.edit_text(prompt, reply_markup=kb, parse_mode="HTML")
+        except Exception:
+            await call.message.answer(prompt, reply_markup=kb, parse_mode="HTML")
+        return
+
+    # 3-bosqich: Jins tanlash
+    if not user.gender:
+        prompt = GENDER_PROMPT.get(lang, GENDER_PROMPT["uz"])
+        kb = gender_keyboard(lang)
+        try:
+            await call.message.edit_text(prompt, reply_markup=kb, parse_mode="HTML")
+        except Exception:
+            await call.message.answer(prompt, reply_markup=kb, parse_mode="HTML")
+        return
+
+    # 4-bosqich: Bosh menyu
+    await start.start_call_handler(call)
+
 @router.callback_query(F.data.in_(["back_profile", "open_profile", "my_profile"]))
 async def profile_callback_handler(call: CallbackQuery, bot: Bot):
     from keyboards.user_keyboards import profile_keyboards_on_private
