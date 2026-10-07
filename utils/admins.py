@@ -7,7 +7,7 @@ from models.game_data import Chat, Game, GamePlayer, GamePhase, Action, Vote, Vo
 from models.game_data import Geroys
 from models.game_set import BlockGrousp
 from tortoise.expressions import Q
-from config import MAX_PLAYERS, ADMINS, MINI_ADMINS_GROUP_IDS, CHANNEL_ID
+from config import MAX_PLAYERS, ADMINS, PRIMARY_ADMIN_IDS, MINI_ADMINS_GROUP_IDS, CHANNEL_ID
 from tortoise.expressions import Q
 from datetime import datetime, timedelta, timezone
 
@@ -15,6 +15,15 @@ GROUPS_PER_PAGE = 15
 
 # VIP giveaway holati: {giveaway_id: {"remaining": N, "total": N, "claimed": set()}}
 _vip_giveaways: dict = {}
+
+async def is_bot_admin(user_id: int) -> bool:
+    """Foydalanuvchi static (env/config) yoki dinamik (BotAdmin DB) admin ekanligini tekshiradi."""
+    if not user_id:
+        return False
+    if user_id in ADMINS or user_id in PRIMARY_ADMIN_IDS:
+        return True
+    from models.user import BotAdmin
+    return await BotAdmin.filter(user_id=user_id).exists()
 
 def _vip_giveaway_text(remaining: int, total: int) -> str:
     return (
