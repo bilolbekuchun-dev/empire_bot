@@ -10,18 +10,13 @@ from utils.premium_emojis import (
     parse_emoji_from_message, role_display, get_item_display,
     get_diamond_display, get_dollar_display
 )
-from states.admin_states import AdminEmojiStates, AdminSubStates, AdminBroadcastStates
-from models.user import RequiredChannel
-from utils.admin_panel import execute_broadcast_task
+from states.admin_states import AdminEmojiStates
 from keyboards.admin_keyboard import (
     admin_emoji_main_menu, admin_emoji_roles_categories_menu,
     admin_emoji_roles_list_menu, admin_emoji_weapons_list_menu,
-    admin_emoji_item_actions_menu, admin_back_btn,
-    admin_sub_menu_kb, admin_sub_detail_kb, admin_broadcast_menu_kb
+    admin_emoji_item_actions_menu, admin_back_btn
 )
 from config import ADMINS, PRIMARY_ADMIN_ID, PRIMARY_ADMIN_IDS
-
-
 
 router = Router()
 
@@ -44,18 +39,18 @@ def get_main_panel_text() -> str:
     d_display = get_diamond_display()
     m_display = get_dollar_display()
     text = (
-        "👑 <b>ADMINISTRATOR BOSHQARUV PANELI</b>\n"
+        "🎨 <b>PREMIUM EMOJI BOSHQARUV PANELI</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━━\n"
-        "Bu yerdan o'yin rollari, qurol-aslahalar, Premium Emojilar, "
-        "<b>Majburiy obuna</b> hamda <b>Xabar tarqatish (Broadcast)</b>ni boshqarishingiz mumkin.\n\n"
+        "Bu yerdan o'yin rollari, qurol-aslahalar, olmos va dollar uchun "
+        "maxsus <b>Premium Emojilarni</b> o'rnatishingiz va boshqarishingiz mumkin.\n\n"
         f"• 💎 <b>Olmos:</b> {d_display}\n"
         f"• 💵 <b>Dollar:</b> {m_display}\n\n"
         "<i>Kerakli bo'limni tanlang:</i>"
     )
     return text
 
-@router.message(Command("admin", "panel", "admin_panel", "adm"))
-@router.message(F.text.in_(["🎛 Admin panel", "Admin panel", "/admin", "/panel"]))
+@router.message(Command("admin"))
+@router.message(Command("panel"))
 async def admin_panel_cmd(message: Message, state: FSMContext):
     if not await is_primary_admin(message.from_user.id):
         await message.answer("Ushbu buyruq mavjud emas")
@@ -63,20 +58,6 @@ async def admin_panel_cmd(message: Message, state: FSMContext):
     await state.clear()
     text = get_main_panel_text()
     await message.answer(text, parse_mode="HTML", reply_markup=admin_emoji_main_menu())
-
-@router.message(Command("broadcast", "send_all", "rassilka"))
-async def broadcast_cmd(message: Message, state: FSMContext):
-    if not await is_primary_admin(message.from_user.id):
-        return
-    await state.clear()
-    text = (
-        "📢 <b>XABAR TARQATISH (BROADCAST)</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━\n"
-        "Kimlarga xabar tarqatmoqchisiz?\n"
-        "<i>Kerakli bo'limni tanlang:</i>"
-    )
-    await message.answer(text, parse_mode="HTML", reply_markup=admin_broadcast_menu_kb())
-
 
 @router.callback_query(F.data == "adm_emj_main")
 async def adm_emj_main_cb(call: CallbackQuery, state: FSMContext):
@@ -602,238 +583,3 @@ async def f_tchat(message: Message, bot: Bot):
 @router.message(Command("tchats"), F.chat.type == "private")
 async def f_tchats(message: Message, bot: Bot):
     await statistika.get_detailed_chat_stats(message=message, bot=bot)
-
-
-# ==========================================
-# 📢 MAJBURIIY OBUNA BOSHQARUVI
-# ==========================================
-
-@router.callback_query(F.data == "adm_sub_menu")
-async def adm_sub_menu_cb(call: CallbackQuery, state: FSMContext):
-    if not await is_primary_admin(call.from_user.id):
-        await call.answer("❌ Ruxsat yo'q!", show_alert=True)
-        return
-    await call.answer()
-    await state.clear()
-    channels = await RequiredChannel.all().order_by("-id")
-    text = (
-        "📢 <b>MAJBURIIY OBUNA KANALLARI BOSHQARUVI</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━\n"
-        "Quyida qo'shilgan kanallar ro'yxati keltirilgan.\n"
-        "Yangi kanal qo'shish yoki mavjudlarini o'chirish/faollashtirish uchun tugmalardan foydalaning:"
-    )
-    await call.message.edit_text(text, parse_mode="HTML", reply_markup=admin_sub_menu_kb(channels))
-
-@router.callback_query(F.data == "adm_sub_add")
-async def adm_sub_add_cb(call: CallbackQuery, state: FSMContext):
-    if not await is_primary_admin(call.from_user.id):
-        await call.answer("❌ Ruxsat yo'q!", show_alert=True)
-        return
-    await call.answer()
-    await state.set_state(AdminSubStates.waiting_for_channel)
-    text = (
-        "➕ <b>YANGI KANAL QO'SHISH</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━\n"
-        "Kanalning <b>username</b> (@kanal_nomi), <b>linki</b> (https://t.me/kanal_nomi yoki taklif havolasi) "
-        "yoki <b>ID si</b>ni yuboring.\n\n"
-        "<i>⚠️ Eslatma: Bot ushbu kanalda <b>admin</b> bo'lishi shart, aks holda obunani tekshira olmaydi!</i>"
-    )
-    await call.message.edit_text(text, parse_mode="HTML", reply_markup=admin_back_btn("adm_sub_menu"))
-
-@router.message(AdminSubStates.waiting_for_channel)
-async def adm_sub_save_channel(message: Message, state: FSMContext, bot: Bot):
-    if not await is_primary_admin(message.from_user.id):
-        return
-    
-    raw = message.text.strip() if message.text else ""
-    if not raw:
-        await message.answer("❌ Iltimos, kanal havolasi yoki username yuboring!")
-        return
-
-    channel_id = None
-    username = None
-    invite_link = raw
-    title = "Kanal"
-
-    target = None
-    if raw.startswith("@"):
-        target = raw
-        username = raw
-    elif "t.me/" in raw:
-        parts = raw.split("t.me/")[-1].split("/")
-        candidate = parts[0].strip()
-        if candidate.startswith("+") or candidate.startswith("joinchat"):
-            invite_link = raw
-            target = None
-        else:
-            username = "@" + candidate.lstrip("@")
-            target = username
-            invite_link = raw
-    elif raw.lstrip("-").isdigit():
-        target = int(raw)
-        channel_id = str(raw)
-
-    if target:
-        try:
-            chat = await bot.get_chat(target)
-            title = chat.title or "Kanal"
-            channel_id = str(chat.id)
-            if chat.username:
-                username = f"@{chat.username}"
-                if not invite_link or "t.me" not in invite_link:
-                    invite_link = f"https://t.me/{chat.username}"
-            elif chat.invite_link:
-                invite_link = chat.invite_link
-        except Exception as e:
-            await message.answer(
-                f"⚠️ Chat ma'lumotlarini olishda ogohlantirish: {e}\n"
-                "Kanal baribir saqlanadi. Bot ushbu kanalda admin ekanligiga ishonch hosil qiling!"
-            )
-
-    ch = await RequiredChannel.create(
-        title=title,
-        channel_id=channel_id,
-        invite_link=invite_link,
-        username=username,
-        is_active=True
-    )
-    await state.clear()
-
-    channels = await RequiredChannel.all().order_by("-id")
-    await message.answer(
-        f"✅ <b>Kanal muvaffaqiyatli qo'shildi!</b>\n\n"
-        f"📌 Nom: <b>{ch.title}</b>\n"
-        f"🔗 Havola: {ch.invite_link}\n"
-        f"🆔 ID: <code>{ch.channel_id or 'Noma’lum'}</code>",
-        parse_mode="HTML",
-        reply_markup=admin_sub_menu_kb(channels)
-    )
-
-@router.callback_query(F.data.startswith("adm_sub_info_"))
-async def adm_sub_info_cb(call: CallbackQuery):
-    if not await is_primary_admin(call.from_user.id):
-        await call.answer("❌ Ruxsat yo'q!", show_alert=True)
-        return
-    ch_id = int(call.data.split("_")[-1])
-    ch = await RequiredChannel.get_or_none(id=ch_id)
-    if not ch:
-        await call.answer("Kanal topilmadi!", show_alert=True)
-        return
-        
-    status = "🟢 Faol" if ch.is_active else "🔴 Faol emas"
-    cid = ch.channel_id or "Mavjud emas"
-    uname = ch.username or "Mavjud emas"
-    text = (
-        f"📢 <b>KANAL MA'LUMOTLARI</b>\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"📌 Nomi: <b>{ch.title}</b>\n"
-        f"🔗 Havola: {ch.invite_link}\n"
-        f"🆔 ID: <code>{cid}</code>\n"
-        f"👤 Username: {uname}\n"
-        f"⚡️ Holati: <b>{status}</b>"
-    )
-    await call.message.edit_text(text, parse_mode="HTML", reply_markup=admin_sub_detail_kb(ch.id, ch.is_active))
-    await call.answer()
-
-@router.callback_query(F.data.startswith("adm_sub_toggle_"))
-async def adm_sub_toggle_cb(call: CallbackQuery):
-    if not await is_primary_admin(call.from_user.id):
-        await call.answer("❌ Ruxsat yo'q!", show_alert=True)
-        return
-    ch_id = int(call.data.split("_")[-1])
-    ch = await RequiredChannel.get_or_none(id=ch_id)
-    if not ch:
-        await call.answer("Kanal topilmadi!", show_alert=True)
-        return
-    ch.is_active = not ch.is_active
-    await ch.save()
-    
-    status = "🟢 Faol" if ch.is_active else "🔴 Faol emas"
-    cid = ch.channel_id or "Mavjud emas"
-    uname = ch.username or "Mavjud emas"
-    text = (
-        f"📢 <b>KANAL MA'LUMOTLARI</b>\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"📌 Nomi: <b>{ch.title}</b>\n"
-        f"🔗 Havola: {ch.invite_link}\n"
-        f"🆔 ID: <code>{cid}</code>\n"
-        f"👤 Username: {uname}\n"
-        f"⚡️ Holati: <b>{status}</b>"
-    )
-    await call.message.edit_text(text, parse_mode="HTML", reply_markup=admin_sub_detail_kb(ch.id, ch.is_active))
-    await call.answer(f"Kanal holati ozgartirildi: {status}")
-
-@router.callback_query(F.data.startswith("adm_sub_del_"))
-async def adm_sub_del_cb(call: CallbackQuery):
-    if not await is_primary_admin(call.from_user.id):
-        await call.answer("❌ Ruxsat yo'q!", show_alert=True)
-        return
-    ch_id = int(call.data.split("_")[-1])
-    ch = await RequiredChannel.get_or_none(id=ch_id)
-    if ch:
-        await ch.delete()
-        await call.answer("Kanal o'chirildi!", show_alert=True)
-    else:
-        await call.answer()
-    
-    channels = await RequiredChannel.all().order_by("-id")
-    text = (
-        "📢 <b>MAJBURIIY OBUNA KANALLARI BOSHQARUVI</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━\n"
-        "Quyida qo'shilgan kanallar ro'yxati keltirilgan.\n"
-        "Yangi kanal qo'shish yoki mavjudlarini o'chirish/faollashtirish uchun tugmalardan foydalaning:"
-    )
-    await call.message.edit_text(text, parse_mode="HTML", reply_markup=admin_sub_menu_kb(channels))
-
-
-# ==========================================
-# 📢 XABAR TARQATISH (BROADCAST)
-# ==========================================
-
-@router.callback_query(F.data == "adm_broadcast")
-async def adm_broadcast_menu_cb(call: CallbackQuery, state: FSMContext):
-    if not await is_primary_admin(call.from_user.id):
-        await call.answer("❌ Ruxsat yo'q!", show_alert=True)
-        return
-    await call.answer()
-    await state.clear()
-    text = (
-        "📢 <b>XABAR TARQATISH (BROADCAST)</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━\n"
-        "Kimlarga xabar tarqatmoqchisiz?\n"
-        "<i>Kerakli bo'limni tanlang:</i>"
-    )
-    await call.message.edit_text(text, parse_mode="HTML", reply_markup=admin_broadcast_menu_kb())
-
-@router.callback_query(F.data.in_(["adm_bcast_users", "adm_bcast_groups"]))
-async def adm_bcast_target_cb(call: CallbackQuery, state: FSMContext):
-    if not await is_primary_admin(call.from_user.id):
-        await call.answer("❌ Ruxsat yo'q!", show_alert=True)
-        return
-    await call.answer()
-    target = "users" if call.data == "adm_bcast_users" else "groups"
-    await state.set_state(AdminBroadcastStates.waiting_for_message)
-    await state.update_data(bcast_target=target)
-    
-    target_str = "Foydalanuvchilarga" if target == "users" else "Guruhlarga"
-    text = (
-        f"📢 <b>{target_str.upper()} XABAR TARQATISH</b>\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"Tarqatmoqchi bo'lgan xabaringizni yuboring (Matn, Rasm, Video, Stiker yoki Forward xabar).\n\n"
-        f"<i>Xabar o'z holaticha barcha {target_str.lower()}ga yetkaziladi.</i>"
-    )
-    await call.message.edit_text(text, parse_mode="HTML", reply_markup=admin_back_btn("adm_broadcast"))
-
-@router.message(AdminBroadcastStates.waiting_for_message)
-async def adm_bcast_send_msg(message: Message, state: FSMContext, bot: Bot):
-    if not await is_primary_admin(message.from_user.id):
-        return
-    data = await state.get_data()
-    target = data.get("bcast_target", "users")
-    await state.clear()
-
-    from asyncio import create_task
-    create_task(execute_broadcast_task(bot=bot, target=target, message=message, admin_id=message.from_user.id))
-
-
-

@@ -762,24 +762,38 @@ async def give_stat(message: Message, bot: Bot):
     await message.answer(top_text, parse_mode="HTML")
 
 async def show_richest_users(message: Message):
-    dollar_tops = await Profile.all().prefetch_related("user").order_by("-dollar").limit(10)
-    diamond_tops = await Profile.all().prefetch_related("user").order_by("-diamond").limit(10)
-
-    # Batch VIP check instead of N+1 queries
-    all_user_ids = {p.user_id for p in dollar_tops} | {p.user_id for p in diamond_tops}
-    vip_ids = set(await VipUser.filter(user_id__in=all_user_ids).values_list("user_id", flat=True)) if all_user_ids else set()
-
-    text = "<b>💵 Eng boylar (Dollar bo‘yicha)</b>\n"
-    for idx, prof in enumerate(dollar_tops, 1):
-        is_vip = prof.user_id in vip_ids
-        text += f"{'⭐' if is_vip else idx}. {prof.user.full_name} — {prof.dollar}💵\n"
-
-    text += "\n<b>💎 Eng boylar (Olmos bo‘yicha)</b>\n"
-    for idx, prof in enumerate(diamond_tops, 1):
-        is_vip = prof.user_id in vip_ids
-        text += f"{'⭐' if is_vip else idx}. {prof.user.full_name} — {prof.diamond}💎\n"
-
-    await message.answer(text, parse_mode="HTML")
+    import html
+    try:
+        dollar_tops = await Profile.all().prefetch_related("user").order_by("-dollar").limit(10)
+        diamond_tops = await Profile.all().prefetch_related("user").order_by("-diamond").limit(10)
+
+        all_user_ids = {p.user_id for p in dollar_tops if p.user} | {p.user_id for p in diamond_tops if p.user}
+        vip_ids = set(await VipUser.filter(user_id__in=all_user_ids).values_list("user_id", flat=True)) if all_user_ids else set()
+
+        text_lines = ["<b>💵 Eng boylar (Dollar bo‘yicha)</b>"]
+        for idx, prof in enumerate(dollar_tops, 1):
+            if not prof.user:
+                continue
+            is_vip = prof.user_id in vip_ids
+            name = html.escape(prof.user.full_name or "Foydalanuvchi")
+            amt = prof.dollar or 0
+            text_lines.append(f"{'⭐' if is_vip else idx}. {name} — {amt:,}💵")
+
+        text_lines.append("\n<b>💎 Eng boylar (Olmos bo‘yicha)</b>")
+        for idx, prof in enumerate(diamond_tops, 1):
+            if not prof.user:
+                continue
+            is_vip = prof.user_id in vip_ids
+            name = html.escape(prof.user.full_name or "Foydalanuvchi")
+            amt = prof.diamond or 0
+            text_lines.append(f"{'⭐' if is_vip else idx}. {name} — {amt:,}💎")
+
+        text = "\n".join(text_lines)
+        await message.answer(text, parse_mode="HTML")
+    except Exception as e:
+        import logging
+        logging.exception(f"show_richest_users error: {e}")
+        await message.answer("❌ Boylar ro'yxatini yuklashda xatolik yuz berdi.")
 
 async def show_richest_users_in_this_chat(message: Message):
     if message.from_user.id not in ADMINS:

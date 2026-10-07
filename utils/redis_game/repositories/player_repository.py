@@ -107,6 +107,28 @@ class PlayerRepository:
     async def delete_ball(game_id: int, user_id: int):
         """Player ball ma'lumotini o'chirish."""
         await r.delete(f"game:{game_id}:player:{user_id}:ball")
+    
+    @staticmethod
+    async def get_alive_players_count(game_id: int) -> int:
+        """O'yindagi tirik playerlar sonini olish (optimizatsiya qilingan)."""
+        player_ids = await PlayerRepository.get_player_ids(game_id)
+        alive_count = 0
+        for player_id in player_ids:
+            player = await game_repo.load_player(game_id, player_id)
+            if player and player.is_alive:
+                alive_count += 1
+        return alive_count
+    
+    @staticmethod
+    async def get_dead_players_count(game_id: int) -> int:
+        """O'yindagi o'lgan playerlar sonini olish (optimizatsiya qilingan)."""
+        player_ids = await PlayerRepository.get_player_ids(game_id)
+        dead_count = 0
+        for player_id in player_ids:
+            player = await game_repo.load_player(game_id, player_id)
+            if player and not player.is_alive:
+                dead_count += 1
+        return dead_count
 
 
 # Global instance

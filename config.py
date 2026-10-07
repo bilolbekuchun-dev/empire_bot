@@ -7,10 +7,9 @@ load_dotenv()
 TOKEN = os.getenv("TOKEN")
 POSTGRES_URL = os.getenv("POSTGRES_URL")
 
-TELEGRAM_USERBOT_API_ID = int(os.getenv("TELEGRAM_USERBOT_API_ID") or 0)
+TELEGRAM_USERBOT_API_ID = int(os.getenv("TELEGRAM_USERBOT_API_ID", "0"))
 TELEGRAM_USERBOT_API_HASH = os.getenv("TELEGRAM_USERBOT_API_HASH")
 TELEGRAM_USERBOT_SESSION = os.path.join(os.path.dirname(__file__), "userbot_session", "nft_userbot")
-os.makedirs(os.path.dirname(TELEGRAM_USERBOT_SESSION), exist_ok=True)
 
 # BOT_URL = "https://t.me/xonmafiabot"
 
@@ -21,18 +20,20 @@ os.makedirs(os.path.dirname(TELEGRAM_USERBOT_SESSION), exist_ok=True)
 # BOT_URL=https://t.me/UnvMafia4Bot
 # BOT_URL=https://t.me/UnvMafiaSpeedBot
 
-BOT_URL = os.getenv("BOT_URL", "")
+BOT_URL = os.getenv("BOT_URL", "https://t.me/test_empire_bot")
+WEBAPP_URL = os.getenv("WEBAPP_URL", "https://empiremafiaweb.netlify.app")
 PORT = os.getenv("PORT")
+
 MAX_PLAYERS = 45
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 ADMINS = os.getenv("ADMINS")
 ADMINS = [int(x.strip()) for x in ADMINS.split(",") if x.strip()] if ADMINS else []
-mini_admins = os.getenv("MINI_ADMINS_GROUP_IDS")
-MINI_ADMINS_GROUP_IDS = int(mini_admins.strip()) if mini_admins and mini_admins.strip() else 0
 env_primary_id = os.getenv("PRIMARY_ADMIN_ID")
 PRIMARY_ADMIN_ID = int(env_primary_id) if env_primary_id else (ADMINS[0] if ADMINS else 0)
 PRIMARY_ADMIN_IDS = ({PRIMARY_ADMIN_ID} | set(ADMINS)) - {0}
+mini_admins = os.getenv("MINI_ADMINS_GROUP_IDS")
+MINI_ADMINS_GROUP_IDS = int(mini_admins.strip()) if mini_admins and mini_admins.strip() else 0
 
 # CHANNEL_ID=-1003211567265
 # CHANNEL_USERNAME=@xonmafiabotnews
@@ -60,8 +61,8 @@ GEROY_MARKET_CHANNEL_URL = os.getenv("GEROY_MARKET_CHANNEL_URL", "https://t.me/g
 # real Telegram chatga ega emas, shuning uchun unga xabar yuborilmaydi (ADMINS ga yo'naltiriladi).
 GEROY_SHOP_SYSTEM_USER_ID = int(os.getenv("GEROY_SHOP_SYSTEM_USER_ID", "777000000001"))
 
-WEBAPP_URL = os.getenv("WEBAPP_URL", "https://empiremafiaweb.netlify.app")
-REDIS_GAME_ENABLED = os.getenv("REDIS_GAME_ENABLED", "false").lower() in ("true", "1", "yes")
+# Redis Game Migration Feature Flag
+REDIS_GAME_ENABLED = False
 
 tinch_rollar = [
     RoleNames.KOMISSAR, RoleNames.SERJANT, RoleNames.DAYDI,

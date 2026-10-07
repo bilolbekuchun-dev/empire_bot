@@ -7,21 +7,27 @@ from random import shuffle
 from random import choice, randint
 from utils.vsgame import TeamCOlors
 
+def _get_bot_url():
+    from config import BOT_URL
+    if BOT_URL and BOT_URL.startswith("http"):
+        return BOT_URL.rstrip("/")
+    return "https://t.me/test_empire_bot"
+
 def join_vsgame_button(game_id, team_count=2):
     markup = InlineKeyboardBuilder()
+    bot_url = _get_bot_url()
     i = 1
-    bot_base_url = BOT_URL.rstrip('/')
     for color_name, color_value in TeamCOlors.all_colors_dict().items():
         if i > team_count:
             break
-        markup.button(text=color_value, url=f"{bot_base_url}?start=vsgame_{game_id}_{color_name}")
+        markup.button(text=color_value, url=f"{bot_url}?start=vsgame_{game_id}_{color_name}")
         i += 1
     markup.adjust(2)
     return markup.as_markup()
 
 async def join_game_button(game_id, lang: str = "uz"):
     markup = InlineKeyboardBuilder()
-    bot_base_url = BOT_URL.rstrip('/')
+    bot_url = _get_bot_url()
     btn_text = {
         "uz": "🤵 Qo'shilish",
         "ru": "🤵 Присоединиться",
@@ -29,15 +35,8 @@ async def join_game_button(game_id, lang: str = "uz"):
         "tr": "🤵 Katıl"
     }
     btn = btn_text.get(lang, btn_text["uz"])
-    markup.button(text=btn, url=f"{bot_base_url}?start=game_{game_id}")
+    markup.button(text=btn, url=f"{bot_url}?start=game_{game_id}")
     markup.adjust(1)
-    return markup.as_markup()
-
-def build_vote_like_keyboard(target_id: int, phase_id: int, likes: int = 0, dislikes: int = 0):
-    markup = InlineKeyboardBuilder()
-    markup.button(text=f"👍 {likes}", callback_data=f"like_{target_id}_{phase_id}")
-    markup.button(text=f"👎 {dislikes}", callback_data=f"dislike_{target_id}_{phase_id}")
-    markup.adjust(2)
     return markup.as_markup()
 
 async def jin_choice_buttons(phase_id, target_user_id):
@@ -165,9 +164,16 @@ async def action_buttons(user_id, role, players: List[GamePlayer], phase_id, vsg
         prefix += "choice_"
 
     if kom:
-        builder.button(text="Tekshirish", callback_data=f"{prefix}tanla_tek_{phase_id}")
-        builder.button(text="O'ldirish",  callback_data=f"{prefix}tanla_otish_{phase_id}")
-        builder.adjust(2)
+        builder.button(text="🔍 Tekshirish", callback_data=f"{prefix}tanla_tek_{phase_id}")
+        builder.button(text="🔫 O'ldirish",  callback_data=f"{prefix}tanla_otish_{phase_id}")
+        current_player = await GamePlayer.filter(user__user_id=user_id, is_alive=True).first()
+        if current_player and not getattr(current_player, "kom_is_upgraded", False):
+            checks = getattr(current_player, "kom_success_checks", 0)
+            learn_label = "📚 O'rganish (Bosh Kom)" if checks == 0 else f"📚 O'rganish (Bosh Kom) ({checks}/3)"
+            builder.button(text=learn_label, callback_data=f"learnbosh_{phase_id}")
+            builder.adjust(2, 1)
+        else:
+            builder.adjust(2)
         return builder.as_markup()
     if miltiq:
         builder.button(text="Ha", callback_data=f"{prefix}miltiq_ha_{phase_id}")
@@ -179,7 +185,6 @@ async def action_buttons(user_id, role, players: List[GamePlayer], phase_id, vsg
         builder.button(text="O'ldirish",  callback_data=f"{prefix}tanla_otish_{phase_id}")
         builder.adjust(2)
         return builder.as_markup()
-    current_player = next((p for p in players if (hasattr(p, 'user') and getattr(p.user, 'user_id', None) == user_id) or getattr(p, 'user_id', None) == user_id), None)
     for player in players:
         await player.fetch_related("user")
         targ_id = player.user.user_id
@@ -197,11 +202,11 @@ async def action_buttons(user_id, role, players: List[GamePlayer], phase_id, vsg
                     continue
             else:
                 continue
-        if kezuv and current_player and targ_id == getattr(current_player, "last_visited_user_id", None):
+        if kezuv and targ_id == getattr(player, "last_visited_user_id", None):
             continue
-        if role in [RoleNames.DAYDI, RoleNames.QOTIL, RoleNames.AFERIST, RoleNames.QORIQCHI] and current_player and targ_id == getattr(current_player, "last_visited_user_id", None):
+        if role in [RoleNames.DAYDI, RoleNames.QOTIL, RoleNames.AFERIST, RoleNames.QORIQCHI] and targ_id == getattr(player, "last_visited_user_id", None):
             continue
-        if role == RoleNames.JURNALIST and current_player and targ_id == getattr(current_player, "last_visited_user_id", None):
+        if role == RoleNames.JURNALIST and targ_id == getattr(player, "last_visited_user_id", None):
             continue 
 
         if role == RoleNames.KOMISSAR and targ_role == RoleNames.SERJANT:
@@ -317,24 +322,8 @@ def geroy_action_btn(players, phase_id, action, vsgame=False, nik=None):
 
 async def qaroqchi_action_button(role, phase_id):
     markup = InlineKeyboardBuilder()
-    markup.button(text="💰 Pul olish", callback_data=f"{role}_pul_{phase_id}")
-    markup.button(text="❤️ Jon olish", callback_data=f"{role}_jon_{phase_id}")
+    markup.button(text="Pul olish", callback_data=f"{role}_pul_{phase_id}")
+    markup.button(text="Jon olish", callback_data=f"{role}_jon_{phase_id}")
     markup.button(text="🚷 O'tkazib yuborish", callback_data=f"{role}_skype_{phase_id}")
     markup.adjust(2)
-    return markup.as_markup()
-
-async def qaroqchi_targets_button(action_type: str, players, phase_id, vsgame=False, nik=None, actor_user_id=None):
-    markup = InlineKeyboardBuilder()
-    colors = TeamCOlors.all_colors_dict() if vsgame else {}
-    for p in players:
-        await p.fetch_related("user")
-        if not p.is_alive:
-            continue
-        if actor_user_id and p.user.user_id == actor_user_id:
-            continue
-        name = p.user.full_name if not nik else nik
-        if vsgame and p.team:
-            name = f"{colors.get(p.team, '')}{name}"
-        markup.button(text=name, callback_data=f"{RoleNames.QAROQCHI}_{action_type}_{p.user.user_id}_{phase_id}")
-    markup.adjust(1)
     return markup.as_markup()

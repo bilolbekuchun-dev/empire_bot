@@ -212,8 +212,7 @@ async def process_vip_emoji_message(message: Message, state: FSMContext):
     await vip_user.save()
 
     await message.answer(
-        f"✅ VIP status emojisi muvaffaqiyatli o'rnatildi: {vip_user.emoji_char}\n\n"
-        f"<i>Ushbu emoji o'yinlarda tirik o'yinchilar ro'yxatida ismingiz oldidan ko'rinib turadi!</i>",
+        f"✅ VIP status emojisi muvaffaqiyatli o'rnatildi: {vip_user.emoji_char}",
         parse_mode="HTML"
     )
 

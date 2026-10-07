@@ -111,7 +111,7 @@ class CommandPermissionsChat(models.Model):
 
 class WriteGroupPermis(models.Model):
     chat_id = fields.BigIntField(unique=True)
-    night = fields.CharField(max_length=20, default="ega") 
+    night = fields.CharField(max_length=20, default="alive") 
     day = fields.CharField(max_length=20, default="alive")
     updated_at = fields.DatetimeField(auto_now=True)
 

@@ -138,6 +138,7 @@ def open_settings_button(chat_id):
     builder.button(text="Buyruqlarga ruxsatlar", callback_data=f"set-cmdperm_{chat_id}")
     builder.button(text="Yozishni cheklash", callback_data=f"set-wgroupperm_{chat_id}")
     builder.button(text="O'yin modini sozlash", callback_data=f"set-gmode_{chat_id}")
+    # builder.button(text="Nik to'plamlari", callback_data=f"set-nickpacks_{chat_id}")
     builder.button(text="Boshqa sozlamalar", callback_data=f"set-more_{chat_id}")
     builder.button(text="Chiqish", callback_data=f"del_msg")
     builder.adjust(1)

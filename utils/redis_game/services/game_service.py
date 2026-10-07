@@ -32,7 +32,10 @@ class GameService:
         """
         # Bot va guruh tekshirish
         me = await bot.get_me()
-        gaming_set, _ = await GamingOnChat.get_or_create(chat_id=message.chat.id, defaults={"bot_id": me.id})
+        gaming_set, _ = await GamingOnChat.get_or_create(
+            bot_id=me.id,
+            chat_id=message.chat.id
+        )
         
         if not gaming_set.can_gaming:
             await message.answer(
@@ -113,73 +116,89 @@ class GameService:
             if teams_count < 2:
                 return None
         
-        # Eski o'yin tekshirish
-        active_game_id = await game_repository.get_active_game(message.chat.id)
-        if active_game_id:
-            old_game = await game_repository.load_game(active_game_id)
-            if old_game:
-                if old_game.phase == "waiting":
-                    # Eski xabarni o'chirish
-                    try:
-                        await bot.delete_message(
-                            chat_id=message.chat.id,
-                            message_id=old_game.message_id
-                        )
-                    except Exception:
-                        pass
-                    # Yangi xabar yuborish (player list bilan)
-                    from utils.redis_game.handlers import update_players_list_redis
-                    await update_players_list_redis(active_game_id, bot, new_msg=True)
-                return None
-        
-        # Game mode
-        gmode = await GameModeSet.filter(chat_id=chat.chat_id).first()
-        if not gmode:
-            gmode = await GameModeSet.create(chat_id=chat.chat_id)
-        
-        mode = f"{gmode.mode_name}:vsgame{teams_count}" if is_vs_game else gmode.mode_name
-        
-        # Game yaratish
-        game_id = await game_repository.generate_id()
-        
-        game_state = GameState(
-            game_id=game_id,
-            chat_id=message.chat.id,
-            creator_id=message.from_user.id,
-            phase="waiting",
-            mode=mode,
-            is_active=True,
-            message_id=0,
-            created_at=datetime.now(timezone.utc)
+        # `/game` wins over a `/start` still inside its arbitration window.
+        from utils.redis_game.start_arbitration import cancel_pending_start
+        await cancel_pending_start(message.chat.id)
+
+        # Serialize the entire menu decision per chat so concurrent `/game`
+        # handlers can never read a stale message id or create duplicate menus.
+        from utils.redis_game.menu_manager import (
+            get_chat_lock,
+            replace_menu_locked,
+            get_canonical_message_id,
+            set_canonical_message_id,
         )
-        
-        # Redis ga saqlash
-        await game_repository.save_game(game_state, ttl_sec=86400)
-        await game_repository.add_active_game(message.chat.id, game_id)
-        
-        # Join button
-        join_markup = (
-            join_vsgame_button(game_id=game_id, team_count=teams_count)
-            if is_vs_game
-            else await join_game_button(game_id)
-        )
-        
-        # Xabar yuborish
-        msg = await message.answer(
-            f"<b>Ro'yxatdan o'tish boshlandi!</b>",
-            reply_markup=join_markup,
-            parse_mode="HTML"
-        )
-        
-        try:
-            await msg.pin()
-        except Exception:
-            pass
-        
-        # Message ID yangilash
-        await game_repository.update_game_field(game_id, "message_id", msg.message_id)
-        
-        return game_state
+
+        async with get_chat_lock(message.chat.id):
+            # Eski o'yin tekshirish (read happens INSIDE the critical section)
+            active_game_id = await game_repository.get_active_game(message.chat.id)
+            if active_game_id:
+                old_game = await game_repository.load_game(active_game_id)
+                if old_game:
+                    if old_game.phase == "waiting":
+                        # Migrate legacy state: adopt the game's own message id as
+                        # canonical when none is tracked yet, so the refresh below
+                        # deletes the correct (old) menu instead of orphaning it.
+                        if old_game.message_id and await get_canonical_message_id(message.chat.id) is None:
+                            await set_canonical_message_id(message.chat.id, old_game.message_id)
+                        # Yangi player-list xabarini yuborish (lock allaqachon olingan)
+                        from utils.redis_game.handlers import update_players_list_redis
+                        await update_players_list_redis(active_game_id, bot, new_msg=True, _locked=True)
+                    return None
+
+            # Game mode
+            gmode = await GameModeSet.filter(chat_id=chat.chat_id).first()
+            if not gmode:
+                gmode = await GameModeSet.create(chat_id=chat.chat_id)
+
+            mode = f"{gmode.mode_name}:vsgame{teams_count}" if is_vs_game else gmode.mode_name
+
+            # Game yaratish
+            game_id = await game_repository.generate_id()
+
+            game_state = GameState(
+                game_id=game_id,
+                chat_id=message.chat.id,
+                creator_id=message.from_user.id,
+                phase="waiting",
+                mode=mode,
+                is_active=True,
+                message_id=0,
+                created_at=datetime.now(timezone.utc)
+            )
+
+            # Redis ga saqlash
+            await game_repository.save_game(game_state, ttl_sec=86400)
+            await game_repository.add_active_game(message.chat.id, game_id)
+
+            # Add to global active games set for optimized lookups
+            from utils.database import redis_client as r
+            await r.sadd("global:active_games", str(game_id))
+
+            # Join button
+            join_markup = (
+                join_vsgame_button(game_id=game_id, team_count=teams_count)
+                if is_vs_game
+                else await join_game_button(game_id)
+            )
+
+            # Canonical menu send: delete old menu -> send new -> store new id.
+            async def _send_menu():
+                return await message.answer(
+                    "<b>Ro'yxatdan o'tish boshlandi!</b>",
+                    reply_markup=join_markup,
+                    parse_mode="HTML",
+                )
+
+            msg = await replace_menu_locked(message.chat.id, bot, _send_menu, game_id=game_id)
+
+            if msg:
+                try:
+                    await msg.pin()
+                except Exception:
+                    pass
+
+            return game_state
     
     @staticmethod
     async def end_game(game_id: int, save_to_db: bool = True):
@@ -203,6 +222,10 @@ class GameService:
         
         # Active games dan olib tashlash
         await game_repository.remove_active_game(game.chat_id, game_id)
+        
+        # Remove from global active games set
+        from utils.database import redis_client as r
+        await r.srem("global:active_games", str(game_id))
         
         # Statistika saqlash
         if save_to_db:

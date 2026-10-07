@@ -8,7 +8,7 @@ from utils.premium_emojis import (
 )
 
 def admin_emoji_main_menu() -> InlineKeyboardMarkup:
-    """Asosiy Admin Panel menyusi"""
+    """Asosiy Premium Emoji Admin Panel menyusi"""
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text="🎭 Rollar emojilari", callback_data="adm_emj_roles_menu"),
@@ -21,10 +21,6 @@ def admin_emoji_main_menu() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text=f"💵 Dollar ({m_display})", callback_data="adm_emj_currency_dollar")
     )
     builder.row(
-        InlineKeyboardButton(text="📢 Xabar yuborish (Broadcast)", callback_data="adm_broadcast"),
-        InlineKeyboardButton(text="📢 Majburiy obuna", callback_data="adm_sub_menu")
-    )
-    builder.row(
         InlineKeyboardButton(text="👑 Adminlar ro'yxati", callback_data="adm_admins_list_0"),
         InlineKeyboardButton(text="🚫 Banlanganlar", callback_data="adm_blocked_list_0")
     )
@@ -32,35 +28,6 @@ def admin_emoji_main_menu() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="🗑 Barcha emojilarni tozalash", callback_data="adm_emj_reset_confirm")
     )
     return builder.as_markup()
-
-
-def admin_sub_menu_kb(channels) -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-    for ch in channels:
-        status = "🟢" if ch.is_active else "🔴"
-        builder.row(
-            InlineKeyboardButton(text=f"{status} {ch.title}", callback_data=f"adm_sub_info_{ch.id}")
-        )
-    builder.row(
-        InlineKeyboardButton(text="➕ Kanal qo'shish", callback_data="adm_sub_add")
-    )
-    builder.row(
-        InlineKeyboardButton(text="🔙 Asosiy menyu", callback_data="adm_emj_main")
-    )
-    return builder.as_markup()
-
-def admin_sub_detail_kb(ch_id: int, is_active: bool) -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-    toggle_text = "🔴 O'chirish (Deaktiv)" if is_active else "🟢 Yoqish (Aktiv)"
-    builder.row(
-        InlineKeyboardButton(text=toggle_text, callback_data=f"adm_sub_toggle_{ch_id}"),
-        InlineKeyboardButton(text="🗑 O'chirish", callback_data=f"adm_sub_del_{ch_id}")
-    )
-    builder.row(
-        InlineKeyboardButton(text="🔙 Kanallar ro'yxatiga", callback_data="adm_sub_menu")
-    )
-    return builder.as_markup()
-
 
 def admin_emoji_roles_categories_menu() -> InlineKeyboardMarkup:
     """Rollar toifalari menyusi"""
@@ -198,15 +165,8 @@ def admin_games_menu_kb() -> InlineKeyboardMarkup:
 
 def admin_broadcast_menu_kb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.row(
-        InlineKeyboardButton(text="👤 Foydalanuvchilarga tarqatish", callback_data="adm_bcast_users"),
-        InlineKeyboardButton(text="👥 Guruhlarga tarqatish", callback_data="adm_bcast_groups")
-    )
-    builder.row(
-        InlineKeyboardButton(text="🔙 Asosiy menyu", callback_data="adm_emj_main")
-    )
+    builder.button(text="🔙 Orqaga", callback_data="adm_main")
     return builder.as_markup()
-
 
 def admin_vip_menu_kb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()

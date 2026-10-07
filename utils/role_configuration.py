@@ -78,10 +78,10 @@ class RoleConfiguration:
         (36, RoleNames.MAFIA),
         # 37 kishi
         (37, RoleNames.SERJANT),
-        # 38 kishi (Taqlidchi)
-        (38, RoleNames.TAQLIDCHI),
-        # 39 kishi (Reverser)
-        (39, RoleNames.REVERSER),
+        # 38 kishi
+        (38, RoleNames.FUQARO),
+        # 39 kishi
+        (39, RoleNames.FUQARO),
         # 40 kishi
         (40, RoleNames.MAFIA),
         # 41 kishi

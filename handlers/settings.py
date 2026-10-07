@@ -1,7 +1,7 @@
 from aiogram import Router, F, Bot
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
-from utils import chat_settings
+from utils import others, chat_settings
 
 router = Router()
 

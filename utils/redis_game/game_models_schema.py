@@ -89,7 +89,7 @@ class VoteState(BaseModel):
     @property
     def key(self) -> str:
         # har phase uchun bitta hash ichida saqlaymiz: voter_id -> target_id
-        return f"game:{self.game_id}:votes:{self.phase_no}"
+        return f"game:{self.game_id}:votes:{self.phase_id}"
 
 class VoteLikeState(BaseModel):
     game_id: int

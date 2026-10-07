@@ -110,8 +110,6 @@ class RoleNames:
             "Savdogar": cls.SAVDOGAR,
             "taqlidchi": cls.TAQLIDCHI,
             "mimic": cls.TAQLIDCHI,
-            "Taqlidchi": cls.TAQLIDCHI,
-            "reverser": cls.REVERSER,
-            "Reverser": cls.REVERSER
+            "reverser": cls.REVERSER
         }
         return mapping.get(clean_name, clean_name)

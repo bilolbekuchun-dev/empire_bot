@@ -114,7 +114,10 @@ async def create_game_handler(
     
     # Bot va guruh tekshirish
     me = await bot.get_me()
-    gaming_set, _ = await GamingOnChat.get_or_create(chat_id=message.chat.id, defaults={"bot_id": me.id})
+    gaming_set, _ = await GamingOnChat.get_or_create(
+        bot_id=me.id, 
+        chat_id=message.chat.id
+    )
     
     if not gaming_set.can_gaming:
         await message.answer(

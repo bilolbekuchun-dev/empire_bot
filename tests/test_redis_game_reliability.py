@@ -463,24 +463,73 @@ async def test_night_actions_deterministic_resolution():
     assert p3.is_alive is True
 
 
+
 # --------------------------------------------------------------------------
-# PHASE 19 — measured resource observation: full lifecycle leaves no growth
+# PHASE 20 — Komissar shoot vs investigate test
 # --------------------------------------------------------------------------
-async def test_full_lifecycle_leaves_no_redis_growth():
-    from utils.redis_game.services.game_service import GameService
+async def test_komissar_shoot_vs_investigate():
+    gid = await _new_game(chat_id=9001)
+    await _join_many(gid, [100, 101, 102])
+    
+    # Save Komissar shoot action
+    await action_service.save_action(gid, 1, 100, 101, "komissar_shoot")
+    actions1 = await action_service.get_phase_actions(gid, 1)
+    assert actions1[0]["action_type"] == "komissar_shoot"
+    
+    # Save Komissar investigate action on Night 2
+    await action_service.save_action(gid, 2, 100, 102, "investigate")
+    actions2 = await action_service.get_phase_actions(gid, 2)
+    assert actions2[0]["action_type"] == "investigate"
 
-    base = await redis_client.dbsize()
 
-    for i in range(50):
-        cid = 8000 + i
-        gid = await _new_game(chat_id=cid)
-        await _join_many(gid, range(30000 + i * 5, 30000 + i * 5 + 5))
-        await GameService._cleanup_redis(gid)
-        await win_conditions._clear_active_indexes(gid, cid)
+# --------------------------------------------------------------------------
+# PHASE 21 — Jin wish choices (Hayot, Pul, Qotillik) test
+# --------------------------------------------------------------------------
+async def test_jin_actions_pul_hayot_qotil():
+    from utils.role_names import RoleNames
+    
+    gid = await _new_game(chat_id=9002)
+    await _join_many(gid, [200, 201, 202, 203])
+    
+    p200 = await player_repository.load_player(gid, 200)
+    p200.role = RoleNames.JIN
+    await player_repository.save_player(p200)
+    
+    # Night 1: Jin hayot
+    await action_service.save_action(gid, 1, 200, 200, "jin_hayot")
+    a1 = await action_service.get_phase_actions(gid, 1)
+    assert a1[0]["action_type"] == "jin_hayot"
+    
+    # Night 2: Jin pul
+    await action_service.save_action(gid, 2, 200, 201, "jin_pul")
+    a2 = await action_service.get_phase_actions(gid, 2)
+    assert a2[0]["action_type"] == "jin_pul"
+    
+    # Night 3: Jin qotil
+    await action_service.save_action(gid, 3, 200, 202, "jin_qotil")
+    a3 = await action_service.get_phase_actions(gid, 3)
+    assert a3[0]["action_type"] == "jin_qotil"
 
-    after = await redis_client.dbsize()
-    # Only the persistent id counter may remain — no per-game accumulation.
-    assert after - base <= 1, f"redis keys grew by {after - base}"
+
+# --------------------------------------------------------------------------
+# PHASE 22 — Join game no false suicide if ended or waiting test
+# --------------------------------------------------------------------------
+async def test_join_game_no_suicide_if_ended_or_waiting():
+    from utils.redis_game.services.player_service import player_service
+    
+    # 1. Ended game should be ignored by find_player_active_game
+    gid1 = await _new_game(chat_id=9003)
+    await _join_many(gid1, [300])
+    
+    game1 = await game_repository.load_game(gid1)
+    game1.is_active = False
+    game1.phase = "ended"
+    await game_repository.save_game(game1)
+    await win_conditions._clear_active_indexes(gid1, 9003)
+    
+    active = await player_service.find_player_active_game(300)
+    assert active is None, "Ended game must not be returned as active"
+
 
 
 

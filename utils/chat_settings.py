@@ -27,7 +27,7 @@ async def group_info_handler(message: Message, bot: Bot):
 <b>Guruh nomi:</b> {chat.title}
 
 🎮 <b>Jami o'yinlar soni:</b> {games_count}
-💎 <b>Guruh hisobi:</b> {group_balance.balance} ta
+<tg-emoji emoji-id='5210941235912552228'>💎</tg-emoji> <b>Guruh hisobi:</b> {group_balance.balance} ta
 
 Guruh hisobini to'ldirish uchun /gsend buyrug'idan foydalaning
 """, parse_mode="HTML")
@@ -39,7 +39,7 @@ async def can_gaming_handler(call: CallbackQuery):
     match len(points):
         case 3:
             me = await call.bot.get_me()
-            gaming_set, _ = await GamingOnChat.get_or_create(chat_id=chat_id, defaults={"bot_id": me.id})
+            gaming_set, _ = await GamingOnChat.get_or_create(chat_id=chat_id, bot_id=me.id)
             await call.message.edit_text(
                 "Guruhda o'yin o'ynashga ruxsat berilsinmi?",
                 reply_markup=can_gaming_btn(chat_id=chat_id, default=gaming_set.can_gaming)
@@ -48,7 +48,7 @@ async def can_gaming_handler(call: CallbackQuery):
         case 4:
             value = points[3]
             me = await call.bot.get_me()
-            gaming_set, _ = await GamingOnChat.get_or_create(chat_id=chat_id, defaults={"bot_id": me.id})
+            gaming_set, _ = await GamingOnChat.get_or_create(chat_id=chat_id, bot_id=me.id)
             new_value = True if value == "1" else False
             if gaming_set.can_gaming != new_value:
                 gaming_set.can_gaming = new_value
@@ -396,7 +396,7 @@ async def add_diamond_group_balance(message: Message):
     except Exception:
         pass
 
-    await message.answer(f"<b>{sender_user.mention} guruh hisobiga {count} 💎 ta olmos hadya qildi!</b>", parse_mode="HTML")
+    await message.answer(f"<b>{sender_user.mention} guruh hisobiga {count} <tg-emoji emoji-id='5210941235912552228'>💎</tg-emoji> ta olmos hadya qildi!</b>", parse_mode="HTML")
 
 async def open_set_more_answer(call: CallbackQuery):
     points = call.data.split("_")
@@ -570,4 +570,3 @@ async def open_set_weapons_answer(call: CallbackQuery):
             await call.message.edit_reply_markup(
                 reply_markup=set_weapons_combined_button(chat_id=chat_id, weapon_set=weapon_set)
             )
-

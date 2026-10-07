@@ -1,4 +1,3 @@
-import os
 import re
 from aiogram.types import Message, CallbackQuery, PreCheckoutQuery, LabeledPrice
 from aiogram import Bot
@@ -7,7 +6,6 @@ from models.game_data import Giveaway, Chat, GamePlayer, Game
 from config import ADMINS, DIAMOND_SHOP_USERNAME, SUPPORT_ADMIN
 from keyboards.main_keyboard import get_start_markup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-
 
 # Emojilar va tg-emoji teglari
 EMOJI_QOTIL_HIMOYA = "<tg-emoji emoji-id='5411452114838761907'>🔪</tg-emoji> Qotildan himoya"
@@ -53,102 +51,39 @@ async def secret_transfer_money(message: Message):
     except Exception as e:
         await message.answer(f"❌ Xatolik: {str(e)}")
 
-async def _build_profile_text(user_id: int, full_name: str = "", header: str = "") -> tuple[str, Profile]:
-    from utils.premium_emojis import (
-        get_dollar_display,
-        get_diamond_display,
-        get_item_display,
-        get_vip_prefix
+async def get_profile(bot: Bot, message: Message):
+    user, profile = await _get_user_and_profile(
+        message.from_user.id,
+        message.from_user.full_name,
+        message.from_user.mention_html()
     )
-    from utils.i18n import clean_lang, PROFILE_LABELS
-    user, profile = await _get_user_and_profile(user_id, full_name)
-    lang = clean_lang(user.lang)
-    lbls = PROFILE_LABELS.get(lang, PROFILE_LABELS["uz"])
-
-    vip_user = await VipUser.filter(user_id=user_id).first()
-    vip_prefix = get_vip_prefix(vip_user) if vip_user else ""
-    
-    name_disp = f"{vip_prefix}<b>{full_name or user.full_name or lbls['user']}</b>"
-    
-    dollar_icon = get_dollar_display()
-    diamond_icon = get_diamond_display()
-    
-    himoya_icon = get_item_display("himoya")
-    hujjat_icon = get_item_display("hujjat")
-    osish_icon = get_item_display("osishdan_himoya")
-    qotil_icon = get_item_display("qotildan_himoya")
-    miltiq_icon = get_item_display("miltiq")
-    dori_icon = get_item_display("doridan_himoya")
-    maska_icon = get_item_display("mask")
-    slip_icon = get_item_display("slip_himoya")
-    geroy_icon = get_item_display("geroy_himoya")
+    vip_obj = await VipUser.get_or_none(user=user)
+    is_vip = bool(vip_obj)
+    vip_status = f" ({vip_obj.emoji_char})" if (vip_obj and vip_obj.emoji_char) else ""
+    vip_text = f"⭐ VIP: <b>Mavjud{vip_status}</b>\n" if is_vip else ""
 
     text = (
-        f"{header}"
-        f"👤 {name_disp}\n\n"
-        f"{dollar_icon} {lbls['dollar']}: <b>{profile.dollar:,}</b>\n"
-        f"{diamond_icon} {lbls['diamond']}: <b>{profile.diamond:,}</b>\n\n"
-        f"{himoya_icon} {lbls['himoya']}: <b>{profile.himoya}</b>\n"
-        f"{hujjat_icon} {lbls['hujjat']}: <b>{profile.hujjat}</b>\n"
-        f"{osish_icon} {lbls['osishdan_himoya']}: <b>{profile.osishdan_himoya}</b>\n"
-        f"{qotil_icon} {lbls['qotildan_himoya']}: <b>{profile.qotildan_himoya}</b>\n"
-        f"{miltiq_icon} {lbls['miltiq']}: <b>{profile.miltiq}</b>\n"
-        f"{dori_icon} {lbls['doridan_himoya']}: <b>{profile.doridan_himoya}</b>\n"
-        f"{maska_icon} {lbls['maska']}: <b>{profile.maska}</b>\n"
-        f"{slip_icon} {lbls['slip_himoya']}: <b>{profile.slip_himoya}</b>\n"
-        f"{geroy_icon} {lbls['geroy_himoya']}: <b>{profile.geroy_himoya}</b>\n\n"
-        f"🎯 {lbls['wins']}: <b>{profile.wins}</b>\n"
-        f"📜 {lbls['games']}: <b>{profile.games_count}</b>\n\n"
-        f"{lbls['partner']}: <i>{lbls['none']}</i>\n\n"
-        f"🏙️ {lbls['active_roles']}: <i>{lbls['none']}</i>"
+        f"👤 <b>Sizning profilingiz:</b>\n\n"
+        f"🆔 ID: <code>{user.user_id}</code>\n"
+        f"{vip_text}"
+        f"💵 Dollar: <b>{profile.dollar:,}$</b>\n"
+        f"💎 Olmos: <b>{profile.diamond:,} ta</b>\n"
+        f"🎮 O'yinlar soni: <b>{profile.games_count} ta</b>\n"
+        f"🏆 G'alabalar: <b>{profile.wins:,} ta</b>\n"
     )
-    return text, profile
-
-async def send_game_over_profile(bot: Bot, user_id: int, full_name: str, is_winner: bool, reward: int):
-    from keyboards.user_keyboards import profile_keyboards_on_private
-    from utils.telegram_utils import safe_send_message
-    from utils.premium_emojis import get_dollar_display
-    from utils.i18n import clean_lang, GAME_OVER_WINNER, GAME_OVER_LOSER
-    from models.user import User
-
-    user = await User.get_or_none(user_id=user_id)
-    lang = clean_lang(user.lang if user else "uz")
-    dollar_icon = get_dollar_display()
-    
-    tmpl = GAME_OVER_WINNER.get(lang, GAME_OVER_WINNER["uz"]) if is_winner else GAME_OVER_LOSER.get(lang, GAME_OVER_LOSER["uz"])
-    header = tmpl.format(reward=reward, dollar_icon=dollar_icon)
-
-    profile_text, profile = await _build_profile_text(user_id, full_name, header=header)
-    kb = profile_keyboards_on_private(profile, lang=lang)
-    await safe_send_message(
-        bot,
-        user_id,
-        profile_text,
-        reply_markup=kb,
-        parse_mode="HTML"
-    )
-
-async def get_profile(bot: Bot, message: Message):
-    from keyboards.user_keyboards import profile_keyboards_on_private
-    from utils.i18n import clean_lang
-    user = await User.get_or_none(user_id=message.from_user.id)
-    lang = clean_lang(user.lang if user else "uz")
-    is_vip = bool(await VipUser.filter(user=user).exists()) if user else False
-
-    profile_text, profile = await _build_profile_text(
-        message.from_user.id,
-        message.from_user.full_name
-    )
-    kb = profile_keyboards_on_private(profile, lang=lang, is_vip=is_vip)
-    await message.answer(profile_text, reply_markup=kb, parse_mode="HTML")
+    from keyboards.user_keyboards import profile_keyboards_on_private, profile_keyboards
+    if message.chat.type == "private":
+        await message.answer(text, reply_markup=profile_keyboards_on_private(profile, is_vip=is_vip), parse_mode="HTML")
+    else:
+        await message.answer(text, reply_markup=profile_keyboards(), parse_mode="HTML")
 
 async def transfer_funds_handler(message: Message, bot: Bot = None):
     """
     /give, /money, /send buyruqlari orqali pul ($) va olmos (💎) o'tkazish.
     Formati:
-      - Reply qilib: /give 5 (5 ta olmos)  yoki  /money 50 (50$)
-      - ID orqali: /give 123456789 5  yoki  /money 123456789 50
-      - Username: /give @username 5  yoki  /money @username 50
+      - Reply qilib: /give 100  yoki  /give 5 olmos
+      - ID orqali: /give 123456789 100  yoki  /give 123456789 10 olmos
+      - Username: /give @username 50
     """
     sender_tg = message.from_user
     if not sender_tg:
@@ -159,27 +94,18 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
     if len(parts) < 2:
         await message.answer(
             "ℹ️ <b>O'tkazma formati:</b>\n"
-            "• Reply qilib: <code>/give 5</code> (olmos) yoki <code>/money 50</code> ($)\n"
-            "• ID orqali: <code>/give 123456789 5</code> yoki <code>/money 123456789 50</code>\n"
-            "• Username orqali: <code>/give @username 5</code> yoki <code>/money @username 50</code>",
+            "• Reply qilib: <code>/give 100</code> yoki <code>/give 5 olmos</code>\n"
+            "• ID orqali: <code>/give 123456789 100</code>\n"
+            "• Username orqali: <code>/give @username 50</code>",
             parse_mode="HTML"
         )
         return
 
-    cmd = parts[0].lower()
+    # Valyuta turini aniqlash (dollar yoki olmos)
+    is_diamond = False
     lower_text = text.lower()
-
-    # Valyuta turini aniqlash: /give -> olmos (diamond), /money /pul -> dollar ($)
-    if any(k in lower_text for k in ["olmos", "diamond", "💎"]):
+    if any(k in lower_text for k in ["olmos", "diamond", "💎", "almaz"]):
         is_diamond = True
-    elif any(k in lower_text for k in ["dollar", "pul", "$"]):
-        is_diamond = False
-    elif cmd.startswith("/give"):
-        is_diamond = True
-    elif cmd.startswith("/money") or cmd.startswith("/pul"):
-        is_diamond = False
-    else:
-        is_diamond = False
 
     target_user = None
     amount = 0
@@ -202,29 +128,13 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
                 break
     else:
         # 2. ID yoki Username orqali
-        if len(parts) < 3:
-            await message.answer(
-                "ℹ️ <b>O'tkazma formati:</b>\n"
-                "• Reply qilib: <code>/give 5</code> (olmos) yoki <code>/money 50</code> ($)\n"
-                "• ID orqali: <code>/give 123456789 5</code>\n"
-                "• Username orqali: <code>/money @username 50</code>",
-                parse_mode="HTML"
-            )
-            return
-
         target_arg = parts[1].strip()
-        for p in parts[2:]:
+        for p in parts[1:]:
             clean_p = p.replace("$", "").replace("💎", "")
             if clean_p.isdigit():
+                if target_arg.isdigit() and int(clean_p) == int(target_arg):
+                    continue
                 amount = int(clean_p)
-                break
-
-        if not amount:
-            for p in parts[1:]:
-                clean_p = p.replace("$", "").replace("💎", "")
-                if clean_p.isdigit() and (not target_arg.isdigit() or int(clean_p) != int(target_arg)):
-                    amount = int(clean_p)
-                    break
 
         if target_arg.isdigit():
             target_id = int(target_arg)
@@ -244,7 +154,6 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
         await message.answer("❌ O'zingizga o'tkaza olmaysiz!", parse_mode="HTML")
         return
 
-
     if amount <= 0:
         await message.answer("❌ Noto'g'ri miqdor! (Kamida 1 bo'lishi kerak)", parse_mode="HTML")
         return
@@ -255,7 +164,6 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
     target_profile, _ = await Profile.get_or_create(user=target_user)
 
     from tortoise.transactions import in_transaction
-    from utils.premium_emojis import get_diamond_display, get_dollar_display
 
     if is_diamond:
         if sender_profile.diamond < amount:
@@ -268,8 +176,7 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
             await sender_profile.save()
             await target_profile.save()
 
-        unit_icon = get_diamond_display()
-        unit_name = f"{unit_icon} olmos"
+        unit_name = "💎"
     else:
         if sender_profile.dollar < amount:
             await message.answer(f"❌ Balansingizda yetarli dollar mavjud emas! (Sizda: {sender_profile.dollar:,}$)", parse_mode="HTML")
@@ -281,19 +188,17 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
             await sender_profile.save()
             await target_profile.save()
 
-        unit_icon = get_dollar_display()
-        unit_name = f"{unit_icon} pul"
+        unit_name = "💵"
 
-    # ✅ Guruhga va shaxsiyga xabar yuborish
-    success_msg = f"{sender_db.mention} — {target_user.mention} ga <b>{amount:,} ta {unit_name}</b> o'tkazdi!"
+    # ✅ <name1> - <name2> ga <soni> ta <pul/almaz> yubordi!
+    success_msg = f"{sender_db.mention} - {target_user.mention} ga <b>{amount:,} ta {unit_name}</b> yubordi!"
     await message.answer(success_msg, parse_mode="HTML")
 
-
-    if bot and target_user.user_id != message.chat.id:
+    if bot:
         try:
             await bot.send_message(
                 chat_id=target_user.user_id,
-                text=f"🎉 {sender_db.mention} sizga <b>{amount:,} ta {unit_name}</b> o'tkazdi!",
+                text=f"🎉 {sender_db.mention} sizga <b>{amount:,} ta {unit_name}</b> yubordi!",
                 parse_mode="HTML"
             )
         except Exception:
@@ -478,47 +383,6 @@ async def send_new_vip_report(
         import logging
         logging.warning(f"Vip report yuborishda xatolik: {e}")
 
-async def blocking_users_answer(call: CallbackQuery):
-    if call.from_user.id not in ADMINS:
-        await call.answer("❌ Bu tugma faqat adminlar uchun!", show_alert=True)
-        return
-
-    parts = call.data.split("_")
-    if len(parts) >= 3:
-        try:
-            u1_id = int(parts[1])
-            u2_id = int(parts[2])
-
-            u1 = await User.get_or_none(user_id=u1_id)
-            u2 = await User.get_or_none(user_id=u2_id)
-
-            from models.user import Blocked_user
-            if u1:
-                await Blocked_user.get_or_create(user=u1)
-            if u2:
-                await Blocked_user.get_or_create(user=u2)
-
-            names = f"{u1.full_name if u1 else u1_id} va {u2.full_name if u2 else u2_id}"
-            await call.answer(f"✅ {names} bloklandi!", show_alert=True)
-            if call.message:
-                try:
-                    await call.message.edit_text(
-                        (call.message.html_text or call.message.text or "") + "\n\n🚫 <b>Har ikkala foydalanuvchi ham admin tomonidan bloklandi!</b>",
-                        parse_mode="HTML"
-                    )
-                except Exception:
-                    pass
-        except Exception as e:
-            await call.answer(f"❌ Xatolik: {e}", show_alert=True)
-    else:
-        await call.answer("❌ Xatolik yuz berdi.", show_alert=True)
-
-
-
-
-
-
-
 async def transfer_money(message: Message, bot: Bot = None):
     await transfer_funds_handler(message, bot)
 
@@ -586,7 +450,39 @@ async def get_role_text(call: CallbackQuery):
     await call.answer("Batafsil ma'lumot WebApp da!", show_alert=True)
 
 async def blocking_users_answer(call: CallbackQuery):
-    await call.answer("Siz bloklangansiz.", show_alert=True)
+    if call.from_user.id not in ADMINS:
+        await call.answer("❌ Bu tugma faqat adminlar uchun!", show_alert=True)
+        return
+
+    parts = call.data.split("_")
+    if len(parts) >= 3:
+        try:
+            u1_id = int(parts[1])
+            u2_id = int(parts[2])
+
+            u1 = await User.get_or_none(user_id=u1_id)
+            u2 = await User.get_or_none(user_id=u2_id)
+
+            from models.user import Blocked_user
+            if u1:
+                await Blocked_user.get_or_create(user=u1)
+            if u2:
+                await Blocked_user.get_or_create(user=u2)
+
+            names = f"{u1.full_name if u1 else u1_id} va {u2.full_name if u2 else u2_id}"
+            await call.answer(f"✅ {names} bloklandi!", show_alert=True)
+            if call.message:
+                try:
+                    await call.message.edit_text(
+                        (call.message.html_text or call.message.text or "") + "\n\n🚫 <b>Har ikkala foydalanuvchi ham admin tomonidan bloklandi!</b>",
+                        parse_mode="HTML"
+                    )
+                except Exception:
+                    pass
+        except Exception as e:
+            await call.answer(f"❌ Xatolik: {e}", show_alert=True)
+    else:
+        await call.answer("❌ Xatolik yuz berdi.", show_alert=True)
 
 # Giveaway va aksiyalar
 async def start_game_giveaway(message: Message, bot: Bot):
@@ -881,36 +777,43 @@ async def get_premium_groups_on_profile(call: CallbackQuery, bot: Bot):
 async def lang_command_handler(message: Message):
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
     from models.user import User
-    from utils.i18n import clean_lang, LANG_SELECT_PROMPT, LANGUAGES
 
     user_id = message.from_user.id if message.from_user else None
     user = await User.filter(user_id=user_id).first() if user_id else None
-    curr_lang = clean_lang(user.lang if user else "uz")
+    curr_lang = user.lang if (user and user.lang) else "uz"
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text=f"{LANGUAGES['uz']}" + (" ✅" if curr_lang == "uz" else ""), callback_data="setlang_uz"),
-            InlineKeyboardButton(text=f"{LANGUAGES['ru']}" + (" ✅" if curr_lang == "ru" else ""), callback_data="setlang_ru"),
+            InlineKeyboardButton(text="🇺🇿 O'zbekcha" + (" ✅" if curr_lang == "uz" else ""), callback_data="setlang_uz"),
+            InlineKeyboardButton(text="🇷🇺 Русский" + (" ✅" if curr_lang == "ru" else ""), callback_data="setlang_ru"),
         ],
         [
-            InlineKeyboardButton(text=f"{LANGUAGES['en']}" + (" ✅" if curr_lang == "en" else ""), callback_data="setlang_en"),
-            InlineKeyboardButton(text=f"{LANGUAGES['tr']}" + (" ✅" if curr_lang == "tr" else ""), callback_data="setlang_tr"),
+            InlineKeyboardButton(text="🇬🇧 English" + (" ✅" if curr_lang == "en" else ""), callback_data="setlang_en"),
+            InlineKeyboardButton(text="🇹🇷 Türkçe" + (" ✅" if curr_lang == "tr" else ""), callback_data="setlang_tr"),
         ]
     ])
 
-    await message.answer(LANG_SELECT_PROMPT.get(curr_lang, LANG_SELECT_PROMPT["uz"]), reply_markup=kb, parse_mode="HTML")
+    text_map = {
+        "uz": "🌐 <b>Bot tilini tanlang / Cho’se language:</b>",
+        "ru": "🌐 <b>Выберите язык бота:</b>",
+        "en": "🌐 <b>Choose bot language:</b>",
+        "tr": "🌐 <b>Bot dilini seçin:</b>"
+    }
+    await message.answer(text_map.get(curr_lang, text_map["uz"]), reply_markup=kb, parse_mode="HTML")
 
 async def set_lang_callback(call: CallbackQuery, bot: Bot = None):
     from models.user import User
     from models.game_data import Chat
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-    from utils.i18n import clean_lang, LANG_CONFIRM, LANG_SELECT_PROMPT, LANGUAGES
 
-    lang = clean_lang(call.data.split("_")[1])
+    lang = call.data.split("_")[1]
+    if lang not in ["uz", "ru", "en", "tr"]:
+        lang = "uz"
+
     user_id = call.from_user.id
     chat_id = call.message.chat.id
     chat_type = call.message.chat.type
-    
+
     user = await User.filter(user_id=user_id).first()
     if user:
         user.lang = lang
@@ -936,20 +839,32 @@ async def set_lang_callback(call: CallbackQuery, bot: Bot = None):
                 lang=lang
             )
 
-    await call.answer(LANG_CONFIRM.get(lang, LANG_CONFIRM["uz"]), show_alert=True)
+    confirm_map = {
+        "uz": "✅ Bot tili O'zbek tiliga o'zgartirildi!",
+        "ru": "✅ Язык бота изменен на Русский!",
+        "en": "✅ Bot language changed to English!",
+        "tr": "✅ Bot dili Türkçe olarak değiştirildi!"
+    }
+    await call.answer(confirm_map.get(lang, confirm_map["uz"]))
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text=f"{LANGUAGES['uz']}" + (" ✅" if lang == "uz" else ""), callback_data="setlang_uz"),
-            InlineKeyboardButton(text=f"{LANGUAGES['ru']}" + (" ✅" if lang == "ru" else ""), callback_data="setlang_ru"),
+            InlineKeyboardButton(text="🇺🇿 O'zbekcha" + (" ✅" if lang == "uz" else ""), callback_data="setlang_uz"),
+            InlineKeyboardButton(text="🇷🇺 Русский" + (" ✅" if lang == "ru" else ""), callback_data="setlang_ru"),
         ],
         [
-            InlineKeyboardButton(text=f"{LANGUAGES['en']}" + (" ✅" if lang == "en" else ""), callback_data="setlang_en"),
-            InlineKeyboardButton(text=f"{LANGUAGES['tr']}" + (" ✅" if lang == "tr" else ""), callback_data="setlang_tr"),
+            InlineKeyboardButton(text="🇬🇧 English" + (" ✅" if lang == "en" else ""), callback_data="setlang_en"),
+            InlineKeyboardButton(text="🇹🇷 Türkçe" + (" ✅" if lang == "tr" else ""), callback_data="setlang_tr"),
         ]
     ])
+    text_map = {
+        "uz": "🌐 <b>Bot tilini tanlang / Cho’se language:</b>",
+        "ru": "🌐 <b>Выберите язык бота:</b>",
+        "en": "🌐 <b>Choose bot language:</b>",
+        "tr": "🌐 <b>Bot dilini seçin:</b>"
+    }
     try:
-        await call.message.edit_text(LANG_SELECT_PROMPT.get(lang, LANG_SELECT_PROMPT["uz"]), reply_markup=kb, parse_mode="HTML")
+        await call.message.edit_text(text_map.get(lang, text_map["uz"]), reply_markup=kb, parse_mode="HTML")
     except Exception:
         pass
 
@@ -968,3 +883,101 @@ async def set_lang_callback(call: CallbackQuery, bot: Bot = None):
                     await update_players_list(game, bot)
         except Exception as e:
             print(f"realtime group language refresh error: {e}")
+
+# Do'kon va Valyutalar
+async def show_shop(call: CallbackQuery):
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from aiogram.types import WebAppInfo
+    from config import WEBAPP_URL
+    text = (
+        "🛒 <b>Do'kon bo'limi</b>\n\n"
+        "Barcha anjomlar, himoyalar va olmoslarni sotib olish WebApp ilovamizda mavjud!"
+    )
+    kb = InlineKeyboardBuilder()
+    if WEBAPP_URL:
+        kb.button(text="🌐 Do'konni ochish (WebApp)", web_app=WebAppInfo(url=WEBAPP_URL))
+    kb.button(text="⬅️ Orqaga", callback_data="back_profile")
+    kb.adjust(1)
+    try:
+        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    except Exception:
+        await call.message.answer(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    await call.answer()
+
+async def get_dollar_callback(call: CallbackQuery):
+    await get_diamond_hamyonlar(call)
+
+async def open_protections_menu(call: CallbackQuery):
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from models.user import User, Profile
+    user = await User.filter(user_id=call.from_user.id).first()
+    profile = await Profile.get_or_none(user=user) if user else None
+
+    if not profile:
+        await call.answer("Profil topilmadi.", show_alert=True)
+        return
+
+    text = (
+        "🛡 <b>Sizning himoyalaringiz va anjomlaringiz:</b>\n\n"
+        f"🔰 Tinch axoli himoyasi: <b>{profile.himoya} ta</b>\n"
+        f"🔪 Qotildan himoya: <b>{profile.qotildan_himoya} ta</b>\n"
+        f"🪢 Osishdan himoya: <b>{profile.osishdan_himoya} ta</b>\n"
+        f"🩺 Doridan himoya: <b>{profile.doridan_himoya} ta</b>\n"
+        f"🎯 Miltiq: <b>{profile.miltiq} ta</b>\n"
+        f"📄 Hujjat: <b>{profile.hujjat} ta</b>\n"
+        f"🎭 Maska: <b>{profile.maska} ta</b>\n"
+        f"🚷 Slip himoya: <b>{profile.slip_himoya} ta</b>\n"
+        f"👑 Geroy himoya: <b>{profile.geroy_himoya} ta</b>"
+    )
+
+    kb = InlineKeyboardBuilder()
+    kb.button(text="⬅️ Orqaga", callback_data="back_profile")
+
+    try:
+        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    except Exception:
+        await call.message.answer(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    await call.answer()
+
+async def get_diamond_hamyonlar(call: CallbackQuery):
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from aiogram.types import WebAppInfo
+    from config import WEBAPP_URL
+    from models.user import User, Profile
+    user = await User.filter(user_id=call.from_user.id).first()
+    profile = await Profile.get_or_none(user=user) if user else None
+
+    diamonds = profile.diamond if profile else 0
+    dollars = profile.dollar if profile else 0
+
+    text = (
+        "💰 <b>Balans ma'lumotlari:</b>\n\n"
+        f"💎 Olmoslar: <b>{diamonds:,} ta</b>\n"
+        f"💵 Dollar: <b>{dollars:,} $</b>\n\n"
+        "<i>Olmos va dollarlarni WebApp do'koni orqali xarid qilishingiz mumkin.</i>"
+    )
+    kb = InlineKeyboardBuilder()
+    if WEBAPP_URL:
+        kb.button(text="🛒 Do'konga o'tish (WebApp)", web_app=WebAppInfo(url=WEBAPP_URL))
+    kb.button(text="⬅️ Orqaga", callback_data="back_profile")
+    kb.adjust(1)
+
+    try:
+        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    except Exception:
+        await call.message.answer(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    await call.answer()
+
+async def get_premium_groups_on_profile(call: CallbackQuery, bot: Bot):
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    text = (
+        "⭐ <b>Premium va rasmiy guruhlar:</b>\n\n"
+        "Bot ulangan guruhlarda o'yin o'ynab tajriba va mukofotlar oshiring!"
+    )
+    kb = InlineKeyboardBuilder()
+    kb.button(text="⬅️ Orqaga", callback_data="back_profile")
+    try:
+        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    except Exception:
+        await call.message.answer(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    await call.answer()
