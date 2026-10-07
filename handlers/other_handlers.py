@@ -51,8 +51,13 @@ async def f(call: CallbackQuery, bot: Bot, state: FSMContext):
     await sandiqlar.open_sandiqlar(call, state)
 
 @router.callback_query(F.data == "vip_emoji_change")
+@router.callback_query(F.data == "vip_emoji_self_change")
 async def f(call: CallbackQuery, bot: Bot, state: FSMContext):
     await sandiqlar.start_vip_emoji_change_call(call, state)
+
+@router.callback_query(F.data == "clear_vip_self_emoji")
+async def f(call: CallbackQuery, bot: Bot, state: FSMContext):
+    await sandiqlar.clear_vip_self_emoji(call, state)
 
 @router.callback_query(F.data.startswith("super_sandiq"))
 async def f(call: CallbackQuery, bot: Bot, state: FSMContext):

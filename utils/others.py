@@ -133,12 +133,13 @@ async def get_profile(bot: Bot, message: Message):
     from utils.i18n import clean_lang
     user = await User.get_or_none(user_id=message.from_user.id)
     lang = clean_lang(user.lang if user else "uz")
+    is_vip = bool(await VipUser.filter(user=user).exists()) if user else False
 
     profile_text, profile = await _build_profile_text(
         message.from_user.id,
         message.from_user.full_name
     )
-    kb = profile_keyboards_on_private(profile, lang=lang)
+    kb = profile_keyboards_on_private(profile, lang=lang, is_vip=is_vip)
     await message.answer(profile_text, reply_markup=kb, parse_mode="HTML")
 
 async def transfer_funds_handler(message: Message, bot: Bot = None):
