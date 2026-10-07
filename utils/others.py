@@ -299,39 +299,184 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
         except Exception:
             pass
 
-        from config import INFO_GROUP
-        if INFO_GROUP:
-            try:
-                chat_title = (message.chat.title or message.chat.username or "Private") if message.chat else "Private"
-                chat_id_val = message.chat.id if message.chat else 0
-                if message.chat and message.chat.type in ("group", "supergroup"):
-                    chat_str = f"🏠 Guruh: {chat_title} ({chat_id_val})"
-                elif message.chat and message.chat.type == "channel":
-                    chat_str = f"📢 Kanal: {chat_title} ({chat_id_val})"
-                else:
-                    chat_str = f"🏠 Chat: Private ({chat_id_val})"
+        await send_transfer_report(
+            bot=bot,
+            sender_user=sender_db,
+            sender_profile=sender_profile,
+            target_user=target_user,
+            target_profile=target_profile,
+            amount=amount,
+            unit_name="olmos" if is_diamond else "dollar",
+            chat=message.chat
+        )
 
-                if is_diamond:
-                    header_str = f"💎 {amount} olmos o'tkazma aniqlandi."
-                else:
-                    header_str = f"💸 {amount} dollar o'tkazma aniqlandi."
+async def send_transfer_report(
+    bot: Bot,
+    sender_user: User,
+    sender_profile: Profile = None,
+    target_user: User = None,
+    target_profile: Profile = None,
+    amount: int = 0,
+    unit_name: str = "olmos",
+    chat = None,
+    is_giveaway: bool = False,
+    is_claim: bool = False,
+    extra_note: str = None
+):
+    from config import INFO_GROUP
+    if not INFO_GROUP or not bot:
+        return
 
-                log_msg = (
-                    f"{header_str}\n"
-                    f"💸 O'tkazuvchi: #{sender_db.full_name} {sender_db.user_id}\n"
-                    f"🎯 Qabul qiluvchi: {target_user.full_name} {target_user.user_id}\n"
-                    f"{chat_str}"
-                )
-                from keyboards.user_keyboards import blocking_users
-                await bot.send_message(
-                    chat_id=INFO_GROUP,
-                    text=log_msg,
-                    parse_mode="HTML",
-                    reply_markup=blocking_users(sender_db.user_id, target_user.user_id)
-                )
-            except Exception as e:
-                import logging
-                logging.warning(f"O'tkazma hisobotini INFO_GROUP ga yuborishda xatolik: {e}")
+    try:
+        from datetime import datetime
+        now_str = datetime.now().strftime("%H:%M:%S")
+
+        chat_title = (chat.title or chat.username or "Private") if chat else "Private"
+        chat_id_val = chat.id if chat else 0
+        if chat and chat.type in ("group", "supergroup"):
+            chat_str = f"🏠 Guruh: {chat_title} ({chat_id_val})"
+        elif chat and chat.type == "channel":
+            chat_str = f"📢 Kanal: {chat_title} ({chat_id_val})"
+        else:
+            chat_str = f"🏠 Chat: Private ({chat_id_val})"
+
+        sender_name = sender_user.full_name or "Foydalanuvchi"
+        sender_line = f"💸 O'tkazuvchi: {sender_name} {sender_user.user_id}"
+
+        if is_giveaway:
+            header_str = f"🎁 {amount:,} {unit_name} guruhga tarqatish (Giveaway) aniqlandi."
+        elif is_claim:
+            header_str = f"🎉 {amount:,} {unit_name} giveaway yig'ib olindi."
+        elif unit_name.lower() in ("olmos", "diamond", "💎"):
+            header_str = f"💎 {amount:,} olmos o'tkazma aniqlandi."
+        else:
+            header_str = f"💸 {amount:,} dollar o'tkazma aniqlandi."
+
+        lines = [header_str, sender_line]
+
+        if target_user:
+            lines.append(f"🎯 Qabul qiluvchi: {target_user.full_name} {target_user.user_id}")
+
+        lines.append(chat_str)
+
+        if sender_profile or target_profile:
+            bal_parts = []
+            if sender_profile:
+                bal_parts.append(f"O'tkazuvchi: {sender_profile.diamond:,}💎 / ${sender_profile.dollar:,}")
+            if target_profile:
+                bal_parts.append(f"Qabul qiluvchi: {target_profile.diamond:,}💎 / ${target_profile.dollar:,}")
+            lines.append(f"💳 Balanslar: " + " | ".join(bal_parts))
+
+        lines.append(f"⏰ Vaqt: {now_str}")
+
+        if extra_note:
+            lines.append(f"📝 {extra_note}")
+
+        log_msg = "\n".join(lines)
+
+        from keyboards.user_keyboards import blocking_users
+        target_id_for_btn = target_user.user_id if target_user else sender_user.user_id
+
+        await bot.send_message(
+            chat_id=INFO_GROUP,
+            text=log_msg,
+            parse_mode="HTML",
+            reply_markup=blocking_users(sender_user.user_id, target_id_for_btn)
+        )
+    except Exception as e:
+        import logging
+        logging.warning(f"O'tkazma hisobotini INFO_GROUP ga yuborishda xatolik: {e}")
+
+async def send_big_giveaway_report(
+    bot: Bot,
+    user: User,
+    chat,
+    giveaway_type: str = "Pul giveaway",
+    count: int = 1
+):
+    from config import INFO_GROUP
+    if not INFO_GROUP or not bot:
+        return
+
+    try:
+        chat_title = (chat.title or chat.username or "Guruh") if chat else "Guruh"
+        chat_id_val = chat.id if chat else 0
+        user_name = user.full_name or "Foydalanuvchi"
+
+        log_msg = (
+            f"🎁 <b>Katta giveaway aniqlandi!</b>\n\n"
+            f"🎉 <b>Turi:</b> {giveaway_type}\n"
+            f"🔢 <b>Soni:</b> {count}\n"
+            f"👤 <b>Foydalanuvchi:</b> {user_name} {user.user_id}\n"
+            f"💬 <b>Guruh:</b> {chat_title} {chat_id_val}"
+        )
+
+        from keyboards.user_keyboards import blocking_users
+        await bot.send_message(
+            chat_id=INFO_GROUP,
+            text=log_msg,
+            parse_mode="HTML",
+            reply_markup=blocking_users(user.user_id, user.user_id)
+        )
+    except Exception as e:
+        import logging
+        logging.warning(f"Big giveaway report yuborishda xatolik: {e}")
+
+async def send_super_sandiq_report(
+    bot: Bot,
+    user: User,
+    diamonds: int
+):
+    from config import INFO_GROUP
+    if not INFO_GROUP or not bot:
+        return
+
+    try:
+        user_name = user.full_name or "Foydalanuvchi"
+        log_msg = (
+            f"🎉 <b>Foydalanuvchi super sandiqni ochdi!</b>\n\n"
+            f"👤 <b>Foydalanuvchi:</b> {user_name} ({user.user_id})\n"
+            f"💎 <b>Yutuq:</b> {diamonds}"
+        )
+
+        from keyboards.user_keyboards import blocking_users
+        await bot.send_message(
+            chat_id=INFO_GROUP,
+            text=log_msg,
+            parse_mode="HTML",
+            reply_markup=blocking_users(user.user_id, user.user_id)
+        )
+    except Exception as e:
+        import logging
+        logging.warning(f"Super sandiq report yuborishda xatolik: {e}")
+
+async def send_new_vip_report(
+    bot: Bot,
+    user: User,
+    diamond_count: int = 0
+):
+    from config import INFO_GROUP
+    if not INFO_GROUP or not bot:
+        return
+
+    try:
+        user_name = user.full_name or "Foydalanuvchi"
+        log_msg = (
+            f"🎉 <b>Yangi Vip User!</b>\n\n"
+            f"👤 <b>Foydalanuvchi:</b> {user_name} ({user.user_id})\n"
+            f"💎 <b>Olmoslar soni:</b> {diamond_count}"
+        )
+
+        from keyboards.user_keyboards import blocking_users
+        await bot.send_message(
+            chat_id=INFO_GROUP,
+            text=log_msg,
+            parse_mode="HTML",
+            reply_markup=blocking_users(user.user_id, user.user_id)
+        )
+    except Exception as e:
+        import logging
+        logging.warning(f"Vip report yuborishda xatolik: {e}")
 
 async def blocking_users_answer(call: CallbackQuery):
     if call.from_user.id not in ADMINS:

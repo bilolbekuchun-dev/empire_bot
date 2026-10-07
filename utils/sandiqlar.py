@@ -281,14 +281,8 @@ async def open_super_sandiq(call: CallbackQuery, state: FSMContext):
             await call.message.edit_text(
                 f"🎉 Tabriklaymiz! Siz {diamonds} ta olmos yutib oldingiz!"
             )
-            await call.bot.send_message(
-                chat_id=INFO_GROUP,
-                text=F"""<b>🎉 Foydalanuvchi super sandiqni ochdi!
-            
-👤 Foydalanuvchi:</b> {user.mention} ({user.user_id})
-<b>💎 Yutuq:</b> {diamonds}
-            """, parse_mode="HTML"
-            )
+            from utils.others import send_super_sandiq_report
+            await send_super_sandiq_report(call.bot, user, diamonds)
             await call.answer()
             return
 
