@@ -48,14 +48,36 @@ async def f(message: Message, bot: Bot):
 
 @router.message(Command("start"), F.chat.type == "private")
 async def f(message: Message, bot: Bot, state: FSMContext, command: CommandObject):
+    args = command.args
+    if args:
+        await state.update_data(pending_start_args=args)
+
+    user, _created = await User.get_or_create(
+        user_id=message.from_user.id,
+        defaults={"full_name": message.from_user.full_name, "mention": message.from_user.mention_html()}
+    )
+
+    data = await state.get_data()
+
+    # 1-bosqich: Til tanlash (yangi foydalanuvchi yoki onboarding hali tugamagan bo'lsa)
+    if not user.gender and not data.get("onboard_lang_selected"):
+        from keyboards.main_keyboard import get_onboard_lang_keyboard
+        text = "🌐 <b>Bot tilini tanlang / Choose bot language / Выберите язык бота / Bot dilini seçin:</b>"
+        await message.answer(text, reply_markup=get_onboard_lang_keyboard(), parse_mode="HTML")
+        return
+
+    # 2-bosqich: Majburiy obuna
     if await ensure_subscribed_or_prompt(message, bot):
         return
 
-    args = command.args  # o'yinga qo'shilish havolasidagi qiymat yoki None
-
-    if await start.ensure_onboarded_or_defer(message, state, args):
+    # 3-bosqich: Jins tanlash
+    if not user.gender:
+        lang = clean_lang(user.lang)
+        prompt = GENDER_PROMPT.get(lang, GENDER_PROMPT["uz"])
+        await message.answer(prompt, reply_markup=gender_keyboard(lang), parse_mode="HTML")
         return
 
+    # 4-bosqich: Bosh menyu / Buyruqlar
     if args and "buy_star_" in args:
         await others.process_buy_star_main_bot(message=message, args=args)
     elif args and len(args.split("_")) > 1:
@@ -65,28 +87,39 @@ async def f(message: Message, bot: Bot, state: FSMContext, command: CommandObjec
 
 
 @router.callback_query(F.data == "check_sub")
-async def check_sub_handler(call: CallbackQuery, bot: Bot):
+async def check_sub_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
+    user = await User.get_or_none(user_id=call.from_user.id)
+    lang = clean_lang(user.lang if user else "uz")
     unsubscribed = await get_unsubscribed_channels(bot, call.from_user.id)
-    if unsubscribed:
-        user = await User.get_or_none(user_id=call.from_user.id)
-        lang = clean_lang(user.lang if user else "uz")
-        prompt = SUB_REQUIRED_TEXT.get(lang, SUB_REQUIRED_TEXT["uz"])
 
+    if unsubscribed:
+        prompt = SUB_REQUIRED_TEXT.get(lang, SUB_REQUIRED_TEXT["uz"])
         await call.answer(prompt, show_alert=True)
         try:
             await call.message.edit_text(
                 prompt,
-                reply_markup=build_sub_keyboard(unsubscribed, lang=lang)
+                reply_markup=build_sub_keyboard(unsubscribed, lang=lang),
+                parse_mode="HTML"
             )
         except Exception:
             pass
     else:
-        await call.answer("✅ Rahmat! Barcha kanallarga obuna bo'ldingiz.", show_alert=True)
-        try:
-            await call.message.delete()
-        except Exception:
-            pass
-        await start.start_msg_handler(call.message)
+        confirm_map = {
+            "uz": "✅ Rahmat! Barcha kanallarga obuna bo'ldingiz.",
+            "ru": "✅ Спасибо! Вы подписались на все каналы.",
+            "en": "✅ Thank you! You subscribed to all channels.",
+            "tr": "✅ Teşekkürler! Tüm kanallara abone oldunuz."
+        }
+        await call.answer(confirm_map.get(lang, confirm_map["uz"]), show_alert=True)
+        if not user or not user.gender:
+            prompt = GENDER_PROMPT.get(lang, GENDER_PROMPT["uz"])
+            kb = gender_keyboard(lang)
+            try:
+                await call.message.edit_text(prompt, reply_markup=kb, parse_mode="HTML")
+            except Exception:
+                await call.message.answer(prompt, reply_markup=kb, parse_mode="HTML")
+        else:
+            await start.start_call_handler(call)
 
 
 @router.message(Command("start"))
