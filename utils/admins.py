@@ -568,38 +568,50 @@ async def get_chat_id(message: Message):
         await message.answer(f"Chat ID: {message.chat.id}")
 
 async def block_user_answer(message: Message):
-    if message.from_user.id not in ADMINS:
+    if not await is_bot_admin(message.from_user.id):
         return
-    if len(message.text.split()) == 2:
-        user_id = int(message.text.split()[1])
-    elif message.reply_to_message:
+    user_id = None
+    parts = (message.text or "").strip().split()
+    if len(parts) >= 2 and parts[1].lstrip("-").isdigit():
+        user_id = int(parts[1])
+    elif message.reply_to_message and message.reply_to_message.from_user:
         user_id = message.reply_to_message.from_user.id
-    else:
+    
+    if not user_id:
+        await message.answer("ℹ️ <b>Foydalanish:</b> <code>/ban 123456789</code> yoki foydalanuvchi xabariga reply qilib <code>/ban</code>", parse_mode="HTML")
         return
     
     user = await User.get_or_none(user_id=user_id)
-    if not user: return
+    if not user:
+        await message.answer("⚠️ Foydalanuvchi bazada topilmadi!", parse_mode="HTML")
+        return
 
     user_is_blocked = await Blocked_user.filter(user=user).first()
     if user_is_blocked:
-        await message.answer("<b>❗️ Foydalanuvchi bloklangan!</b>", parse_mode="HTML")
+        await message.answer("<b>❗️ Foydalanuvchi allaqachon bloklangan!</b>", parse_mode="HTML")
         return
     
     await Blocked_user.create(user=user)
-    await message.reply_to_message.reply("<b>✅ Foydalanuvchi bloklandi!</b>", parse_mode="HTML")
+    await message.answer(f"<b>✅ {user_id} foydalanuvchisi botda bloklandi (ban qilindi)!</b>", parse_mode="HTML")
 
 async def unblock_user_answer(message: Message):
-    if message.from_user.id not in ADMINS:
+    if not await is_bot_admin(message.from_user.id):
         return
-    if len(message.text.split()) == 2:
-        user_id = int(message.text.split()[1])
-    elif message.reply_to_message:
+    user_id = None
+    parts = (message.text or "").strip().split()
+    if len(parts) >= 2 and parts[1].lstrip("-").isdigit():
+        user_id = int(parts[1])
+    elif message.reply_to_message and message.reply_to_message.from_user:
         user_id = message.reply_to_message.from_user.id
-    else:
+    
+    if not user_id:
+        await message.answer("ℹ️ <b>Foydalanish:</b> <code>/unban 123456789</code> yoki foydalanuvchi xabariga reply qilib <code>/unban</code>", parse_mode="HTML")
         return
     
     user = await User.get_or_none(user_id=user_id)
-    if not user: return
+    if not user:
+        await message.answer("⚠️ Foydalanuvchi bazada topilmadi!", parse_mode="HTML")
+        return
 
     user_is_blocked = await Blocked_user.filter(user=user).first()
     if not user_is_blocked:
@@ -607,7 +619,7 @@ async def unblock_user_answer(message: Message):
         return
     
     await user_is_blocked.delete()
-    await message.reply_to_message.reply("<b>✅ Foydalanuvchi blokdan chiqarildi!</b>", parse_mode="HTML")
+    await message.answer(f"<b>✅ {user_id} foydalanuvchisidan blok (ban) olib tashlandi!</b>", parse_mode="HTML")
 
 async def bust_group_balance(message: Message):
     if message.from_user.id not in ADMINS: return
