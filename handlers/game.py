@@ -16,7 +16,8 @@ from utils.redis_game.handler_wrappers import (
 )
 
 from utils.subscription import ensure_subscribed_or_prompt, get_unsubscribed_channels, build_sub_keyboard
-from utils.i18n import clean_lang, SUB_REQUIRED_TEXT
+from utils.i18n import clean_lang, SUB_REQUIRED_TEXT, GENDER_PROMPT
+from keyboards.user_keyboards import gender_keyboard
 from models.user import User
 
 router = Router()
