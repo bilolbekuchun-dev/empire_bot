@@ -249,35 +249,31 @@ async def daily_balance_task(bot: Bot):
 
 
 async def check_vip_users(bot: Bot):
-    """30 kundan eski VIP foydalanuvchilarni o'chirish (SQL filtri bilan)"""
+    """Muddati tugagan VIP foydalanuvchilarni o'chirish (duration_days bo'yicha)"""
     while True:
         try:
             now = datetime.now(timezone.utc)
-            cutoff = now - timedelta(days=30)
-            # Optimized: Use only() to fetch only needed fields
-            expired_vips = await VipUser.filter(
-                created_at__lt=cutoff
-            ).prefetch_related('user').only("id", "created_at", "user").all()
-
+            all_vips = await VipUser.all().prefetch_related('user')
             expired_count = 0
-            for vip in expired_vips:
+            for vip in all_vips:
                 try:
-                    user_id = vip.user.user_id if vip.user else None
-                    await vip.delete()
-                    expired_count += 1
-                    
-                    if user_id:
-                        try:
-                            await bot.send_message(
-                                chat_id=user_id,
-                                text="<b>⭐️ Sizning VIP statusingiz muddati tugadi.</b>",
-                                parse_mode="HTML"
-                            )
-                        except Exception as e:
-                            logging.warning(f"Failed to notify VIP user {user_id}: {e}")
-
+                    duration = getattr(vip, 'duration_days', 30) or 30
+                    vip_created = to_utc(vip.created_at)
+                    if vip_created and (vip_created + timedelta(days=duration) < now):
+                        user_id = vip.user.user_id if vip.user else None
+                        await vip.delete()
+                        expired_count += 1
+                        if user_id:
+                            try:
+                                await bot.send_message(
+                                    chat_id=user_id,
+                                    text="<b>⭐️ Sizning VIP statusingiz muddati tugadi.</b>",
+                                    parse_mode="HTML"
+                                )
+                            except Exception as e:
+                                logging.warning(f"Failed to notify VIP user {user_id}: {e}")
                 except Exception as e:
-                    logging.error(f"Error deleting VIP user: {e}", exc_info=True)
+                    logging.error(f"Error checking individual VIP user: {e}", exc_info=True)
             
             if expired_count > 0:
                 logging.info(f"check_vip_users: expired {expired_count} VIP users")
@@ -285,7 +281,7 @@ async def check_vip_users(bot: Bot):
         except Exception as e:
             logging.error(f"check_vip_users error: {e}", exc_info=True)
 
-        await sleep(86400)  # Har kuni bir marta tekshirish
+        await sleep(3600)  # Har soatda tekshirish
 
 
 async def stats_update_task(bot: Bot):

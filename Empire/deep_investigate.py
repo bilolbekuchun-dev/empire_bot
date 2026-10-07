@@ -24,8 +24,7 @@ async def deep_investigate():
         "FROM gameplayer gp JOIN game g ON gp.game_id = g.id WHERE gp.user_id = $1 ORDER BY gp.id DESC LIMIT 50;",
         [user.id]
     )
-    print(f"
-[GAMES PLAYED: {len(games_played)}]")
+    print(f"\n[GAMES PLAYED: {len(games_played)}]")
     for g in games_played:
         print(f"  Game #{g['game_id']} | Role: {g['role']} | Win: {g['win']} | RealWinner: {g['is_really_winner']} | Date: {g['created_at']}")
         
@@ -35,20 +34,18 @@ async def deep_investigate():
         "JOIN gameplayer gp ON a.actor_id = gp.id WHERE gp.user_id = $1 ORDER BY a.id DESC LIMIT 100;",
         [user.id]
     )
-    print(f"
-[ACTIONS: {len(all_acts)}]")
+    print(f"\n[ACTIONS: {len(all_acts)}]")
     for a in all_acts:
         print(f"  Action #{a['id']} | Type: {a['action_type']} | Result: {a['result']}")
 
     # 3. Check all actions where this user was target
     targ_acts = await conn.execute_query_dict(
-        "SELECT a.id, a.action_type, a.result, gp.role as actor_role, u.user_id as actor_tg_id FROM action a "
-        "JOIN gameplayer gp ON a.actor_id = gp.id JOIN "user" u ON gp.user_id = u.id "
-        "WHERE a.target_id IN (SELECT id FROM gameplayer WHERE user_id = $1) ORDER BY a.id DESC LIMIT 50;",
+        'SELECT a.id, a.action_type, a.result, gp.role as actor_role, u.user_id as actor_tg_id FROM action a '
+        'JOIN gameplayer gp ON a.actor_id = gp.id JOIN "user" u ON gp.user_id = u.id '
+        'WHERE a.target_id IN (SELECT id FROM gameplayer WHERE user_id = $1) ORDER BY a.id DESC LIMIT 50;',
         [user.id]
     )
-    print(f"
-[TARGET IN ACTIONS: {len(targ_acts)}]")
+    print(f"\n[TARGET IN ACTIONS: {len(targ_acts)}]")
     for a in targ_acts:
         print(f"  Action #{a['id']} | Type: {a['action_type']} | Result: {a['result']} | From actor role: {a['actor_role']} (tg: {a['actor_tg_id']})")
         
@@ -63,8 +60,7 @@ async def deep_investigate():
         try:
             r = await conn.execute_query_dict(f"SELECT * FROM {t} WHERE user_id = {user.id} OR user_id = {target_user_id} LIMIT 10;")
             if r:
-                print(f"
-[TABLE {t}]: {r}")
+                print(f"\n[TABLE {t}]: {r}")
         except Exception:
             pass
             

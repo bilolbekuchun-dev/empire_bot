@@ -201,40 +201,53 @@ async def vote_target_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
      
 
 async def say_last_word_handler(message: Message, state: FSMContext):
-     
-     
-    user = await User.filter(user_id=message.from_user.id).first()
-    if not user: 
-         
-         
+    user_id = message.from_user.id
+    sender_mention = message.from_user.mention_html()
+
+    # 1. Avval Redis game tekshiramiz:
+    try:
+        from utils.redis_game.services.player_service import player_service
+        from utils.redis_game.repositories.game_repository import game_repo
+        from utils.redis_game.repositories.player_repository import player_repo
+        from utils.telegram_utils import safe_send_message
+
+        redis_res = await player_service.find_player_dead_last_word_game(user_id)
+        if redis_res:
+            game_id, player_state = redis_res
+            game_state = await game_repo.load_game(game_id)
+            if game_state:
+                player_state.is_sayed_last_word = True
+                await player_repo.save_player(player_state)
+
+                msg_text = (
+                    f"📢 <b>O'limidan oldin kimdir, {sender_mention} ning qichqirganini eshitdi:</b>\n\n"
+                    f"💬 <i>\"{message.html_text}\"</i>"
+                )
+                await safe_send_message(message.bot, game_state.chat_id, msg_text, parse_mode="HTML")
+                await message.answer("✅ So‘nggi so‘zingiz guruhga yuborildi.")
+                return
+    except Exception as e:
+        print(f"⚠️ say_last_word_handler redis error: {e}")
+
+    # 2. Eski DB o'yini:
+    user = await User.filter(user_id=user_id).first()
+    if not user:
         return
     player = await GamePlayer.filter(user=user, is_alive=False).last()
     if not player:
-         
-         
         return
     await player.fetch_related("game")
     game = player.game
-    if not game.is_active: 
-         
-         
+    if not game.is_active:
         return
-    now = datetime.now(timezone.utc)
+
     player.is_sayed_last_word = True
     await player.save()
     await game.fetch_related("chat")
 
-    time_set = await GameSetTime.get(chat_id=game.chat.chat_id)
-    if (now - player.deaded_at) > timedelta(seconds=time_set.word_time):
-         
-        await message.answer("⏳ Kechirasiz, so‘nggi so‘zni aytishga kechikdingiz!")
-         
-         
-        return
-
     await safe_send_message(message.bot, 
         game.chat.chat_id,
-        f"O'limidan oldin kimdir, {user.mention}ning qichqirganin eshitdi.\n\n{message.html_text}",
+        f"📢 <b>O'limidan oldin kimdir, {user.mention} ning qichqirganini eshitdi:</b>\n\n💬 <i>\"{message.html_text}\"</i>",
         parse_mode="HTML"
     )
     await message.answer("✅ So‘nggi so‘zingiz guruhga yuborildi.")

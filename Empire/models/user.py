@@ -240,3 +240,11 @@ class PremiumPurchaseLog(Model):
     error_text = fields.TextField(null=True)
     created_at = fields.DatetimeField(auto_now_add=True)
 
+
+class BotAdmin(Model):
+    """Koddasiz dinamik ravishda botga qo'shilgan adminlar."""
+    id = fields.BigIntField(pk=True)
+    user_id = fields.BigIntField(unique=True)
+    added_by = fields.BigIntField(null=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
+

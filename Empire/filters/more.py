@@ -286,19 +286,32 @@ class NightSheriklarMessages(Filter):
 
 class SayLastWordFilter(Filter):
     async def __call__(self, message: Message):
-        if not message.text: return
+        if not message.text:
+            return False
         if message.chat.type != "private": 
-            return
-        user = await User.filter(user_id=message.from_user.id).first()
+            return False
+        user_id = message.from_user.id
+        
+        # 1. Avval Redis o'yinlarida o'lgan va oxirgi so'z aytmagan player borligini tekshiramiz
+        try:
+            from utils.redis_game.services.player_service import player_service
+            redis_res = await player_service.find_player_dead_last_word_game(user_id)
+            if redis_res:
+                return True
+        except Exception:
+            pass
+
+        # 2. Eski DB o'yini:
+        user = await User.filter(user_id=user_id).first()
         if not user: 
-            return
+            return False
         player = await GamePlayer.filter(user=user, is_alive=False).last()
         if not player:
-            return
+            return False
         await player.fetch_related("game")
         game = player.game
         if not game.is_active: 
-            return
+            return False
         if player.is_sayed_last_word:
-            return
+            return False
         return True

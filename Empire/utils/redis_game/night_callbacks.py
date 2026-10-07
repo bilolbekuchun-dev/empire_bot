@@ -86,7 +86,7 @@ NIGHT_ACTION_ANNOUNCE = {
 }
 
 
-async def _announce_night_action(call: CallbackQuery, gid: int, ph: int, uid: int, role: str, *, skipped: bool = False) -> None:
+async def _announce_night_action(call: CallbackQuery, gid: int, ph: int, uid: int, role: str, *, skipped: bool = False, kind: str = None) -> None:
     """Guruhga tungi harakat e'lonini bir marta yuborish (nishon ochilmaydi)."""
     key = f"game:{gid}:night:{ph}:announced:{uid}"
     try:
@@ -98,6 +98,10 @@ async def _announce_night_action(call: CallbackQuery, gid: int, ph: int, uid: in
         shown = role_display(role)
         if skipped:
             text = f"{shown} bugun dam oladi!"
+        elif role == RoleNames.KOMISSAR and kind == "k":
+            text = f"{shown} pistoletini o'qladi..."
+        elif role == RoleNames.KOMISSAR and kind == "c":
+            text = f"{shown} kimnidir tekshirishga ketdi..."
         else:
             tmpl = NIGHT_ACTION_ANNOUNCE.get(role, "{role} tungi ishga chiqdi...")
             text = tmpl.format(role=shown)
@@ -172,12 +176,27 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         await _confirm_choice(call, role, "O'tkazib yuborish")
         return
 
-    # Komissar: rejim tugmasi (target==0) -> nishon ro'yxati
+    # Komissar: Ortga qaytish (rejim tanlash menyusi)
+    if code == "ko" and kind == "b":
+        kb = InlineKeyboardBuilder()
+        kb.button(text="🔍 Tekshirish", callback_data=f"na|ko|{gid}|{ph}|c|0")
+        kb.button(text="🔫 O'ldirish", callback_data=f"na|ko|{gid}|{ph}|k|0")
+        kb.button(text="🚷 O'tkazib yuborish", callback_data=f"na|ko|{gid}|{ph}|s|0")
+        kb.adjust(2, 1)
+        try:
+            await call.message.edit_text("🕵🏼 <b>Komissar katani</b>, nima qilasiz?", parse_mode="HTML", reply_markup=kb.as_markup())
+        except Exception:
+            pass
+        await call.answer()
+        return
+
+    # Komissar: rejim tugmasi (target==0) -> nishon ro'yxati va "🔙 Ortga" tugmasi
     if code == "ko" and kind in ("c", "k") and int(target) == 0:
         _p, tg = await _alive_targets(gid, exclude_uid=uid)
         kb = InlineKeyboardBuilder()
         for tuid, label in tg:
             kb.button(text=label, callback_data=f"na|ko|{gid}|{ph}|{kind}|{tuid}")
+        kb.button(text="🔙 Ortga", callback_data=f"na|ko|{gid}|{ph}|b|0")
         kb.button(text="🚷 O'tkazib yuborish", callback_data=f"na|ko|{gid}|{ph}|s|0")
         kb.adjust(1)
         title = "🔍 Tekshirish uchun nishon:" if kind == "c" else "🔫 O'ldirish uchun nishon:"
@@ -190,11 +209,13 @@ async def night_action_cb(call: CallbackQuery, bot=None):
 
     # Komissar: nishon tanlandi
     if code == "ko" and kind in ("c", "k") and int(target) != 0:
-        atype = "investigate" if kind == "c" else "kill"
+        atype = "investigate" if kind == "c" else "komissar_shoot"
         await ActionService.save_action(gid, ph, uid, int(target), atype)
         await _set_last_visited(gid, uid, int(target))
-        await _announce_night_action(call, gid, ph, uid, role)
-        await _confirm_choice(call, role, await _player_name(int(target)))
+        await _announce_night_action(call, gid, ph, uid, role, kind=kind)
+        action_name = "Tekshirish" if kind == "c" else "O'ldirish (Otish)"
+        target_name = await _player_name(int(target))
+        await _confirm_choice(call, role, f"{action_name} ➔ {target_name}")
         return
 
     # Zanjir / Sehrgar / Reverser: 1-nishon -> 2-nishon
@@ -234,31 +255,115 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         return
 
 
-    # Jin: nishon -> sovg'a turi
-    if code == "ji" and kind == "t":
-        await ActionService.clear_player_actions(gid, ph, uid)
-        await r.set(f"game:{gid}:tmp:{uid}:first", str(target), ex=3600)
+    # Jin: Ortga qaytish / Asosiy menyu
+    if code == "ji" and kind == "b":
         kb = InlineKeyboardBuilder()
-        kb.button(text="✨ Hayot", callback_data=f"na|ji|{gid}|{ph}|jh|0")
-        kb.button(text="💰 Pul", callback_data=f"na|ji|{gid}|{ph}|jp|0")
-        kb.button(text="💀 Qotillik", callback_data=f"na|ji|{gid}|{ph}|jq|0")
+        kb.button(text="✨ Hayot", callback_data=f"na|ji|{gid}|{ph}|jh_menu|0")
+        kb.button(text="💰 Pul", callback_data=f"na|ji|{gid}|{ph}|jp_menu|0")
+        kb.button(text="💀 Qotillik", callback_data=f"na|ji|{gid}|{ph}|jq_menu|0")
+        kb.button(text="🚷 O'tkazib yuborish", callback_data=f"na|ji|{gid}|{ph}|s|0")
         kb.adjust(1)
         try:
-            await call.message.edit_text("Sovg'a turini tanlang:", reply_markup=kb.as_markup())
+            await call.message.edit_text("🧞 <b>Jin</b>, tilagingizni tanlang:", parse_mode="HTML", reply_markup=kb.as_markup())
         except Exception:
             pass
         await call.answer()
         return
-    if code == "ji" and kind in ("jh", "jp", "jq"):
+
+    # Jin: ✨ Hayot menyusi (O'zimga / Boshqaga)
+    if code == "ji" and kind == "jh_menu":
+        kb = InlineKeyboardBuilder()
+        kb.button(text="👤 O'zimga", callback_data=f"na|ji|{gid}|{ph}|jh_self|0")
+        kb.button(text="👥 Boshqaga", callback_data=f"na|ji|{gid}|{ph}|jh_other|0")
+        kb.button(text="🔙 Ortga", callback_data=f"na|ji|{gid}|{ph}|b|0")
+        kb.adjust(2, 1)
+        try:
+            await call.message.edit_text("Kimga hayot tilamoqchisiz?", parse_mode="HTML", reply_markup=kb.as_markup())
+        except Exception:
+            pass
+        await call.answer()
+        return
+
+    # Jin: ✨ Hayot ➔ O'zimga
+    if code == "ji" and kind == "jh_self":
         await ActionService.clear_player_actions(gid, ph, uid)
-        first = _redis_str(await r.get(f"game:{gid}:tmp:{uid}:first"))
-        atype = {"jh": "jin_hayot", "jp": "jin_pul", "jq": "jin_qotil"}[kind]
-        if first:
-            await ActionService.save_action(gid, ph, uid, int(first), atype)
-        gift = {"jh": "Hayot", "jp": "Pul", "jq": "Qotillik"}[kind]
-        name = await _player_name(int(first)) if first else "?"
+        await ActionService.save_action(gid, ph, uid, uid, "jin_hayot")
         await _announce_night_action(call, gid, ph, uid, role)
-        await _confirm_choice(call, role, f"{name} ({gift})")
+        await _confirm_choice(call, role, "✨ Hayot ➔ O'zimga")
+        return
+
+    # Jin: ✨ Hayot ➔ Boshqaga (o'yinchilar ro'yxati)
+    if code == "ji" and kind == "jh_other":
+        _p, tg = await _alive_targets(gid, exclude_uid=uid)
+        kb = InlineKeyboardBuilder()
+        for tuid, label in tg:
+            kb.button(text=label, callback_data=f"na|ji|{gid}|{ph}|jh_target|{tuid}")
+        kb.button(text="🔙 Ortga", callback_data=f"na|ji|{gid}|{ph}|jh_menu|0")
+        kb.adjust(1)
+        try:
+            await call.message.edit_text("✨ Kimga hayot tilamoqchisiz?", reply_markup=kb.as_markup())
+        except Exception:
+            pass
+        await call.answer()
+        return
+
+    # Jin: ✨ Hayot ➔ NISHON tanlandi
+    if code == "ji" and kind == "jh_target" and int(target) != 0:
+        await ActionService.clear_player_actions(gid, ph, uid)
+        await ActionService.save_action(gid, ph, uid, int(target), "jin_hayot")
+        target_name = await _player_name(int(target))
+        await _announce_night_action(call, gid, ph, uid, role)
+        await _confirm_choice(call, role, f"✨ Hayot ➔ {target_name}")
+        return
+
+    # Jin: 💰 Pul menyusi (o'yinchilar ro'yxati)
+    if code == "ji" and kind == "jp_menu":
+        players = await player_repo.get_alive_players(gid)
+        names = await _name_map([p.user_id for p in players])
+        kb = InlineKeyboardBuilder()
+        for p in players:
+            label = html.escape(names.get(p.user_id) or str(p.user_id))
+            kb.button(text=label, callback_data=f"na|ji|{gid}|{ph}|jp_target|{p.user_id}")
+        kb.button(text="🔙 Ortga", callback_data=f"na|ji|{gid}|{ph}|b|0")
+        kb.adjust(1)
+        try:
+            await call.message.edit_text("💰 Kimga pul (va olmos) in'om etmoqchisiz?", reply_markup=kb.as_markup())
+        except Exception:
+            pass
+        await call.answer()
+        return
+
+    # Jin: 💰 Pul ➔ NISHON tanlandi
+    if code == "ji" and kind == "jp_target" and int(target) != 0:
+        await ActionService.clear_player_actions(gid, ph, uid)
+        await ActionService.save_action(gid, ph, uid, int(target), "jin_pul")
+        target_name = await _player_name(int(target))
+        await _announce_night_action(call, gid, ph, uid, role)
+        await _confirm_choice(call, role, f"💰 Pul ➔ {target_name}")
+        return
+
+    # Jin: 💀 Qotillik menyusi (o'yinchilar ro'yxati)
+    if code == "ji" and kind == "jq_menu":
+        _p, tg = await _alive_targets(gid, exclude_uid=uid)
+        kb = InlineKeyboardBuilder()
+        for tuid, label in tg:
+            kb.button(text=label, callback_data=f"na|ji|{gid}|{ph}|jq_target|{tuid}")
+        kb.button(text="🔙 Ortga", callback_data=f"na|ji|{gid}|{ph}|b|0")
+        kb.adjust(1)
+        try:
+            await call.message.edit_text("💀 Kimni o'ldirmoqchisiz?", reply_markup=kb.as_markup())
+        except Exception:
+            pass
+        await call.answer()
+        return
+
+    # Jin: 💀 Qotillik ➔ NISHON tanlandi
+    if code == "ji" and kind == "jq_target" and int(target) != 0:
+        await ActionService.clear_player_actions(gid, ph, uid)
+        await ActionService.save_action(gid, ph, uid, int(target), "jin_qotil")
+        target_name = await _player_name(int(target))
+        await _announce_night_action(call, gid, ph, uid, role)
+        await _confirm_choice(call, role, f"💀 Qotillik ➔ {target_name}")
         return
 
     # Oddiy nishonli harakat

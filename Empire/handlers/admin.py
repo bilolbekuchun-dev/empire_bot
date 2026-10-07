@@ -22,11 +22,14 @@ router = Router()
 
 HARDCODED_ADMINS = {8765051736, 2099616410}
 
-def is_primary_admin(user_id: int) -> bool:
-    """Bosh adminlar hamda ADMINS ro'yxatidagi barcha adminlar admin paneldan foydalana oladi"""
-    if user_id in HARDCODED_ADMINS:
+async def is_primary_admin(user_id: int) -> bool:
+    """Bosh adminlar, ADMINS hamda bazada shakllangan (BotAdmin) barcha adminlar admin paneldan foydalana oladi"""
+    if not user_id:
+        return False
+    if user_id in HARDCODED_ADMINS or user_id in PRIMARY_ADMIN_IDS or user_id == PRIMARY_ADMIN_ID or user_id in ADMINS:
         return True
-    return user_id in PRIMARY_ADMIN_IDS or user_id == PRIMARY_ADMIN_ID or user_id in ADMINS
+    from models.user import BotAdmin
+    return await BotAdmin.filter(user_id=user_id).exists()
 
 # ==========================================
 # 👑 ASOSIY PREMIUM EMOJI ADMIN PANEL
@@ -49,7 +52,7 @@ def get_main_panel_text() -> str:
 @router.message(Command("admin"))
 @router.message(Command("panel"))
 async def admin_panel_cmd(message: Message, state: FSMContext):
-    if not is_primary_admin(message.from_user.id):
+    if not await is_primary_admin(message.from_user.id):
         await message.answer("Ushbu buyruq mavjud emas")
         return
     await state.clear()
@@ -58,7 +61,7 @@ async def admin_panel_cmd(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == "adm_emj_main")
 async def adm_emj_main_cb(call: CallbackQuery, state: FSMContext):
-    if not is_primary_admin(call.from_user.id):
+    if not await is_primary_admin(call.from_user.id):
         await call.answer("❌ Ruxsat yo'q!", show_alert=True)
         return
     await state.clear()
@@ -72,7 +75,7 @@ async def adm_emj_main_cb(call: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "adm_emj_roles_menu")
 async def adm_emj_roles_menu_cb(call: CallbackQuery, state: FSMContext):
-    if not is_primary_admin(call.from_user.id):
+    if not await is_primary_admin(call.from_user.id):
         return
     await state.clear()
     text = (
@@ -85,7 +88,7 @@ async def adm_emj_roles_menu_cb(call: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "adm_emj_cat_tinch")
 async def adm_emj_cat_tinch_cb(call: CallbackQuery):
-    if not is_primary_admin(call.from_user.id):
+    if not await is_primary_admin(call.from_user.id):
         return
     text = "🏛 <b>Tinch aholi rollari (13 ta):</b>\n\nEmoji o'rnatmoqchi bo'lgan rolni tanlang:"
     await call.message.edit_text(text, parse_mode="HTML", reply_markup=admin_emoji_roles_list_menu("tinch"))
@@ -93,7 +96,7 @@ async def adm_emj_cat_tinch_cb(call: CallbackQuery):
 
 @router.callback_query(F.data == "adm_emj_cat_mafia")
 async def adm_emj_cat_mafia_cb(call: CallbackQuery):
-    if not is_primary_admin(call.from_user.id):
+    if not await is_primary_admin(call.from_user.id):
         return
     text = "🤵 <b>Mafia rollari (6 ta):</b>\n\nEmoji o'rnatmoqchi bo'lgan rolni tanlang:"
     await call.message.edit_text(text, parse_mode="HTML", reply_markup=admin_emoji_roles_list_menu("mafia"))
@@ -101,7 +104,7 @@ async def adm_emj_cat_mafia_cb(call: CallbackQuery):
 
 @router.callback_query(F.data == "adm_emj_cat_yakka")
 async def adm_emj_cat_yakka_cb(call: CallbackQuery):
-    if not is_primary_admin(call.from_user.id):
+    if not await is_primary_admin(call.from_user.id):
         return
     text = "⚔️ <b>Yakka va Neytral rollar (10 ta):</b>\n\nEmoji o'rnatmoqchi bo'lgan rolni tanlang:"
     await call.message.edit_text(text, parse_mode="HTML", reply_markup=admin_emoji_roles_list_menu("yakka"))
@@ -109,7 +112,7 @@ async def adm_emj_cat_yakka_cb(call: CallbackQuery):
 
 @router.callback_query(F.data.startswith("adm_emj_role_"))
 async def adm_emj_role_view_cb(call: CallbackQuery, state: FSMContext):
-    if not is_primary_admin(call.from_user.id):
+    if not await is_primary_admin(call.from_user.id):
         return
     idx = int(call.data.replace("adm_emj_role_", ""))
     if idx >= len(ALL_ACTIVE_ROLES):
@@ -137,7 +140,7 @@ async def adm_emj_role_view_cb(call: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "adm_emj_weapons_menu")
 async def adm_emj_weapons_menu_cb(call: CallbackQuery, state: FSMContext):
-    if not is_primary_admin(call.from_user.id):
+    if not await is_primary_admin(call.from_user.id):
         return
     await state.clear()
     text = "⚔️ <b>Qurol-aslahalar va Inventar:</b>\n\nEmoji o'rnatmoqchi bo'lgan elementni tanlang:"
@@ -146,7 +149,7 @@ async def adm_emj_weapons_menu_cb(call: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data.startswith("adm_emj_wpn_"))
 async def adm_emj_wpn_view_cb(call: CallbackQuery):
-    if not is_primary_admin(call.from_user.id):
+    if not await is_primary_admin(call.from_user.id):
         return
     key = call.data.replace("adm_emj_wpn_", "")
     info = WEAPON_NAMES.get(key)
@@ -175,7 +178,7 @@ async def adm_emj_wpn_view_cb(call: CallbackQuery):
 
 @router.callback_query(F.data == "adm_emj_currency_diamond")
 async def adm_emj_currency_diamond_cb(call: CallbackQuery):
-    if not is_primary_admin(call.from_user.id):
+    if not await is_primary_admin(call.from_user.id):
         return
     custom = get_custom_emoji("currency", "diamond")
     cur = get_diamond_display()
@@ -194,7 +197,7 @@ async def adm_emj_currency_diamond_cb(call: CallbackQuery):
 
 @router.callback_query(F.data == "adm_emj_currency_dollar")
 async def adm_emj_currency_dollar_cb(call: CallbackQuery):
-    if not is_primary_admin(call.from_user.id):
+    if not await is_primary_admin(call.from_user.id):
         return
     custom = get_custom_emoji("currency", "dollar")
     cur = get_dollar_display()
@@ -218,7 +221,7 @@ async def adm_emj_currency_dollar_cb(call: CallbackQuery):
 
 @router.callback_query(F.data.startswith("adm_emj_del_"))
 async def adm_emj_del_item_cb(call: CallbackQuery):
-    if not is_primary_admin(call.from_user.id):
+    if not await is_primary_admin(call.from_user.id):
         return
     parts = call.data.replace("adm_emj_del_", "").split("_", 1)
     category = parts[0]
@@ -247,7 +250,7 @@ async def adm_emj_del_item_cb(call: CallbackQuery):
 
 @router.callback_query(F.data.startswith("adm_emj_set_"))
 async def adm_emj_set_item_cb(call: CallbackQuery, state: FSMContext):
-    if not is_primary_admin(call.from_user.id):
+    if not await is_primary_admin(call.from_user.id):
         return
     parts = call.data.replace("adm_emj_set_", "").split("_", 1)
     category = parts[0]
@@ -276,7 +279,7 @@ async def adm_emj_set_item_cb(call: CallbackQuery, state: FSMContext):
 
 @router.message(AdminEmojiStates.waiting_for_emoji, F.chat.type == "private")
 async def process_emoji_input_msg(message: Message, state: FSMContext):
-    if not is_primary_admin(message.from_user.id):
+    if not await is_primary_admin(message.from_user.id):
         return
     emoji_html = parse_emoji_from_message(message)
     if not emoji_html:
@@ -312,7 +315,7 @@ async def process_emoji_input_msg(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == "adm_emj_reset_confirm")
 async def adm_emj_reset_confirm_cb(call: CallbackQuery):
-    if not is_primary_admin(call.from_user.id):
+    if not await is_primary_admin(call.from_user.id):
         return
     reset_all_custom_emojis()
     await call.answer("🗑 Barcha maxsus premium emojilar tozalandi va standart holatga qaytarildi!", show_alert=True)
@@ -366,6 +369,43 @@ async def f_takevip(message: Message, bot: Bot):
 async def f_givevip(message: Message, bot: Bot):
     await admins.give_vip_handler(message=message, bot=bot)
 
+@router.message(Command("addadmin"))
+@router.message(F.text.startswith("/addadmin"))
+async def f_addadmin(message: Message):
+    if not await is_primary_admin(message.from_user.id):
+        return
+    await admins.add_bot_admin_handler(message=message)
+
+@router.message(Command("deladmin"))
+@router.message(F.text.startswith("/deladmin"))
+async def f_deladmin(message: Message):
+    if not await is_primary_admin(message.from_user.id):
+        return
+    await admins.del_bot_admin_handler(message=message)
+
+@router.message(Command("admins"))
+@router.message(Command("adminlist"))
+@router.message(F.text.startswith("/admins"))
+async def f_admins_list(message: Message):
+    if not await is_primary_admin(message.from_user.id):
+        return
+    await admins.list_bot_admins_handler(message=message)
+
+@router.message(Command("setvip"))
+@router.message(Command("addvip"))
+@router.message(F.text.startswith("/setvip"))
+async def f_setvip(message: Message, bot: Bot):
+    if not await is_primary_admin(message.from_user.id):
+        return
+    await admins.give_vip_handler(message=message, bot=bot)
+
+@router.message(Command("delvip"))
+@router.message(F.text.startswith("/delvip"))
+async def f_delvip(message: Message):
+    if not await is_primary_admin(message.from_user.id):
+        return
+    await admins.del_vip_handler(message=message)
+
 @router.message(F.text.startswith("/vips"))
 async def f_vips(message: Message):
     await admins.get_vip_users(message=message)
@@ -412,14 +452,14 @@ async def f_gtop(message: Message, bot: Bot):
 
 @router.message(Command("stats"))
 async def f_stats(message: Message, bot: Bot):
-    if not is_primary_admin(message.from_user.id):
+    if not await is_primary_admin(message.from_user.id):
         await message.answer("Ushbu buyruq mavjud emas")
         return
     await statistika.bozor_statistikasi(message=message)
 
 @router.message(Command("gboylar"))
 async def f_gboylar(message: Message):
-    if not is_primary_admin(message.from_user.id):
+    if not await is_primary_admin(message.from_user.id):
         await message.answer("Ushbu buyruq mavjud emas")
         return
     await statistika.show_richest_users_in_this_chat(message=message)
@@ -438,7 +478,7 @@ async def f_gbust(message: Message):
 
 @router.message(F.text.startswith("/setmoney") | F.text.startswith("/gmoney") | F.text.startswith("/set_gmoney"))
 async def f_setmoney(message: Message):
-    if not is_primary_admin(message.from_user.id):
+    if not await is_primary_admin(message.from_user.id):
         await message.answer("Ushbu buyruq mavjud emas")
         return
     await admins.set_group_real_money(message=message)
@@ -449,7 +489,7 @@ async def f_top(message: Message, bot: Bot):
 
 @router.message(Command("error"))
 async def f_error(message: Message):
-    if not is_primary_admin(message.from_user.id):
+    if not await is_primary_admin(message.from_user.id):
         await message.answer("Ushbu buyruq mavjud emas")
         return
     if os.path.exists("error.log"):

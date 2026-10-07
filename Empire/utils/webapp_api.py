@@ -91,6 +91,38 @@ ITEM_PRICES = {
 }
 
 
+# ── Telegram Stars narxlari (webapp frontend bilan bir xil bo'lishi SHART) ──
+DIAMOND_STAR_PACKS = {10: 70, 30: 200, 70: 450, 250: 1300}
+DOLLAR_STAR_PACKS = {1000: 7, 10000: 70, 30000: 200}
+DIAMOND_STAR_RATE = 7        # custom: 1 💎 = 7 ⭐
+DOLLAR_STAR_PER = 1000       # custom: 1000 💵 = 7 ⭐
+DOLLAR_STAR_RATE = 7
+MIN_CUSTOM_DIAMOND = 1
+MIN_CUSTOM_DOLLAR = 100
+
+VIP_DIAMOND_PRICES = {7: 8, 14: 15, 30: 30}
+VIP_STAR_PRICES = {7: 50, 14: 100, 30: 200}
+
+
+def profile_payload(profile) -> dict:
+    """Frontend kutadigan 'profile' obyekti (profile_handler bilan bir xil shakl)."""
+    return {
+        "dollar": profile.dollar,
+        "diamond": profile.diamond,
+        "wins": profile.wins,
+        "games_count": profile.games_count,
+        "himoya": profile.himoya,
+        "hujjat": profile.hujjat,
+        "qotildan_himoya": profile.qotildan_himoya,
+        "osishdan_himoya": profile.osishdan_himoya,
+        "miltiq": profile.miltiq,
+        "doridan_himoya": profile.doridan_himoya,
+        "maska": profile.maska,
+        "slip_himoya": profile.slip_himoya,
+        "geroy_himoya": profile.geroy_himoya,
+    }
+
+
 def _clean_role_key(role: str) -> str:
     """"🕵🏼 Komissar katani" -> "Komissar katani" (emoji ni olib tashlash)"""
     if " " in role:

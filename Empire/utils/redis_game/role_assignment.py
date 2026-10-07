@@ -97,7 +97,7 @@ async def rol_taqsimlash_redis(
         ).order_by("id").all()
         
         # Skip active roles for para and vs games
-        if "para x" in game_mode and "vsgame" in game_mode:
+        if "para x" in game_mode or "vsgame" in game_mode:
             active_roles = []
         
         # Build profile to bought roles map

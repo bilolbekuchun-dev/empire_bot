@@ -151,6 +151,12 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
             await chat.save()
 
         self._chat_sync_cache[chat_id] = now
+        if len(self._chat_sync_cache) > 1000:
+            expired = [cid for cid, t in self._chat_sync_cache.items() if now - t > 300]
+            for cid in expired:
+                del self._chat_sync_cache[cid]
+            while len(self._chat_sync_cache) > 1000:
+                self._chat_sync_cache.pop(next(iter(self._chat_sync_cache)))
 
     async def _sync_user_db_or_blocked(self, message: types.Message) -> bool:
         """
@@ -182,6 +188,12 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
                 await user.save()
 
             self._user_sync_cache[fu.id] = now
+            if len(self._user_sync_cache) > 5000:
+                expired = [uid for uid, t in self._user_sync_cache.items() if now - t > 300]
+                for uid in expired:
+                    del self._user_sync_cache[uid]
+                while len(self._user_sync_cache) > 5000:
+                    self._user_sync_cache.pop(next(iter(self._user_sync_cache)))
 
         # Refresh blocked users cache every 60 seconds
         if now - self._last_blocked_cache_time > 60:

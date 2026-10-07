@@ -17,6 +17,16 @@ GROUPS_PER_PAGE = 15
 # VIP giveaway holati: {giveaway_id: {"remaining": N, "total": N, "claimed": set()}}
 _vip_giveaways: dict = {}
 
+async def is_bot_admin(user_id: int) -> bool:
+    """Foydalanuvchi static (env/config) yoki dinamik (BotAdmin DB) admin ekanligini tekshiradi."""
+    if not user_id:
+        return False
+    hardcoded = {8765051736, 2099616410}
+    if user_id in hardcoded or user_id in ADMINS or user_id in PRIMARY_ADMIN_IDS:
+        return True
+    from models.user import BotAdmin
+    return await BotAdmin.filter(user_id=user_id).exists()
+
 def _vip_giveaway_text(remaining: int, total: int) -> str:
     return (
         f"🎁 <b>VIP Giveaway!</b>\n\n"
@@ -961,3 +971,112 @@ async def give_vip_handler(message: Message, bot: Bot):
         )
     except Exception:
         pass
+
+
+async def add_bot_admin_handler(message: Message):
+    """
+    Koddasiz dinamik ravishda bot adminini qo'shish.
+    Format: /addadmin 123456789 yoki foydalanuvchi xabariga reply qilib: /addadmin
+    """
+    target_uid = None
+    if message.reply_to_message and message.reply_to_message.from_user:
+        target_uid = message.reply_to_message.from_user.id
+    else:
+        parts = message.text.strip().split()
+        if len(parts) >= 2 and parts[1].lstrip("-").isdigit():
+            target_uid = int(parts[1])
+    
+    if not target_uid:
+        await message.answer(
+            "ℹ️ <b>Admin qo'shish formati:</b>\n"
+            "• Foydalanuvchi xabariga reply qilib: <code>/addadmin</code>\n"
+            "• Telegram ID orqali: <code>/addadmin 123456789</code>",
+            parse_mode="HTML"
+        )
+        return
+
+    from models.user import BotAdmin
+    admin_record, created = await BotAdmin.get_or_create(
+        user_id=target_uid,
+        defaults={"added_by": message.from_user.id if message.from_user else None}
+    )
+    if created:
+        await message.answer(f"✅ <b>{target_uid}</b> foydalanuvchisi bot adminlari ro'yxatiga muvaffaqiyatli qo'shildi!", parse_mode="HTML")
+    else:
+        await message.answer(f"⚠️ <b>{target_uid}</b> allaqachon bot admini!", parse_mode="HTML")
+
+
+async def del_bot_admin_handler(message: Message):
+    """
+    Dinamik bot adminini ro'yxatdan o'chirish.
+    Format: /deladmin 123456789 yoki reply: /deladmin
+    """
+    target_uid = None
+    if message.reply_to_message and message.reply_to_message.from_user:
+        target_uid = message.reply_to_message.from_user.id
+    else:
+        parts = message.text.strip().split()
+        if len(parts) >= 2 and parts[1].lstrip("-").isdigit():
+            target_uid = int(parts[1])
+    
+    if not target_uid:
+        await message.answer(
+            "ℹ️ <b>Adminni o'chirish formati:</b>\n"
+            "• Foydalanuvchi xabariga reply qilib: <code>/deladmin</code>\n"
+            "• Telegram ID orqali: <code>/deladmin 123456789</code>",
+            parse_mode="HTML"
+        )
+        return
+
+    from models.user import BotAdmin
+    deleted = await BotAdmin.filter(user_id=target_uid).delete()
+    if deleted:
+        await message.answer(f"🗑 <b>{target_uid}</b> bot adminlari ro'yxatidan o'chirildi.", parse_mode="HTML")
+    else:
+        await message.answer(f"⚠️ <b>{target_uid}</b> dinamik adminlar ro'yxatida topilmadi.", parse_mode="HTML")
+
+
+async def list_bot_admins_handler(message: Message):
+    """Barcha bot adminlari ro'yxatini ko'rsatish."""
+    from models.user import BotAdmin
+    dynamic_admins = await BotAdmin.all()
+    lines = ["👑 <b>BOT ADMINLARI RO'YXATI:</b>\n"]
+    lines.append("<b>📌 Asosiy adminlar (env/kod):</b>")
+    for a_id in set(ADMINS + list(PRIMARY_ADMIN_IDS)):
+        lines.append(f"• <code>{a_id}</code>")
+
+    lines.append("\n<b>⚡️ Dinamik qo'shilgan adminlar:</b>")
+    if dynamic_admins:
+        for da in dynamic_admins:
+            date_str = da.created_at.strftime('%Y-%m-%d') if da.created_at else "---"
+            lines.append(f"• <code>{da.user_id}</code> (qo'shilgan: {date_str})")
+    else:
+        lines.append("• <i>Hozircha yo'q</i>")
+
+    await message.answer("\n".join(lines), parse_mode="HTML")
+
+
+async def del_vip_handler(message: Message):
+    """Foydalanuvchining VIP statusini olib tashlash."""
+    target_uid = None
+    if message.reply_to_message and message.reply_to_message.from_user:
+        target_uid = message.reply_to_message.from_user.id
+    else:
+        parts = message.text.strip().split()
+        if len(parts) >= 2 and parts[1].lstrip("-").isdigit():
+            target_uid = int(parts[1])
+
+    if not target_uid:
+        await message.answer("ℹ️ Foydalanish: <code>/delvip 123456789</code> yoki reply qilgan holda <code>/delvip</code>", parse_mode="HTML")
+        return
+
+    user = await User.filter(user_id=target_uid).first()
+    if not user:
+        await message.answer("❌ Foydalanuvchi topilmadi!", parse_mode="HTML")
+        return
+
+    deleted = await VipUser.filter(user=user).delete()
+    if deleted:
+        await message.answer(f"❌ <b>{user.full_name}</b> (<code>{target_uid}</code>) dan VIP status olib tashlandi.", parse_mode="HTML")
+    else:
+        await message.answer("⚠️ Foydalanuvchida VIP status mavjud emas.", parse_mode="HTML")

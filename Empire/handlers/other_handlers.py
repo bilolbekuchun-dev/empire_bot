@@ -75,8 +75,9 @@ async def f(message: Message, bot: Bot):
     await others.get_profile(bot, message)
 
 @router.message(Command("money"))
+@router.message(F.text.startswith("/money "))
 async def f(message: Message, bot: Bot):
-    await others.transfer_money(message=message)
+    await others.transfer_funds_handler(message=message, bot=bot)
 
 @router.message(Command("rolenames"))
 async def f(message: Message, bot: Bot):
@@ -85,11 +86,12 @@ async def f(message: Message, bot: Bot):
 @router.message(Command("give"))
 @router.message(F.text.startswith("/give "))
 async def f(message: Message, bot: Bot):
-    await others.transfer_diamond(message=message)
+    await others.transfer_funds_handler(message=message, bot=bot)
 
 @router.message(Command("send"))
+@router.message(F.text.startswith("/send "))
 async def f(message: Message, bot: Bot):
-    await others.start_giveaway_redis(message, bot)
+    await others.transfer_funds_handler(message=message, bot=bot)
     
 @router.channel_post(Command("send"))
 async def f(message: Message, bot: Bot):

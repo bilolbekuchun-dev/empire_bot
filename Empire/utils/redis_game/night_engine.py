@@ -239,6 +239,7 @@ async def send_night_actions(
             possible_actor_roles = [r for r in ROLE_CODE.keys() if r != RoleNames.AKTYOR]
             actor_night_role = random.choice(possible_actor_roles)
             await r.set(f"game:{game_id}:night:{night_num}:actor_role:{uid}", actor_night_role, ex=3600)
+            await r.set(f"game:{game_id}:player:{uid}:actor_role", actor_night_role, ex=3600)
             await _send_private(
                 bot, uid,
                 f"🎭 <b>Aktyor</b>: Siz bu tun <b>{role_display(actor_night_role)}</b> roliga kirdingiz!"
@@ -331,12 +332,18 @@ async def send_night_actions(
                                 _target_kb("qa", game_id, night_num, mk_targets))
             continue
 
-        # --- Jin: tanlov menyusi (nishon keyin) ---
+        # --- Jin: tilak tanlash menyusi ---
         if role == RoleNames.JIN:
+            kb = InlineKeyboardBuilder()
+            kb.button(text="✨ Hayot", callback_data=_cb("ji", game_id, night_num, "jh_menu", 0))
+            kb.button(text="💰 Pul", callback_data=_cb("ji", game_id, night_num, "jp_menu", 0))
+            kb.button(text="💀 Qotillik", callback_data=_cb("ji", game_id, night_num, "jq_menu", 0))
+            kb.button(text="🚷 O'tkazib yuborish", callback_data=_cb("ji", game_id, night_num, "s", 0))
+            kb.adjust(1)
             await _send_private(
                 bot, uid,
-                "🧞 <b>Jin</b>, nishonni tanlang — so'ng unga sovg'a turini berasiz.",
-                _target_kb("ji", game_id, night_num, mk_targets)
+                "🧞 <b>Jin</b> keldi, tilagingizni tanlang:",
+                kb.as_markup()
             )
             continue
 
@@ -377,6 +384,15 @@ async def _kill(game_id: int, uid: int, by_uid: Dict, bot: Bot, chat: Chat, name
             text += f"\n{reason}"
         # Xabar darhol emas, TONGDAN KEYIN yuboriladi (navbatga qo'yiladi).
         await queue_death_message(game_id, text)
+        try:
+            await bot.send_message(
+                int(uid),
+                "💀 <b>Siz o'yingdan chiqdingiz!</b>\n\n"
+                "💬 Guruhingizga <b>oxirgi so'z</b>ingizni yuborish uchun shu yerga (bot shaxsiyiga) matningizni yuboring!",
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
     except Exception:
         pass
     return p
@@ -492,6 +508,7 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
     don_target = None
     qotil_target = None
     ovchi_target = None
+    komissar_target = None
     healed, protected = set(), set()
     zanjir: Dict[int, list] = {}
     swaps: Dict[int, list] = {}
@@ -499,6 +516,7 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
     investigates = []
     jin_kill = []
     jin_protect = []
+    jin_pul = []
     qaroqchi = []
     konchi = []
     gazabdor_targets = []
@@ -508,11 +526,15 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
         if not actor or not actor.is_alive:
             continue
         actor_role_raw = await r.get(f"game:{game_id}:night:{night_num}:actor_role:{actor.user_id}")
+        if not actor_role_raw:
+            actor_role_raw = await r.get(f"game:{game_id}:player:{actor.user_id}:actor_role")
         role = actor_role_raw.decode() if isinstance(actor_role_raw, bytes) else actor_role_raw if actor_role_raw else actor.role
         tgt = a["target_id"]
         atype = a["action_type"]
 
-        if atype == "kill" and tgt:
+        if atype == "komissar_shoot" and tgt:
+            komissar_target = tgt
+        elif atype == "kill" and tgt:
             if role == RoleNames.DON:
                 don_target = tgt
             elif role == RoleNames.MAFIA:
@@ -521,6 +543,10 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
                 qotil_target = tgt
             elif role == RoleNames.OVCHI:
                 ovchi_target = tgt
+            elif role == RoleNames.KOMISSAR:
+                komissar_target = tgt
+        elif atype == "investigate" and tgt:
+            investigates.append((actor.user_id, tgt))
         elif atype == "heal" and tgt:
             healed.add(tgt)
         elif atype == "protect" and tgt:
@@ -531,14 +557,14 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
             swaps.setdefault(actor.user_id, []).append(tgt)
         elif atype == "xoyin" and tgt:
             xoyin[actor.user_id] = tgt
-        elif atype == "investigate" and tgt:
-            investigates.append((actor.user_id, tgt))
         elif atype == "advokat" and tgt:
             await r.set(f"game:{game_id}:adv_osish:{tgt}", 1, ex=3600)
         elif atype == "gazabdor" and tgt:
             gazabdor_targets.append(tgt)
         elif atype == "jin_hayot" and tgt:
             jin_protect.append(tgt)
+        elif atype == "jin_pul" and tgt:
+            jin_pul.append(tgt)
         elif atype == "jin_qotil" and tgt:
             jin_kill.append(tgt)
         elif atype == "qaroqchi":
@@ -560,6 +586,39 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
             family_killer = RoleNames.MAFIA
 
     protected |= set(jin_protect)
+
+    # --- Jin pul in'omi ---
+    for target in jin_pul:
+        try:
+            from models.user import User, Profile
+            t_user = await User.filter(user_id=target).first()
+            if t_user:
+                t_prof = await Profile.filter(user=t_user).first()
+                if t_prof:
+                    # Yoki pul (85%) YOKI 1 olmos (15%)
+                    if random.random() < 0.15:
+                        t_prof.diamond += 1
+                        await t_prof.save()
+                        msg = "🧞 <b>Jin sizga 💎 1 olmos in'om etdi!</b>"
+                    else:
+                        # 1$ - 500$ random pul, 150$ dan baland pul olish imkoniyati pastroq (20%)
+                        if random.random() < 0.80:
+                            money_given = random.randint(1, 150)
+                        else:
+                            money_given = random.randint(151, 500)
+                        t_prof.money += money_given
+                        await t_prof.save()
+                        msg = f"🧞 <b>Jin sizga 💰 {money_given}$ pul in'om etdi!</b>"
+                    await _send_private(bot, target, msg)
+        except Exception:
+            pass
+
+    # --- Jin hayot (himoya) xabari ---
+    for target in jin_protect:
+        try:
+            await _send_private(bot, target, "🧞 <b>Jin sizni bu tun 🛡️ o'limdan saqlab qoldi!</b>")
+        except Exception:
+            pass
 
     # --- Sehrgar: ikki nishon rolini almashtirish ---
     for actor_uid, tgts in swaps.items():
@@ -585,6 +644,7 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
         (family_target, family_killer),
         (qotil_target, RoleNames.QOTIL),
         (ovchi_target, RoleNames.OVCHI),
+        (komissar_target, RoleNames.KOMISSAR),
     ):
         if target and target not in healed and target not in protected:
             dead_uids.append(target)
@@ -635,10 +695,44 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
         if not actor or not t:
             continue
         actor_role_raw = await r.get(f"game:{game_id}:night:{night_num}:actor_role:{actor.user_id}")
+        if not actor_role_raw:
+            actor_role_raw = await r.get(f"game:{game_id}:player:{actor.user_id}:actor_role")
         act_role = actor_role_raw.decode() if isinstance(actor_role_raw, bytes) else actor_role_raw if actor_role_raw else actor.role
-        shown = RoleNames.MAFIA if t.role == RoleNames.SOTQIN else t.role
+
+        # Soxta Hujjat tekshiruvi
+        shown = t.role
+        try:
+            from models.user import User, Profile
+            target_db = await User.filter(user_id=t.user_id).first()
+            if target_db:
+                target_prof = await Profile.filter(user=target_db).first()
+                if target_prof and target_prof.hujjat > 0 and target_prof.on_hujjat:
+                    target_prof.hujjat -= 1
+                    await target_prof.save()
+
+                    tinch_pool = (
+                        RoleNames.DAYDI, RoleNames.KEZUVCHI, RoleNames.DOKTOR,
+                        RoleNames.FUQARO, RoleNames.HAMSHIRA, RoleNames.OMADLI,
+                        RoleNames.JANOB, RoleNames.SERJANT, RoleNames.QORIQCHI, RoleNames.ZANJIR
+                    )
+                    alive_tinch_roles = [
+                        p.role for p in players 
+                        if p.is_alive and p.role in tinch_pool
+                    ]
+                    if alive_tinch_roles:
+                        shown = random.choice(alive_tinch_roles)
+                    else:
+                        shown = RoleNames.FUQARO
+                elif t.role == RoleNames.SOTQIN:
+                    shown = RoleNames.MAFIA
+            elif t.role == RoleNames.SOTQIN:
+                shown = RoleNames.MAFIA
+        except Exception:
+            if t.role == RoleNames.SOTQIN:
+                shown = RoleNames.MAFIA
+
         disp_shown = role_display(shown)
-        if act_role == RoleNames.KOMISSAR:
+        if act_role in (RoleNames.KOMISSAR, RoleNames.DAYDI):
             await _send_private(bot, actor_uid, get_msg(actor_uid, "investigate_res", name=names.get(tgt), role=disp_shown))
         elif act_role == RoleNames.JURNALIST:
             await _send_private(bot, actor_uid, get_msg(actor_uid, "jurnalist_res", name=names.get(tgt), role=disp_shown))
@@ -825,5 +919,14 @@ async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot,
         parse_mode="HTML",
         disable_web_page_preview=True,
     )
+    try:
+        await bot.send_message(
+            victim.user_id,
+            "💀 <b>Siz kunduzgi yig'ilishda osildingiz!</b>\n\n"
+            "💬 Guruhingizga <b>oxirgi so'z</b>ingizni yuborish uchun shu yerga (bot shaxsiyiga) matningizni yuboring!",
+            parse_mode="HTML"
+        )
+    except Exception:
+        pass
     await _check_role_succession(by_uid, lang_map, bot)
 

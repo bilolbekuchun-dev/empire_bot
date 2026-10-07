@@ -84,34 +84,66 @@ class PlayerService:
     @staticmethod
     async def find_player_active_game(user_id: int) -> Optional[tuple[int, PlayerState]]:
         """
-        User ning faol o'yinini topish.
-        
-        Returns:
-            (game_id, player_state) - agar topilsa
-            None - agar topilmasa yoki player tirik emas
+        User ning faol o'yinini topish (faqat amaldagi va tugamagan o'yinlar).
         """
         from utils.database import redis_client
+        from utils.redis_game.repositories.game_repository import game_repository
         
-        # Optimized: Use global active games set instead of scanning all games
-        # This is O(1) for the set lookup instead of O(N) scan
         active_game_ids = await redis_client.smembers("global:active_games")
         
         if not active_game_ids:
             return None
         
-        # Har bir faol o'yinda player ni topishga harakat qilish
         for game_id_str in active_game_ids:
             if isinstance(game_id_str, bytes):
                 game_id_str = game_id_str.decode()
             try:
                 game_id = int(game_id_str)
             except (TypeError, ValueError):
-                # Stale / malformed index entry — skip it safely
                 continue
+            
+            game_state = await game_repository.load_game(game_id)
+            if not game_state or not game_state.is_active or game_state.phase in ("end", "ended", "finished"):
+                await redis_client.srem("global:active_games", game_id_str)
+                continue
+
             player = await player_repository.load_player(game_id, user_id)
             if player and player.is_alive:
                 return (game_id, player)
         
+        return None
+
+    @staticmethod
+    async def find_player_dead_last_word_game(user_id: int) -> Optional[tuple[int, PlayerState]]:
+        """
+        User o'lgan va hali oxirgi so'zini aytmagan faol Redis o'yinini topish.
+        """
+        from utils.database import redis_client
+        from datetime import datetime, timezone
+        
+        active_game_ids = await redis_client.smembers("global:active_games")
+        if not active_game_ids:
+            return None
+
+        for game_id_str in active_game_ids:
+            if isinstance(game_id_str, bytes):
+                game_id_str = game_id_str.decode()
+            try:
+                game_id = int(game_id_str)
+            except (TypeError, ValueError):
+                continue
+            player = await player_repository.load_player(game_id, user_id)
+            if player and not player.is_alive and not player.is_sayed_last_word:
+                if player.deaded_at:
+                    now = datetime.now(timezone.utc)
+                    dt = player.deaded_at
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=timezone.utc)
+                    if (now - dt).total_seconds() <= 120:
+                        return (game_id, player)
+                else:
+                    return (game_id, player)
+
         return None
     
     @staticmethod

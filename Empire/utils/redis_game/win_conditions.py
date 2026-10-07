@@ -279,7 +279,7 @@ async def check_classic_mode_win(game_id, players, fuqarolar, mafiyalar, qotil, 
         return True
     
     # Mafiyalar g'alaba qilgan
-    if len(mafiyalar) > len(fuqarolar) and mafiyalar and not qotil:
+    if len(mafiyalar) >= len(fuqarolar) and mafiyalar and not qotil:
         await announce_game_result_redis(game_id, bot, chat, winner_roles=[
             RoleNames.DON, RoleNames.MAFIA
         ])

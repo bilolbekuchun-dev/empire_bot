@@ -67,11 +67,138 @@ async def get_profile(bot: Bot, message: Message):
     )
     await message.answer(text, parse_mode="HTML")
 
-async def transfer_money(message: Message):
-    await message.answer("💸 Pul o'tkazmasi profil bo'limi orqali amalga oshiriladi.")
+async def transfer_funds_handler(message: Message, bot: Bot = None):
+    """
+    /give, /money, /send buyruqlari orqali pul ($) va olmos (💎) o'tkazish.
+    Formati:
+      - Reply qilib: /give 100  yoki  /give 5 olmos
+      - ID orqali: /give 123456789 100  yoki  /give 123456789 10 olmos
+      - Username: /give @username 50
+    """
+    sender_tg = message.from_user
+    if not sender_tg:
+        return
 
-async def transfer_diamond(message: Message):
-    await message.answer("💎 Olmos o'tkazmasi profil bo'limi orqali amalga oshiriladi.")
+    text = message.text.strip()
+    parts = text.split()
+    if len(parts) < 2:
+        await message.answer(
+            "ℹ️ <b>O'tkazma formati:</b>\n"
+            "• Reply qilib: <code>/give 100</code> yoki <code>/give 5 olmos</code>\n"
+            "• ID orqali: <code>/give 123456789 100</code>\n"
+            "• Username orqali: <code>/give @username 50</code>",
+            parse_mode="HTML"
+        )
+        return
+
+    # Valyuta turini aniqlash (dollar yoki olmos)
+    is_diamond = False
+    lower_text = text.lower()
+    if any(k in lower_text for k in ["olmos", "diamond", "💎", " ta", "d"]):
+        is_diamond = True
+
+    target_user = None
+    amount = 0
+
+    # 1. Reply bo'lsa
+    if message.reply_to_message and message.reply_to_message.from_user:
+        target_tg = message.reply_to_message.from_user
+        if target_tg.id == sender_tg.id:
+            await message.answer("❌ O'zingizga o'tkaza olmaysiz!", parse_mode="HTML")
+            return
+
+        target_user, _ = await User.get_or_create(
+            user_id=target_tg.id,
+            defaults={"full_name": target_tg.full_name, "mention": target_tg.mention_html()}
+        )
+        for p in parts[1:]:
+            clean_p = p.replace("$", "").replace("💎", "")
+            if clean_p.isdigit():
+                amount = int(clean_p)
+                break
+    else:
+        # 2. ID yoki Username orqali
+        target_arg = parts[1].strip()
+        for p in parts[1:]:
+            clean_p = p.replace("$", "").replace("💎", "")
+            if clean_p.isdigit():
+                if target_arg.isdigit() and int(clean_p) == int(target_arg):
+                    continue
+                amount = int(clean_p)
+
+        if target_arg.isdigit():
+            target_id = int(target_arg)
+            if target_id == sender_tg.id:
+                await message.answer("❌ O'zingizga o'tkaza olmaysiz!", parse_mode="HTML")
+                return
+            target_user = await User.filter(user_id=target_id).first()
+        else:
+            clean_un = target_arg.lstrip("@").lower()
+            target_user = await User.filter(username__iexact=clean_un).first()
+
+    if not target_user:
+        await message.answer("❌ Qabul qiluvchi foydalanuvchi topilmadi!", parse_mode="HTML")
+        return
+
+    if target_user.user_id == sender_tg.id:
+        await message.answer("❌ O'zingizga o'tkaza olmaysiz!", parse_mode="HTML")
+        return
+
+    if amount <= 0:
+        await message.answer("❌ Noto'g'ri miqdor! (Kamida 1 bo'lishi kerak)", parse_mode="HTML")
+        return
+
+    sender_db, sender_profile = await _get_user_and_profile(
+        sender_tg.id, sender_tg.full_name, sender_tg.mention_html()
+    )
+    target_profile, _ = await Profile.get_or_create(user=target_user)
+
+    from tortoise.transactions import in_transaction
+
+    if is_diamond:
+        if sender_profile.diamond < amount:
+            await message.answer(f"❌ Balansingizda yetarli olmos mavjud emas! (Sizda: {sender_profile.diamond} 💎)", parse_mode="HTML")
+            return
+
+        async with in_transaction():
+            sender_profile.diamond -= amount
+            target_profile.diamond += amount
+            await sender_profile.save()
+            await target_profile.save()
+
+        unit_name = "💎"
+    else:
+        if sender_profile.dollar < amount:
+            await message.answer(f"❌ Balansingizda yetarli dollar mavjud emas! (Sizda: {sender_profile.dollar:,}$)", parse_mode="HTML")
+            return
+
+        async with in_transaction():
+            sender_profile.dollar -= amount
+            target_profile.dollar += amount
+            await sender_profile.save()
+            await target_profile.save()
+
+        unit_name = "💵"
+
+    # ✅ <name1> - <name2> ga <soni> ta <pul/almaz> yubordi!
+    success_msg = f"{sender_db.mention} - {target_user.mention} ga <b>{amount:,} ta {unit_name}</b> yubordi!"
+    await message.answer(success_msg, parse_mode="HTML")
+
+    if bot:
+        try:
+            await bot.send_message(
+                chat_id=target_user.user_id,
+                text=f"🎉 {sender_db.mention} sizga <b>{amount:,} ta {unit_name}</b> yubordi!",
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
+
+async def transfer_money(message: Message, bot: Bot = None):
+    await transfer_funds_handler(message, bot)
+
+async def transfer_diamond(message: Message, bot: Bot = None):
+    await transfer_funds_handler(message, bot)
 
 async def check_user_balance(message: Message):
     user, profile = await _get_user_and_profile(message.from_user.id)

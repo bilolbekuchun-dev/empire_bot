@@ -202,10 +202,20 @@ def resolve_media(event: str, phase: str = "night") -> Media:
     return Media("none", None)
 
 
+from collections import OrderedDict
+
 # --------------------------------------------------------------------------
-# Idempotency
+# Idempotency (LRU cache to prevent memory leaks)
 # --------------------------------------------------------------------------
-_sent_memory: set = set()
+_sent_memory: OrderedDict = OrderedDict()
+_MAX_SENT_MEMORY = 2000
+
+
+def _remember_sent_key(key: str) -> None:
+    _sent_memory[key] = True
+    _sent_memory.move_to_end(key)
+    while len(_sent_memory) > _MAX_SENT_MEMORY:
+        _sent_memory.popitem(last=False)
 
 
 def reset_presentation_cache() -> None:
@@ -229,12 +239,12 @@ async def _acquire_slot(key: str) -> bool:
     try:
         ok = await r.set(key, "1", nx=True, ex=_PRESENT_TTL)
         if ok:
-            _sent_memory.add(key)
+            _remember_sent_key(key)
             return True
         return False
     except Exception as exc:  # Redis down -> best-effort in-memory guard
         logger.warning("presentation idempotency check failed (%s): %s", key, exc)
-        _sent_memory.add(key)
+        _remember_sent_key(key)
         return True
 
 

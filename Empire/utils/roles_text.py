@@ -34,8 +34,8 @@ class Roles:
             RoleNames.AKTYOR: "Har tun bot tomonidan sizga yangi rol beriladi va o'sha rolda o'ynaysiz.",
             RoleNames.JIN: "Tunda 1 kishiga tanlov berasiz:\n1. Hayot - u omon qoladi.\n2. Pul - unga pul yoki olmos.\n3. Qotillik - u so'ragan ishtirokchini o'ldirib berasiz.",
             RoleNames.KONCHI: "Tunda maxfiy shaxtalardan boylik (dollar va olmos) qazib olasiz, ammo ehtiyot bo'ling — ba'zi konlarda o'lim tuzog'i bor!",
-            RoleNames.TAQLIDCHI: "O'yin boshida maxsus rolingiz yo'q. Birinchi o'lik o'yinchining rolini egallaysiz va keyinchalik o'sha rolda o'ynaysiz.",
-            RoleNames.REVERSER: "Neytral rol. Har tun bir o'yinchining (1-nishon) tungi harakatini boshqa bir o'yinchiga (2-nishon) yo'naltiradi (Reverse)!"
+            RoleNames.TAQLIDCHI: "Siz taqlidchisiz. O'yin boshida rolingiz bo'lmaydi, birinchi halok bo'lgan o'yinchining rolini egallaysiz.",
+            RoleNames.REVERSER: "Siz reversersiz. Har tun bir o'yinchining harakatini boshqa o'yinchiga yo'naltirib qo'yasiz."
         },
         "ru": {
             RoleNames.KOMISSAR: "Вы главный защитник города. Ночью вы можете проверить роль игрока или застрелить его.",
@@ -68,8 +68,8 @@ class Roles:
             RoleNames.AKTYOR: "Вы актер. Каждую ночь получаете случайную роль и исполняете ее.",
             RoleNames.JIN: "Вы джинн. Даете игроку выбор: 1. Жизнь 2. Деньги 3. Убийство.",
             RoleNames.KONCHI: "Вы шахтер. Добываете богатства ночью, но берегитесь смертельных ловушек!",
-            RoleNames.TAQLIDCHI: "Вы мимик. В начале игры нет роли; принимаете роль первого погибшего игрока.",
-            RoleNames.REVERSER: "Нейтральная роль. Каждую ночь перенаправляет действие первого игрока на второго!"
+            RoleNames.TAQLIDCHI: "Вы мимик. Принимаете роль первого погибшего игрока.",
+            RoleNames.REVERSER: "Вы реверсер. Каждую ночь перенаправляете действие первого игрока на второго."
         },
         "en": {
             RoleNames.KOMISSAR: "You are the main protector of the city. At night, you can check a player's role or shoot them.",
@@ -103,7 +103,7 @@ class Roles:
             RoleNames.JIN: "You are the Genie. Grant a choice to a player: 1. Life 2. Money 3. Kill.",
             RoleNames.KONCHI: "You are the Miner. Mine diamonds and gold at night, but watch out for traps!",
             RoleNames.TAQLIDCHI: "You are the Mimic. Start roleless; inherit the role of the first player who dies.",
-            RoleNames.REVERSER: "Neutral role. Each night redirects target 1's action to target 2!"
+            RoleNames.REVERSER: "You are the Reverser. Each night redirect target 1's action to target 2."
         },
         "tr": {
             RoleNames.KOMISSAR: "Şehrin ana koruyususunuz. Gece bir oyuncunun rolünü kontrol edebilir veya onu vurabilirsiniz.",
@@ -137,7 +137,7 @@ class Roles:
             RoleNames.JIN: "Cinsiniz. Gece bir oyuncuya 3 dilek seçeneği sunarsınız: 1. Hayat 2. Para 3. Cinayet.",
             RoleNames.KONCHI: "Madencisiniz. Gece elmas ve altın kazarsınız, tuzaklara dikkat edin!",
             RoleNames.TAQLIDCHI: "Taklitçisiniz. Oyuna rolsüz başlarsınız, ölen ilk oyuncunun rolünü alırsınız.",
-            RoleNames.REVERSER: "Nötr rol. Her gece 1. oyuncunun eylemini 2. oyuncuya yönlendirir!"
+            RoleNames.REVERSER: "Reversersiniz. Her gece 1. oyuncunun eylemini 2. oyuncuya yönlendirirsiniz."
         }
     }
 
