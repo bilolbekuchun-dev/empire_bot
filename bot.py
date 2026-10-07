@@ -29,7 +29,7 @@ from aiohttp import web
 WEBHOOK_HOST = "https://YOUR_SERVER_HOST"
 WEBHOOK_PATH = f"/webhook/{TOKEN}"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
-WEBAPP_HOST = "127.0.0.1"  # faqat localhost'da tinglaymiz, tashqi trafik nginx orqali keladi
+WEBAPP_HOST = os.getenv("WEBAPP_HOST", "0.0.0.0")  # 0.0.0.0 for Railway/Docker/Cloud containers
 WEBAPP_PORT = int(PORT)
 local_server = TelegramAPIServer.from_base("http://localhost:8081")
 dp = Dispatcher()
@@ -177,7 +177,17 @@ async def main():
     if use_polling:
         await bot.delete_webhook(drop_pending_updates=True)
         logging.info("Bot POLLING rejimida ishga tushdi...")
-
+        
+        # Webapp endpointlari uchun HTTP server
+        app = web.Application(client_max_size=20 * 1024 * 1024)
+        from utils.webapp_api import setup_webapp_routes
+        setup_webapp_routes(app, static_dir=os.path.dirname(os.path.abspath(__file__)), bot=bot)
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, host=WEBAPP_HOST, port=int(os.getenv("PORT", "8002")))
+        await site.start()
+        logging.info(f"Webapp serveri {WEBAPP_HOST}:{os.getenv('PORT', '8002')} da ishga tushdi")
+        
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     else:
         await bot.set_webhook(
@@ -192,6 +202,9 @@ async def main():
         app = web.Application(client_max_size=20 * 1024 * 1024)
         SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=WEBHOOK_PATH)
         setup_application(app, dp, bot=bot)
+
+        from utils.webapp_api import setup_webapp_routes
+        setup_webapp_routes(app, static_dir=os.path.dirname(os.path.abspath(__file__)), bot=bot)
 
         runner = web.AppRunner(app)
         await runner.setup()
