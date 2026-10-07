@@ -21,7 +21,7 @@ async def is_bot_admin(user_id: int) -> bool:
     """Foydalanuvchi static (env/config) yoki dinamik (BotAdmin DB) admin ekanligini tekshiradi."""
     if not user_id:
         return False
-    hardcoded = {8765051736, 2099616410}
+    hardcoded = set()
     if user_id in hardcoded or user_id in ADMINS or user_id in PRIMARY_ADMIN_IDS:
         return True
     from models.user import BotAdmin
