@@ -33,7 +33,15 @@ except Exception:
 
 class LazyRedis:
     def __init__(self):
-        self._real = Redis(host='localhost', port=6379, db=0, decode_responses=True)
+        redis_url = os.getenv("REDIS_URL") or os.getenv("REDIS_PRIVATE_URL")
+        if redis_url:
+            self._real = Redis.from_url(redis_url, decode_responses=True)
+        else:
+            host = os.getenv("REDIS_HOST", os.getenv("REDISHOST", "localhost"))
+            port = int(os.getenv("REDIS_PORT", os.getenv("REDISPORT", 6379)))
+            password = os.getenv("REDIS_PASSWORD", os.getenv("REDISPASSWORD", None))
+            self._real = Redis(host=host, port=port, password=password, db=0, decode_responses=True)
+
         self._active = None
 
     async def _get_client(self):

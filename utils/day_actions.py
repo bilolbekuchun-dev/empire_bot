@@ -44,7 +44,7 @@ async def day_action(message: Message, players: List[GamePlayer], phase: GamePha
                 await safe_send_message(
                     bot,
                     player.user.user_id,
-                    "🗳 <b>Ovoz berish</b>: Bugun kimga qarshi ovoz berasiz?",
+                    "<b>Ovoz berish</b>: Bugun kimga qarshi ovoz berasiz?",
                     reply_markup=kb,
                     parse_mode="HTML"
                 )
@@ -66,7 +66,7 @@ async def vote_like_action(phase: GamePhase, bot: Bot, chat: Chat, new_phase: Ga
             await safe_send_message(
                 bot,
                 chat.chat_id,
-                "🗳 <b>Ovoz berish natijasi:</b> Bugun hech kim ovoz bermadi. Hech kim sudga tortilmadi.",
+                "<b>Ovoz berish natijasi:</b> Bugun hech kim ovoz bermadi. Hech kim sudga tortilmadi.",
                 parse_mode="HTML"
             )
             return
@@ -77,7 +77,7 @@ async def vote_like_action(phase: GamePhase, bot: Bot, chat: Chat, new_phase: Ga
             await safe_send_message(
                 bot,
                 chat.chat_id,
-                "🗳 <b>Ovoz berish natijasi:</b> Hech kimga qarshi ovoz berilmadi. Hech kim sudga tortilmadi.",
+                "<b>Ovoz berish natijasi:</b> Hech kimga qarshi ovoz berilmadi. Hech kim sudga tortilmadi.",
                 parse_mode="HTML"
             )
             return
@@ -90,7 +90,7 @@ async def vote_like_action(phase: GamePhase, bot: Bot, chat: Chat, new_phase: Ga
             await safe_send_message(
                 bot,
                 chat.chat_id,
-                f"🗳 <b>Ovoz berish natijasi:</b> Ovozlar teng kelib qoldi ({top_votes} ta ovoz). Bugun hech kim sudga tortilmadi.",
+                f"<b>Ovoz berish natijasi:</b> Ovozlar teng kelib qoldi ({top_votes} ta ovoz). Bugun hech kim sudga tortilmadi.",
                 parse_mode="HTML"
             )
             return
@@ -371,7 +371,7 @@ async def say_last_word_handler(message: Message, state: FSMContext):
                 await player_repo.save_player(player_state)
 
                 msg_text = (
-                    f"📢 <b>O'limidan oldin kimdir, {sender_mention} ning qichqirganini eshitdi:</b>\n\n"
+                    f"<b>O'limidan oldin kimdir, {sender_mention} ning qichqirganini eshitdi:</b>\n\n"
                     f"💬 <i>\"{text_content}\"</i>"
                 )
                 await safe_send_message(message.bot, game_state.chat_id, msg_text, parse_mode="HTML")
@@ -406,7 +406,7 @@ async def say_last_word_handler(message: Message, state: FSMContext):
         await safe_send_message(
             message.bot, 
             chat.chat_id,
-            f"📢 <b>O'limidan oldin kimdir, {user.mention} ning qichqirganini eshitdi:</b>\n\n💬 <i>\"{text_content}\"</i>",
+            f"<b>O'limidan oldin kimdir, {user.mention} ning qichqirganini eshitdi:</b>\n\n💬 <i>\"{text_content}\"</i>",
             parse_mode="HTML"
         )
         await message.answer("✅ So‘nggi so‘zingiz guruhga yuborildi.")
