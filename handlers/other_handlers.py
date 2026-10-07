@@ -411,3 +411,88 @@ async def onboard_lang_cb(call: CallbackQuery, bot: Bot, state: FSMContext):
 
     # 4-bosqich: Bosh menyu
     await start.start_call_handler(call)
+
+
+@router.message(F.chat.type == "private", F.text)
+async def team_chat_handler(message: Message, bot: Bot):
+    text = (message.text or "").strip()
+    if not text or text.startswith("/"):
+        return
+
+    menu_buttons = {
+        "profil", "do'kon", "do'konni ochish", "mening param", "mening geroyim",
+        "himoyalar", "xarid qilish", "premium guruhlar", "yangiliklar",
+        "o'tkazib yuborish", "ortga", "профиль", "магазин", "моя пара", "мои герои"
+    }
+    if text.lower() in menu_buttons:
+        return
+
+    user_id = message.from_user.id
+
+    from utils.redis_game.repositories.player_repository import player_repository as player_repo
+    from utils.redis_game.repositories.game_repository import game_repository as game_repo
+    from config import mafia_rollar
+    from utils.role_names import RoleNames
+    from utils.premium_emojis import role_display
+    from utils.i18n import get_chat_lang, clean_lang
+    import html
+
+    try:
+        game_id = await player_repo.find_player_active_game(user_id)
+        if not game_id:
+            return
+
+        game_state = await game_repo.load_game(game_id)
+        if not game_state or not game_state.is_active or game_state.phase not in ("night", "day"):
+            return
+
+        player = await player_repo.load_player(game_id, user_id)
+        if not player or not player.is_alive:
+            return
+
+        alive_players = await player_repo.get_alive_players(game_id)
+        teammates = []
+        team_title = "Jamoa"
+
+        if player.role in mafia_rollar:
+            teammates = [p for p in alive_players if p.role in mafia_rollar and p.user_id != user_id]
+            team_title = "Mafia"
+        elif player.role in (RoleNames.KOMISSAR, RoleNames.SERJANT):
+            teammates = [p for p in alive_players if p.role in (RoleNames.KOMISSAR, RoleNames.SERJANT) and p.user_id != user_id]
+            team_title = "Politsiya"
+        else:
+            same_role = [p for p in alive_players if p.role == player.role and p.user_id != user_id]
+            if same_role:
+                teammates = same_role
+                team_title = player.role
+
+        if not teammates:
+            return
+
+        sender_name = html.escape(message.from_user.full_name or message.from_user.username or str(user_id))
+        
+        chat_msg = (
+            f"💬 <b>[{team_title} Chat] {sender_name} ({role_display(player.role)}):</b>\n"
+            f"{html.escape(text)}"
+        )
+
+        sent_count = 0
+        for tm in teammates:
+            try:
+                await bot.send_message(tm.user_id, chat_msg, parse_mode="HTML")
+                sent_count += 1
+            except Exception:
+                pass
+
+        if sent_count > 0:
+            p_lang = clean_lang(await get_chat_lang(user_id))
+            confirm_text = {
+                "uz": "✅ Jamoadoshlaringizga yuborildi.",
+                "ru": "✅ Отправлено вашим напарникам.",
+                "en": "✅ Sent to your teammates.",
+                "tr": "✅ Takım arkadaşlarınıza gönderildi.",
+                "kk": "✅ Серіктестеріңізге жіберілді."
+            }.get(p_lang, "✅ Jamoadoshlaringizga yuborildi.")
+            await message.answer(confirm_text)
+    except Exception as e:
+        print(f"Team chat relay error: {e}")

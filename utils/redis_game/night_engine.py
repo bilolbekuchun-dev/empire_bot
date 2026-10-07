@@ -328,6 +328,7 @@ async def send_night_actions(
 
     names = await _name_map([p.user_id for p in players])
     alive = [p for p in players if p.is_alive]
+    expected_uids = set()
 
     for p in alive:
         role = p.role
@@ -382,6 +383,9 @@ async def send_night_actions(
                 passive_fmt.format(role=role_display(role))
             )
             continue
+
+        # Harakati bor tirik rol foydalanuvchisi
+        expected_uids.add(uid)
 
         # Nishon ro'yxati (o'zini istisno qilish)
         others = [q for q in alive if q.user_id != uid]
@@ -462,6 +466,18 @@ async def send_night_actions(
         target_fmt = ns.get("target_prompt", "🌙 {role} — nishonni tanlang:")
         label = target_fmt.format(role=role_display(role))
         await _send_private(bot, uid, label, _target_kb(code, game_id, night_num, mk_targets, skip_label=skip_label))
+
+    # Tungi kutilayotgan harakatlarni Redis keshiga saqlaymiz
+    key_exp = f"game:{game_id}:night:{night_num}:expected_users"
+    key_comp = f"game:{game_id}:night:{night_num}:completed_users"
+    try:
+        await r.delete(key_exp, key_comp)
+        if expected_uids:
+            await r.sadd(key_exp, *[str(u) for u in expected_uids])
+            await r.expire(key_exp, 3600)
+        await r.expire(key_comp, 3600)
+    except Exception:
+        pass
 
 
 # ==================================================================
