@@ -274,3 +274,114 @@ LANG_CONFIRM = {
     "en": "✅ Bot language changed to English!",
     "tr": "✅ Bot dili Türkçe olarak değiştirildi!"
 }
+
+# --------------------------------------------------------------------------
+# Group Game Announcements & Messages (Multi-language)
+# --------------------------------------------------------------------------
+GAME_TEXTS = {
+    "title_alive": {
+        "uz": "<b>Tirik o'yinchilar:</b>",
+        "ru": "<b>Живые игроки:</b>",
+        "en": "<b>Alive players:</b>",
+        "tr": "<b>Hayatta olan oyuncular:</b>"
+    },
+    "title_dead_none": {
+        "uz": "<b>Tirik o'yinchi qolmadi!</b>\n",
+        "ru": "<b>Живых игроков не осталось!</b>\n",
+        "en": "<b>No alive players left!</b>\n",
+        "tr": "<b>Hayatta kalan oyuncu kalmadı!</b>\n"
+    },
+    "time_night_left": {
+        "uz": "Tonggacha ⏳ {time} sekund qoldi",
+        "ru": "До утра осталось ⏳ {time} сек.",
+        "en": "⏳ {time} seconds left until morning",
+        "tr": "Sabaha ⏳ {time} saniye kaldı"
+    },
+    "time_day_left": {
+        "uz": "Kun tugashiga ⏳ {time} sekund qoldi",
+        "ru": "До конца дня осталось ⏳ {time} сек.",
+        "en": "⏳ {time} seconds left until end of day",
+        "tr": "Günün bitmesine ⏳ {time} saniye kaldı"
+    },
+    "time_vote_left": {
+        "uz": "Ovoz berish tugashiga ⏳ {time} sekund qoldi",
+        "ru": "До конца голосования осталось ⏳ {time} сек.",
+        "en": "⏳ {time} seconds left until end of voting",
+        "tr": "Oylamanın bitmesine ⏳ {time} saniye kaldı"
+    },
+    "night_start": {
+        "uz": "🌃 <b>Tun tushdi. Qorong'u tushib, shahar ahl uxlashga ketdi...</b>",
+        "ru": "🌃 <b>Наступила ночь. Город заснул...</b>",
+        "en": "🌃 <b>Night has fallen. The city has fallen asleep...</b>",
+        "tr": "🌃 <b>Gece oldu. Şehir uykuya daldı...</b>"
+    },
+    "day_start": {
+        "uz": "☀️ <b>Kun boshlandi!</b>",
+        "ru": "☀️ <b>Наступил день!</b>",
+        "en": "☀️ <b>Day has started!</b>",
+        "tr": "☀️ <b>Gündüz başladı!</b>"
+    },
+    "vote_start": {
+        "uz": "<b>Kimga ovoz berasiz?</b>",
+        "ru": "<b>За кого вы голосуете?</b>",
+        "en": "<b>Who do you vote for?</b>",
+        "tr": "<b>Kime oy veriyorsunuz?</b>"
+    },
+    "vote_result_hung": {
+        "uz": "🪢 Sud qaroriga ko'ra {mention} osildi! Rol: <b>{role}</b>",
+        "ru": "🪢 По решению суда {mention} был(а) повешен(а)! Роль: <b>{role}</b>",
+        "en": "🪢 By court decision, {mention} was hanged! Role: <b>{role}</b>",
+        "tr": "🪢 Mahkeme kararıyla {mention} asıldı! Rol: <b>{role}</b>"
+    },
+    "vote_result_tie": {
+        "uz": "🤝 Ovozlar teng kelib qoldi! Bugun hech kim osilmadi.",
+        "ru": "🤝 Голоса равны! Сегодня никто не повешен.",
+        "en": "🤝 Votes are tied! Nobody was hanged today.",
+        "tr": "🤝 Oylar eşit çıktı! Bugün kimse asılmadı."
+    },
+    "night_death": {
+        "uz": "💀 Tunda {mention} halok bo'ldi. Rol: <b>{role}</b>",
+        "ru": "💀 Ночью погиб(ла) {mention}. Роль: <b>{role}</b>",
+        "en": "💀 {mention} died during the night. Role: <b>{role}</b>",
+        "tr": "💀 Gece {mention} hayatını kaybetti. Rol: <b>{role}</b>"
+    },
+    "night_no_deaths": {
+        "uz": "🎉 Tunda hech kim halok bo'lmadi! Har kim omon qoldi.",
+        "ru": "🎉 Ночью никто не погиб! Все остались живы.",
+        "en": "🎉 Nobody died during the night! Everyone survived.",
+        "tr": "🎉 Gece kimse ölmedi! Herkes hayatta kaldı."
+    },
+    "kom_shoot_announcement": {
+        "uz": "🔫 Komissar katani pistoletini o'qladi...",
+        "ru": "🔫 Комиссар взвел курок своего пистолета...",
+        "en": "🔫 The Detective loaded his gun...",
+        "tr": "🔫 Komiser tabancasını doldurdu..."
+    },
+    "kom_check_announcement": {
+        "uz": "🔍 Komissar shubheli odamni tekshirdi...",
+        "ru": "🔍 Комиссар проверил подозрительного человека...",
+        "en": "🔍 The Detective investigated a suspect...",
+        "tr": "🔍 Komiser şüpheli bir kişiyi inceledi..."
+    }
+}
+
+def get_game_text(key: str, lang: str = "uz", **kwargs) -> str:
+    code = clean_lang(lang)
+    item = GAME_TEXTS.get(key, {})
+    text = item.get(code, item.get("uz", ""))
+    if kwargs:
+        try:
+            return text.format(**kwargs)
+        except Exception:
+            return text
+    return text
+
+async def get_chat_lang(chat_id: int) -> str:
+    try:
+        from models.game_data import Chat
+        chat = await Chat.filter(chat_id=chat_id).first()
+        if chat and getattr(chat, "lang", None):
+            return clean_lang(chat.lang)
+    except Exception:
+        pass
+    return "uz"
