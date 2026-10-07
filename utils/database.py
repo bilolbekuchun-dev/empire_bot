@@ -34,43 +34,71 @@ except Exception:
 class LazyRedis:
     def __init__(self):
         redis_url = os.getenv("REDIS_URL") or os.getenv("REDIS_PRIVATE_URL")
-        if redis_url:
-            self._real = Redis.from_url(redis_url, decode_responses=True)
-        else:
-            host = os.getenv("REDIS_HOST", os.getenv("REDISHOST", "localhost"))
-            port = int(os.getenv("REDIS_PORT", os.getenv("REDISPORT", 6379)))
-            password = os.getenv("REDIS_PASSWORD", os.getenv("REDISPASSWORD", None))
-            self._real = Redis(host=host, port=port, password=password, db=0, decode_responses=True)
+        host = os.getenv("REDIS_HOST", os.getenv("REDISHOST", "localhost"))
+        port = int(os.getenv("REDIS_PORT", os.getenv("REDISPORT", 6379)))
+        password = os.getenv("REDIS_PASSWORD") or os.getenv("REDISPASSWORD") or None
+
+        self._real = None
+        try:
+            if redis_url:
+                if password and "@" not in redis_url:
+                    self._real = Redis.from_url(redis_url, password=password, decode_responses=True)
+                else:
+                    self._real = Redis.from_url(redis_url, decode_responses=True)
+            else:
+                self._real = Redis(host=host, port=port, password=password, db=0, decode_responses=True)
+        except Exception as e:
+            logger.warning(f"Redis initialization error: {e}")
 
         self._active = None
 
+    def _get_fake_redis(self):
+        global _fake_redis
+        if _fake_redis is None:
+            try:
+                import fakeredis.aioredis
+                _fake_redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+            except Exception as e:
+                logger.error(f"Failed to initialize FakeRedis fallback: {e}")
+        return _fake_redis
+
     async def _get_client(self):
-        if self._active is None:
+        if self._active is not None:
+            return self._active
+
+        if self._real is not None:
             try:
                 await self._real.ping()
                 self._active = self._real
-            except Exception:
-                if _fake_redis:
-                    self._active = _fake_redis
-                else:
-                    try:
-                        import fakeredis.aioredis
-                        self._active = fakeredis.aioredis.FakeRedis(decode_responses=True)
-                    except Exception:
-                        self._active = self._real
+                return self._active
+            except Exception as e:
+                logger.warning(f"Real Redis ping/auth failed ({e}). Falling back to FakeRedis.")
+
+        fake = self._get_fake_redis()
+        if fake is not None:
+            self._active = fake
+        else:
+            self._active = self._real
         return self._active
 
     def __getattr__(self, name):
         async def method(*args, **kwargs):
+            client = await self._get_client()
+            if client is None:
+                fake = self._get_fake_redis()
+                if fake is not None:
+                    client = fake
+                    self._active = fake
+
             try:
-                client = await self._get_client()
                 fn = getattr(client, name)
                 return await fn(*args, **kwargs)
             except Exception as e:
-                # If real Redis fails during method call, fallback to FakeRedis
-                if _fake_redis:
-                    self._active = _fake_redis
-                    fn = getattr(_fake_redis, name)
+                logger.warning(f"Redis method '{name}' failed with {type(e).__name__}: {e}. Switching to FakeRedis.")
+                fake = self._get_fake_redis()
+                if fake and client != fake:
+                    self._active = fake
+                    fn = getattr(fake, name)
                     return await fn(*args, **kwargs)
                 raise e
         return method
