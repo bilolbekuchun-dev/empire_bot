@@ -140,32 +140,38 @@ async def _join_game_handler_redis_core(message: Message, bot: Bot, state: FSMCo
         return
     
     # Check if player is in another active game
-    # Scan all active games to see if player already in one
-    cursor = 0
-    player_in_another_game = False
-    while True:
-        cursor, keys = await redis_client.scan(cursor, match="game:*:state", count=100)
-        for key in keys:
-            other_game_id = int(key.split(":")[1])
-            if other_game_id != game_id:
-                other_player = await player_repo.load_player(other_game_id, message.from_user.id)
-                if other_player and other_player.is_alive:
-                    player_in_another_game = True
-                    break
-        if cursor == 0 or player_in_another_game:
-            break
+    from utils.redis_game.services.player_service import player_service
+    other_game_result = await player_service.find_player_active_game(message.from_user.id)
     
-    if player_in_another_game:
-        other_game_state = await game_repo.load_game(other_game_id)
-        if other_game_state and other_game_state.phase == "waiting":
-            await player_repo.delete_player(other_game_id, message.from_user.id)
-            try:
-                await update_players_list_redis(other_game_id, bot)
-            except Exception:
-                pass
-        else:
-            await message.answer("Siz hozirda boshqa guruhdagi faol o'yindasiz! Avvalgi o'yin yakunlanishini kuting.")
-            return
+    if other_game_result:
+        other_game_id, other_player = other_game_result
+        if other_game_id != game_id:
+            other_game_state = await game_repo.load_game(other_game_id)
+            if not other_game_state or not other_game_state.is_active or other_game_state.phase in ("end", "ended", "finished"):
+                # Eski o'yin tugagan -> shunchaki o'chirish (osib qo'ydi xabarisiz)
+                await player_repo.delete_player(other_game_id, message.from_user.id)
+            elif other_game_state.phase == "waiting" or not other_game_state.is_active:
+                # Eski o'yin ro'yxatdan o'tish bosqichida -> ro'yxatdan o'chirish (osib qo'ydi xabarisiz)
+                await player_repo.delete_player(other_game_id, message.from_user.id)
+                try:
+                    await update_players_list_redis(other_game_id, bot)
+                except Exception:
+                    pass
+            elif other_game_state.is_active and other_game_state.phase in ("night", "day"):
+                # Eski (A guruh) o'yin start olgan va faol -> faqat A guruhga o'zini osdi xabari boradi
+                other_player.is_alive = False
+                other_player.death_reason = "suicide"
+                other_player.deaded_at = datetime.now(timezone.utc)
+                await player_repo.save_player(other_player)
+                try:
+                    from utils.premium_emojis import role_display
+                    await bot.send_message(
+                        other_game_state.chat_id,
+                        f"{user.mention} bu shaharning yovuzliklariga chiday olmadi va o'zini osib qo'ydi.\n\nU edi {role_display(other_player.role)}.",
+                        parse_mode="HTML"
+                    )
+                except Exception:
+                    pass
     
     # VS game logic
     if ":vsgame" in game_state.mode:

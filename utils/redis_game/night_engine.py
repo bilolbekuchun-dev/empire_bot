@@ -239,6 +239,7 @@ async def send_night_actions(
             possible_actor_roles = [r for r in ROLE_CODE.keys() if r != RoleNames.AKTYOR]
             actor_night_role = random.choice(possible_actor_roles)
             await r.set(f"game:{game_id}:night:{night_num}:actor_role:{uid}", actor_night_role, ex=3600)
+            await r.set(f"game:{game_id}:player:{uid}:actor_role", actor_night_role, ex=3600)
             await _send_private(
                 bot, uid,
                 f"🎭 <b>Aktyor</b>: Siz bu tun <b>{role_display(actor_night_role)}</b> roliga kirdingiz!"
@@ -509,6 +510,7 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
     investigates = []
     jin_kill = []
     jin_protect = []
+    jin_pul = []
     qaroqchi = []
     konchi = []
     gazabdor_targets = []
@@ -518,11 +520,15 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
         if not actor or not actor.is_alive:
             continue
         actor_role_raw = await r.get(f"game:{game_id}:night:{night_num}:actor_role:{actor.user_id}")
+        if not actor_role_raw:
+            actor_role_raw = await r.get(f"game:{game_id}:player:{actor.user_id}:actor_role")
         role = actor_role_raw.decode() if isinstance(actor_role_raw, bytes) else actor_role_raw if actor_role_raw else actor.role
         tgt = a["target_id"]
         atype = a["action_type"]
 
-        if atype in ("kill", "komissar_shoot") and tgt:
+        if atype == "komissar_shoot" and tgt:
+            komissar_target = tgt
+        elif atype == "kill" and tgt:
             if role == RoleNames.DON:
                 don_target = tgt
             elif role == RoleNames.MAFIA:
@@ -545,14 +551,14 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
             swaps.setdefault(actor.user_id, []).append(tgt)
         elif atype == "xoyin" and tgt:
             xoyin[actor.user_id] = tgt
-        elif atype == "investigate" and tgt:
-            investigates.append((actor.user_id, tgt))
         elif atype == "advokat" and tgt:
             await r.set(f"game:{game_id}:adv_osish:{tgt}", 1, ex=3600)
         elif atype == "gazabdor" and tgt:
             gazabdor_targets.append(tgt)
         elif atype == "jin_hayot" and tgt:
             jin_protect.append(tgt)
+        elif atype == "jin_pul" and tgt:
+            jin_pul.append(tgt)
         elif atype == "jin_qotil" and tgt:
             jin_kill.append(tgt)
         elif atype == "qaroqchi":
@@ -574,6 +580,39 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
             family_killer = RoleNames.MAFIA
 
     protected |= set(jin_protect)
+
+    # --- Jin pul in'omi ---
+    for target in jin_pul:
+        try:
+            from models.user import User, Profile
+            t_user = await User.filter(user_id=target).first()
+            if t_user:
+                t_prof = await Profile.filter(user=t_user).first()
+                if t_prof:
+                    # Yoki pul (85%) YOKI 1 olmos (15%)
+                    if random.random() < 0.15:
+                        t_prof.diamond += 1
+                        await t_prof.save()
+                        msg = "🧞 <b>Jin sizga 💎 1 olmos in'om etdi!</b>"
+                    else:
+                        # 1$ - 500$ random pul, 150$ dan baland pul olish imkoniyati pastroq (20%)
+                        if random.random() < 0.80:
+                            money_given = random.randint(1, 150)
+                        else:
+                            money_given = random.randint(151, 500)
+                        t_prof.money += money_given
+                        await t_prof.save()
+                        msg = f"🧞 <b>Jin sizga 💰 {money_given}$ pul in'om etdi!</b>"
+                    await _send_private(bot, target, msg)
+        except Exception:
+            pass
+
+    # --- Jin hayot (himoya) xabari ---
+    for target in jin_protect:
+        try:
+            await _send_private(bot, target, "general 🧞 <b>Jin sizni bu tun 🛡️ o'limdan saqlab qoldi!</b>".replace("general ", ""))
+        except Exception:
+            pass
 
     # --- Sehrgar: ikki nishon rolini almashtirish ---
     for actor_uid, tgts in swaps.items():
@@ -650,6 +689,8 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
         if not actor or not t:
             continue
         actor_role_raw = await r.get(f"game:{game_id}:night:{night_num}:actor_role:{actor.user_id}")
+        if not actor_role_raw:
+            actor_role_raw = await r.get(f"game:{game_id}:player:{actor.user_id}:actor_role")
         act_role = actor_role_raw.decode() if isinstance(actor_role_raw, bytes) else actor_role_raw if actor_role_raw else actor.role
 
         # Soxta Hujjat tekshiruvi
@@ -685,7 +726,7 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
                 shown = RoleNames.MAFIA
 
         disp_shown = role_display(shown)
-        if act_role == RoleNames.KOMISSAR:
+        if act_role in (RoleNames.KOMISSAR, RoleNames.DAYDI):
             await _send_private(bot, actor_uid, get_msg(actor_uid, "investigate_res", name=names.get(tgt), role=disp_shown))
         elif act_role == RoleNames.JURNALIST:
             await _send_private(bot, actor_uid, get_msg(actor_uid, "jurnalist_res", name=names.get(tgt), role=disp_shown))
