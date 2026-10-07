@@ -1795,6 +1795,7 @@ async def stop_game_handler(message: Message, bot: Bot):
     await message.answer("🛑 O'yin to'xtatildi!")
 
 async def update_players_list(game: Game, bot: Bot, new_msg=False, refresh_msg=None):
+    from utils.i18n import clean_lang
     players = await GamePlayer.filter(game=game, is_alive=True)
     await game.fetch_related("chat")
     chat_lang = clean_lang(game.chat.lang) if (game.chat and hasattr(game.chat, "lang") and game.chat.lang) else "uz"
