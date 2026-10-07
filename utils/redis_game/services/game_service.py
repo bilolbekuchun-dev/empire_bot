@@ -189,7 +189,8 @@ class GameService:
                 "uz": "<b>Ro'yxatdan o'tish boshlandi!</b>",
                 "ru": "<b>Регистрация началась!</b>",
                 "en": "<b>Registration started!</b>",
-                "tr": "<b>Kayıt başladı!</b>"
+                "tr": "<b>Kayıt başladı!</b>",
+                "kk": "<b>Тіркелу басталды!</b>"
             }
             start_title = reg_start_titles.get(chat_lang, reg_start_titles["uz"])
 

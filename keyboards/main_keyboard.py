@@ -40,6 +40,9 @@ def gender_keyboard(lang: str = "uz"):
     elif lang == "tr":
         m.button(text="👦 Erkek", callback_data="gender_select_m")
         m.button(text="👧 Kadın", callback_data="gender_select_f")
+    elif lang == "kk":
+        m.button(text="👦 Ер / Еркек", callback_data="gender_select_m")
+        m.button(text="👧 Қыз / Әйел", callback_data="gender_select_f")
     else:
         m.button(text="👦 Yigit / Erkak", callback_data="gender_select_m")
         m.button(text="👧 Qiz / Ayol", callback_data="gender_select_f")
@@ -52,5 +55,6 @@ def get_onboard_lang_keyboard():
     builder.button(text="🇷🇺 Русский", callback_data="onboard_lang_ru")
     builder.button(text="🇬🇧 English", callback_data="onboard_lang_en")
     builder.button(text="🇹🇷 Türkçe", callback_data="onboard_lang_tr")
-    builder.adjust(2, 2)
+    builder.button(text="🇰🇿 Qazaqsha", callback_data="onboard_lang_kk")
+    builder.adjust(2, 2, 1)
     return builder.as_markup()

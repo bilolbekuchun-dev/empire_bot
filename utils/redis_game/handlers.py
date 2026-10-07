@@ -168,6 +168,22 @@ async def _join_game_handler_redis_core(message: Message, bot: Bot, state: FSMCo
         defaults={"title": "Unknown", "type": "supergroup"}
     )
     
+    user_lang = await get_chat_lang(game_state.chat_id)
+    already_texts = {
+        "uz": "Siz bu o'yinga qo'shilgansiz!",
+        "ru": "Вы уже присоединились к этой игре!",
+        "en": "You have already joined this game!",
+        "tr": "Zaten bu oyuna katıldınız!",
+        "kk": "Сіз бұл ойынға қосылғансыз!"
+    }
+    joined_texts = {
+        "uz": "Siz o'yinga muvaffaqiyatli qo'shildingiz!",
+        "ru": "Вы успешно присоединились к игре!",
+        "en": "You have successfully joined the game!",
+        "tr": "Oyuna başarıyla katıldınız!",
+        "kk": "Сіз ойынға сәтті қосылдыңыз!"
+    }
+
     # Check if player already in this game
     existing_player = await player_repo.load_player(game_id, message.from_user.id)
     if existing_player and existing_player.is_alive:
@@ -184,11 +200,11 @@ async def _join_game_handler_redis_core(message: Message, bot: Bot, state: FSMCo
                 await update_players_list_redis(game_id, bot)
                 return
         await message.answer(
-            "Siz bu o'yinga qo'shilgansiz!", 
+            already_texts.get(user_lang, already_texts["uz"]), 
             reply_markup=go_group_button(chat.invite_link)
         )
         return
-    
+
     # Check if player is in another active game - use service instead of scanning
     from utils.redis_game.services.player_service import player_service
     other_game_result = await player_service.find_player_active_game(message.from_user.id)
@@ -261,7 +277,7 @@ async def _join_game_handler_redis_core(message: Message, bot: Bot, state: FSMCo
             return
         
         await message.answer(
-            "Siz o'yinga muvaffaqiyatli qo'shildingiz!", 
+            joined_texts.get(user_lang, joined_texts["uz"]), 
             reply_markup=go_group_button(chat.invite_link)
         )
     else:
@@ -275,7 +291,7 @@ async def _join_game_handler_redis_core(message: Message, bot: Bot, state: FSMCo
             await message.answer("Kechirasiz, qo'shilishda xatolik yuz berdi!")
             return
         await message.answer(
-            "Siz o'yinga muvaffaqiyatli qo'shildingiz!", 
+            joined_texts.get(user_lang, joined_texts["uz"]), 
             reply_markup=go_group_button(chat.invite_link)
         )
     
@@ -320,14 +336,16 @@ async def update_players_list_redis(game_id: str, bot: Bot, new_msg: bool = Fals
         "uz": "<b>Ro'yxatdan o'tish davom etmoqda!</b>\nRo'yhatdan o'tganlar:\n\n",
         "ru": "<b>Регистрация продолжается!</b>\nЗарегистрировались:\n\n",
         "en": "<b>Registration in progress!</b>\nRegistered players:\n\n",
-        "tr": "<b>Kayıtlar devam ediyor!</b>\nKayıt olanlar:\n\n"
+        "tr": "<b>Kayıtlar devam ediyor!</b>\nKayıt olanlar:\n\n",
+        "kk": "<b>Тіркелу жүріп жатыр!</b>\nТіркелгендер:\n\n"
     }
 
     reg_total = {
         "uz": "\n\nJami: <b>{count}</b> ta",
         "ru": "\n\nВсего: <b>{count}</b> чел.",
         "en": "\n\nTotal: <b>{count}</b> players",
-        "tr": "\n\nToptan: <b>{count}</b> oyuncu"
+        "tr": "\n\nToptan: <b>{count}</b> oyuncu",
+        "kk": "\n\nБарлығы: <b>{count}</b> ойыншы"
     }
 
     message_text = reg_head.get(chat_lang, reg_head["uz"])

@@ -1057,14 +1057,18 @@ async def lang_command_handler(message: Message):
         [
             InlineKeyboardButton(text="🇬🇧 English" + (" ✅" if curr_lang == "en" else ""), callback_data="setlang_en"),
             InlineKeyboardButton(text="🇹🇷 Türkçe" + (" ✅" if curr_lang == "tr" else ""), callback_data="setlang_tr"),
+        ],
+        [
+            InlineKeyboardButton(text="🇰🇿 Qazaqsha" + (" ✅" if curr_lang == "kk" else ""), callback_data="setlang_kk"),
         ]
     ])
 
     text_map = {
-        "uz": "🌐 <b>Bot tilini tanlang / Cho’se language:</b>",
+        "uz": "🌐 <b>Bot tilini tanlang / Choose language:</b>",
         "ru": "🌐 <b>Выберите язык бота:</b>",
         "en": "🌐 <b>Choose bot language:</b>",
-        "tr": "🌐 <b>Bot dilini seçin:</b>"
+        "tr": "🌐 <b>Bot dilini seçin:</b>",
+        "kk": "🌐 <b>Бот тілін таңдаңыз:</b>"
     }
     await message.answer(text_map.get(curr_lang, text_map["uz"]), reply_markup=kb, parse_mode="HTML")
 
@@ -1074,7 +1078,7 @@ async def set_lang_callback(call: CallbackQuery, bot: Bot = None):
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
     lang = call.data.split("_")[1]
-    if lang not in ["uz", "ru", "en", "tr"]:
+    if lang not in ["uz", "ru", "en", "tr", "kk"]:
         lang = "uz"
 
     user_id = call.from_user.id
@@ -1112,7 +1116,8 @@ async def set_lang_callback(call: CallbackQuery, bot: Bot = None):
         "uz": "✅ Bot tili O'zbek tiliga o'zgartirildi!",
         "ru": "✅ Язык бота изменен на Русский!",
         "en": "✅ Bot language changed to English!",
-        "tr": "✅ Bot dili Türkçe olarak değiştirildi!"
+        "tr": "✅ Bot dili Türkçe olarak değiştirildi!",
+        "kk": "✅ Бот тілі Қазақ тіліне өзгертілді!"
     }
     await call.answer(confirm_map.get(lang, confirm_map["uz"]))
 
@@ -1124,13 +1129,17 @@ async def set_lang_callback(call: CallbackQuery, bot: Bot = None):
         [
             InlineKeyboardButton(text="🇬🇧 English" + (" ✅" if lang == "en" else ""), callback_data="setlang_en"),
             InlineKeyboardButton(text="🇹🇷 Türkçe" + (" ✅" if lang == "tr" else ""), callback_data="setlang_tr"),
+        ],
+        [
+            InlineKeyboardButton(text="🇰🇿 Qazaqsha" + (" ✅" if lang == "kk" else ""), callback_data="setlang_kk"),
         ]
     ])
     text_map = {
-        "uz": "🌐 <b>Bot tilini tanlang / Cho’se language:</b>",
+        "uz": "🌐 <b>Bot tilini tanlang / Choose language:</b>",
         "ru": "🌐 <b>Выберите язык бота:</b>",
         "en": "🌐 <b>Choose bot language:</b>",
-        "tr": "🌐 <b>Bot dilini seçin:</b>"
+        "tr": "🌐 <b>Bot dilini seçin:</b>",
+        "kk": "🌐 <b>Бот тілін таңдаңыз:</b>"
     }
     try:
         await call.message.edit_text(text_map.get(lang, text_map["uz"]), reply_markup=kb, parse_mode="HTML")
