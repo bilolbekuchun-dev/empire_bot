@@ -258,92 +258,108 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
         except Exception as e:
             logger.warning("User sync failed: %r", e)
 
-        # 4) Slash va '!' komandalar — o‘chiramiz va to‘g‘ridan-to‘g‘ri handlerlarga uzatamiz
+        # 4) Redis va DB o'yini hamda fazasini aniqlash
+        chat_id = message.chat.id
         msg_text = (message.text or message.caption or "").strip()
+        phase_key = None
+        is_game_active = False
+
+        try:
+            from utils.redis_game.repositories.game_repository import game_repository
+            redis_game_id = await game_repository.get_active_game(chat_id)
+            if redis_game_id:
+                rg = await game_repository.load_game(redis_game_id)
+                if rg and rg.is_active:
+                    phase_key = rg.phase
+                    is_game_active = (rg.phase != "waiting")
+        except Exception:
+            pass
+
+        group_perm: Optional[WriteGroupPermis] = await WriteGroupPermis.filter(
+            chat_id=chat_id
+        ).first()
+
+        game: Optional[Game] = None
+        if not is_game_active:
+            game = await Game.filter(chat__chat_id=chat_id, is_active=True).first()
+            if game:
+                p_key, is_waiting = await self._phase_info(game)
+                if not is_waiting:
+                    phase_key = p_key
+                    is_game_active = True
+
+        # 5) TUN FAZASI UCHUN MAXSUS CHEKLOV:
+        # Adminlar faqat boshiga '!' qo'yib, yoki VIP obunasi borlar yozishi mumkin.
+        # Qolgan barcha xabarlar (shu jumladan owner'ning oddiy xabarlari ham) o'chiriladi!
+        if is_game_active and phase_key == "night":
+            is_vip = False
+            if message.from_user:
+                try:
+                    from models.user import VipUser
+                    is_vip = bool(await VipUser.filter(user__user_id=message.from_user.id).first())
+                except Exception:
+                    is_vip = False
+
+            if is_vip:
+                return await handler(message, data)
+
+            is_admin = False
+            if message.from_user:
+                if message.from_user.id in set(ADMINS):
+                    is_admin = True
+                else:
+                    try:
+                        m = await message.bot.get_chat_member(message.chat.id, message.from_user.id)
+                        is_admin = self._is_admin_status(getattr(m, "status", ""))
+                    except Exception:
+                        is_admin = False
+
+            if is_admin and msg_text.startswith("!"):
+                return await handler(message, data)
+
+            if bot_can_delete:
+                await self._delete_quietly(message)
+            return
+
+        # 6) Slash komandalar — o‘chiramiz va to‘g‘ridan-to‘g‘ri handlerlarga uzatamiz
         if msg_text and (msg_text.startswith("/") or msg_text.startswith("!")):
             if bot_can_delete:
                 await self._delete_quietly(message)
             return await handler(message, data)
 
-        # 5) Superadmin aniqlash
+        # 7) Superadmin aniqlash
         is_superadmin = message.from_user and (message.from_user.id in set(ADMINS))
-
-        # 6) Guruh yozish sozlamalari va aktiv o‘yin
-        now = time.time()
-        chat_id = message.chat.id
-        
-        cached_perm = group_perm_cache.get(chat_id)
-        if cached_perm and now - cached_perm['time'] < 30:
-            group_perm = cached_perm['perm']
-        else:
-            group_perm = await WriteGroupPermis.filter(chat_id=chat_id).first()
-            group_perm_cache[chat_id] = {'time': now, 'perm': group_perm}
-
-        cached_game = game_phase_cache.get(chat_id)
-        if cached_game and now - cached_game['time'] < 2.5:
-            game = cached_game['game']
-            phase_key = cached_game['phase_key']
-            is_waiting = cached_game['is_waiting']
-        else:
-            game = await Game.filter(chat__chat_id=chat_id, is_active=True).first()
-            if game:
-                phase_key, is_waiting = await self._phase_info(game)
-            else:
-                phase_key, is_waiting = None, False
-            game_phase_cache[chat_id] = {'time': now, 'game': game, 'phase_key': phase_key, 'is_waiting': is_waiting}
-
-        # O‘yin bo‘lmasa yoki kutish fazasida — hech qanday cheklov yo‘q
-        if not game or is_waiting:
-            return await handler(message, data)
         if is_superadmin:
             return await handler(message, data)
 
-        # 9) O‘yinchi ma’lumotlari (rol/holat tekshiruvi uchun)
-        is_player, is_alive, is_sleep = False, False, False
-        if message.from_user:
-            user_id = message.from_user.id
-            cache_key = (game.id, user_id)
-            cached_status = player_status_cache.get(cache_key)
-            if cached_status and now - cached_status['time'] < 2.5:
-                is_player = cached_status['is_player']
-                is_alive = cached_status['is_alive']
-                is_sleep = cached_status['is_sleep']
-            else:
-                player = await GamePlayer.filter(game=game, user__user_id=user_id).first()
-                is_player = bool(player)
-                is_alive = bool(player and player.is_alive)
-                is_sleep = bool(player and getattr(player, "is_sleep", False))
-                player_status_cache[cache_key] = {
-                    'time': now,
-                    'is_player': is_player,
-                    'is_alive': is_alive,
-                    'is_sleep': is_sleep
-                }
+        # O‘yin bo‘lmasa — hech qanday cheklov yo‘q
+        if not is_game_active and not game:
+            return await handler(message, data)
 
-        # 10) Fazaga qarab yozish ruxsati
-        if phase_key == "night":
-            night_mode = getattr(group_perm, "night", "ega") if group_perm else "ega"
-            allowed = self._who_can_write(night_mode, is_player=is_player, is_alive=is_alive)
+        # 8) O‘yinchi ma’lumotlari (rol/holat tekshiruvi uchun)
+        player = None
+        if message.from_user and game:
+            player = await GamePlayer.filter(
+                game=game, user__user_id=message.from_user.id
+            ).first()
+
+        is_player = bool(player)
+        is_alive = bool(player and player.is_alive)
+        is_sleep = bool(player and getattr(player, "is_sleep", False))
+
+        # 9) Fazaga qarab yozish ruxsati (kun va boshqa fazalar)
+        if phase_key in ("day", "afternoon", "morning", "day_actions") and group_perm:
+            allowed = self._who_can_write(group_perm.day, is_player=is_player, is_alive=is_alive)
             if not allowed:
                 if bot_can_delete:
                     await self._delete_quietly(message)
                 return
 
-        elif phase_key in ("day", "afternoon", "morning", "day_actions"):
-            day_mode = getattr(group_perm, "day", "all") if group_perm else "all"
-            allowed = self._who_can_write(day_mode, is_player=is_player, is_alive=is_alive)
-            if not allowed:
-                if bot_can_delete:
-                    await self._delete_quietly(message)
-                return
-
-        # 11) O'lik yoki uxlayotgan o'yinchi yozsa cheklash
-        if is_player and (not is_alive or is_sleep):
-            day_mode = getattr(group_perm, "day", "all") if group_perm else "all"
-            if day_mode != "all":
-                if bot_can_delete:
-                    await self._delete_quietly(message)
-                return
+        # 10) O'lik yoki uxlayotgan o'yinchi yozsa cheklash
+        if game and (not is_player or not is_alive or is_sleep):
+            if bot_can_delete:
+                await self._delete_quietly(message)
+            return
 
         # Hammasi joyida: handlerlarga uzatamiz
         return await handler(message, data)
