@@ -119,6 +119,7 @@ class Chat(Model):
     type = fields.CharField(max_length=50)  # group / supergroup
     created_at = fields.DatetimeField(auto_now_add=True)
     invite_link = fields.CharField(max_length=500, default="")
+    lang = fields.CharField(max_length=10, default="uz")
 
 class Giveaway(Model):
     id = fields.BigIntField(pk=True)
