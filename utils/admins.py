@@ -634,6 +634,236 @@ async def unblock_user_answer(message: Message):
     await user_is_blocked.delete()
     await message.answer(f"<b>✅ {user_id} foydalanuvchisidan blok (ban) olib tashlandi!</b>", parse_mode="HTML")
 
+async def get_all_bot_admins():
+    """Barcha static va dynamic adminlar ro'yxatini User ob'yektlari shaklida qaytaradi."""
+    from models.user import BotAdmin, User
+    from config import ADMINS, PRIMARY_ADMIN_IDS, PRIMARY_ADMIN_ID
+    
+    admin_ids = set()
+    if PRIMARY_ADMIN_ID:
+        admin_ids.add(PRIMARY_ADMIN_ID)
+    for aid in PRIMARY_ADMIN_IDS:
+        if aid:
+            admin_ids.add(int(aid))
+    for aid in ADMINS:
+        if aid:
+            admin_ids.add(int(aid))
+            
+    dynamic_admins = await BotAdmin.all()
+    for da in dynamic_admins:
+        admin_ids.add(da.user_id)
+        
+    users = []
+    for uid in admin_ids:
+        user = await User.get_or_none(user_id=uid)
+        if not user:
+            user = User(user_id=uid, full_name=f"Admin_{uid}", username=None)
+        users.append(user)
+    return users
+
+async def add_admin_answer(message: Message):
+    """/addadmin <user_id> - yangi admin qo'shadi"""
+    if not await is_bot_admin(message.from_user.id):
+        return
+    parts = (message.text or "").strip().split()
+    target_id = None
+    if len(parts) >= 2 and parts[1].lstrip("-").isdigit():
+        target_id = int(parts[1])
+    elif message.reply_to_message and message.reply_to_message.from_user:
+        target_id = message.reply_to_message.from_user.id
+        
+    if not target_id:
+        await message.answer("ℹ️ <b>Foydalanish:</b> <code>/addadmin 123456789</code> yoki xabarga reply qilib <code>/addadmin</code>", parse_mode="HTML")
+        return
+        
+    from models.user import BotAdmin
+    exists = await BotAdmin.filter(user_id=target_id).first()
+    if exists:
+        await message.answer("<b>❗️ Bu foydalanuvchi allaqachon bot admini!</b>", parse_mode="HTML")
+        return
+        
+    await BotAdmin.create(user_id=target_id, added_by=message.from_user.id)
+    await message.answer(f"<b>✅ {target_id} foydalanuvchisi botga admin qilib tayinlandi!</b>", parse_mode="HTML")
+
+async def show_admins_list(event, page: int = 0):
+    """/admins buyrug'i va tugmasi uchun adminlar ro'yxati"""
+    user_id = event.from_user.id if event.from_user else None
+    if not await is_bot_admin(user_id):
+        if isinstance(event, CallbackQuery):
+            await event.answer("❌ Ruxsat yo'q!", show_alert=True)
+        return
+
+    admins_list = await get_all_bot_admins()
+    if not admins_list:
+        text = "<b>👑 BOT ADMINLARI RO'YXATI</b>\n━━━━━━━━━━━━━━━━━━━━━━\n<i>Hozircha adminlar yo'q.</i>"
+        if isinstance(event, CallbackQuery):
+            await event.message.edit_text(text, parse_mode="HTML")
+            await event.answer()
+        else:
+            await event.answer(text, parse_mode="HTML")
+        return
+
+    ITEMS_PER_PAGE = 8
+    total_pages = (len(admins_list) - 1) // ITEMS_PER_PAGE + 1
+    page = max(0, min(page, total_pages - 1))
+    current_page = admins_list[page * ITEMS_PER_PAGE : (page + 1) * ITEMS_PER_PAGE]
+
+    lines = []
+    for i, u in enumerate(current_page, start=page * ITEMS_PER_PAGE + 1):
+        uname = f"@{u.username}" if u.username else "username yo'q"
+        name = u.full_name or f"Admin_{u.user_id}"
+        lines.append(f"{i}. <b>{name}</b> ({uname}) — <code>{u.user_id}</code>")
+
+    text = (
+        f"<b>👑 BOT ADMINLARI RO'YXATI</b> ({page + 1}/{total_pages})\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"<i>Jami: {len(admins_list)} ta admin</i>\n\n"
+        + "\n".join(lines) + "\n\n"
+        f"<i>Tafsilotlarini ko'rish yoki boshqarish uchun admin ustiga bosing:</i>"
+    )
+
+    from keyboards.admin_keyboard import admin_list_keyboard
+    kb = admin_list_keyboard(current_page, page, total_pages)
+
+    if isinstance(event, CallbackQuery):
+        await event.message.edit_text(text, parse_mode="HTML", reply_markup=kb)
+        await event.answer()
+    else:
+        await event.answer(text, parse_mode="HTML", reply_markup=kb)
+
+async def show_admin_detail(call: CallbackQuery, target_id: int):
+    """Admin haqida ma'lumot va boshqaruv tugmalari"""
+    if not await is_bot_admin(call.from_user.id):
+        await call.answer("❌ Ruxsat yo'q!", show_alert=True)
+        return
+
+    user = await User.get_or_none(user_id=target_id)
+    name = user.full_name if user else f"Admin_{target_id}"
+    uname = f"@{user.username}" if (user and user.username) else "username yo'q"
+
+    from models.user import BotAdmin
+    is_dynamic = bool(await BotAdmin.filter(user_id=target_id).exists())
+    from config import ADMINS, PRIMARY_ADMIN_IDS, PRIMARY_ADMIN_ID
+    is_static = target_id in set(ADMINS) or target_id in set(PRIMARY_ADMIN_IDS) or target_id == PRIMARY_ADMIN_ID
+
+    admin_type = "Asosiy (config.py)" if is_static else ("Tayinlangan (BotAdmin DB)" if is_dynamic else "Boshqa")
+
+    text = (
+        f"👑 <b>ADMIN MA'LUMOTLARI</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"• <b>Ismi:</b> {name}\n"
+        f"• <b>Username:</b> {uname}\n"
+        f"• <b>User ID:</b> <code>{target_id}</code>\n"
+        f"• <b>Maqomi:</b> {admin_type}\n\n"
+        f"<i>Amalni tanlang:</i>"
+    )
+
+    from keyboards.admin_keyboard import admin_single_manage_kb
+    kb = admin_single_manage_kb(target_id)
+    await call.message.edit_text(text, parse_mode="HTML", reply_markup=kb)
+    await call.answer()
+
+async def remove_bot_admin_handler(call: CallbackQuery, target_id: int):
+    if not await is_bot_admin(call.from_user.id):
+        await call.answer("❌ Ruxsat yo'q!", show_alert=True)
+        return
+
+    from config import PRIMARY_ADMIN_ID, PRIMARY_ADMIN_IDS
+    if target_id == PRIMARY_ADMIN_ID or target_id in PRIMARY_ADMIN_IDS:
+        await call.answer("⚠️ Asosiy bosh adminni olib tashlab bo'lmaydi!", show_alert=True)
+        return
+
+    from models.user import BotAdmin
+    bot_adm = await BotAdmin.filter(user_id=target_id).first()
+    if bot_adm:
+        await bot_adm.delete()
+        await call.answer("✅ Adminlikdan olindi!", show_alert=True)
+    else:
+        from config import ADMINS
+        if target_id in ADMINS:
+            await call.answer("⚠️ Bu admin config.py faylida ko'rsatilgan asosiy admin, uni DB orqali o'chirib bo'lmaydi!", show_alert=True)
+            return
+        await call.answer("⚠️ Ushbu admin topilmadi!", show_alert=True)
+
+    await show_admins_list(call, page=0)
+
+async def ban_bot_admin_handler(call: CallbackQuery, target_id: int):
+    if not await is_bot_admin(call.from_user.id):
+        await call.answer("❌ Ruxsat yo'q!", show_alert=True)
+        return
+
+    from config import PRIMARY_ADMIN_ID, PRIMARY_ADMIN_IDS
+    if target_id == PRIMARY_ADMIN_ID or target_id in PRIMARY_ADMIN_IDS:
+        await call.answer("❌ Asosiy bosh adminni ban qilib bo'lmaydi!", show_alert=True)
+        return
+
+    from models.user import BotAdmin, Blocked_user
+    await BotAdmin.filter(user_id=target_id).delete()
+
+    user, _ = await User.get_or_create(
+        user_id=target_id,
+        defaults={"full_name": f"User_{target_id}", "mention": f"<code>{target_id}</code>"}
+    )
+    user_blocked = await Blocked_user.filter(user=user).first()
+    if not user_blocked:
+        await Blocked_user.create(user=user)
+
+    await call.answer("🚫 Admin ban qilindi va adminlikdan olindi!", show_alert=True)
+    await show_admins_list(call, page=0)
+
+async def show_blocked_list(event, page: int = 0):
+    """Banlanganlar ro'yxati (paginatsiya bilan)"""
+    user_id = event.from_user.id if event.from_user else None
+    if not await is_bot_admin(user_id):
+        if isinstance(event, CallbackQuery):
+            await event.answer("❌ Ruxsat yo'q!", show_alert=True)
+        return
+
+    blocked_users = await Blocked_user.all().prefetch_related("user").order_by("-id")
+
+    from keyboards.admin_keyboard import blocked_list_keyboard
+
+    if not blocked_users:
+        text = (
+            "<b>🚫 BAN QILINGAN FOYDALANUVCHILAR</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n"
+            "<i>Hozirda ban qilingan foydalanuvchilar yo'q.</i>"
+        )
+        kb = blocked_list_keyboard(0, 1)
+        if isinstance(event, CallbackQuery):
+            await event.message.edit_text(text, parse_mode="HTML", reply_markup=kb)
+            await event.answer()
+        else:
+            await event.answer(text, parse_mode="HTML", reply_markup=kb)
+        return
+
+    ITEMS_PER_PAGE = 10
+    total_pages = (len(blocked_users) - 1) // ITEMS_PER_PAGE + 1
+    page = max(0, min(page, total_pages - 1))
+    current_page = blocked_users[page * ITEMS_PER_PAGE : (page + 1) * ITEMS_PER_PAGE]
+
+    lines = []
+    for i, record in enumerate(current_page, start=page * ITEMS_PER_PAGE + 1):
+        u = record.user
+        name = u.full_name or "Foydalanuvchi"
+        uname = f"@{u.username}" if (u and u.username) else "username yo'q"
+        lines.append(f"{i}. {name} {uname} <code>{u.user_id}</code>")
+
+    text = (
+        f"<b>🚫 BAN QILINGAN FOYDALANUVCHILAR</b> ({page + 1}/{total_pages})\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"<i>Jami: {len(blocked_users)} ta foydalanuvchi</i>\n\n"
+        + "\n".join(lines)
+    )
+
+    kb = blocked_list_keyboard(page, total_pages)
+
+    if isinstance(event, CallbackQuery):
+        await event.message.edit_text(text, parse_mode="HTML", reply_markup=kb)
+        await event.answer()
+    else:
+        await event.answer(text, parse_mode="HTML", reply_markup=kb)
+
 async def bust_group_balance(message: Message):
     if message.from_user.id not in ADMINS: return
     if len(message.text.split()) == 2: chat_id = int(message.text.split()[1])
