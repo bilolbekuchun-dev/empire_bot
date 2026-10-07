@@ -685,13 +685,16 @@ async def lang_command_handler(message: Message):
 
     await message.answer(LANG_SELECT_PROMPT.get(curr_lang, LANG_SELECT_PROMPT["uz"]), reply_markup=kb, parse_mode="HTML")
 
-async def set_lang_callback(call: CallbackQuery):
+async def set_lang_callback(call: CallbackQuery, bot: Bot = None):
     from models.user import User
+    from models.game_data import Chat
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
     from utils.i18n import clean_lang, LANG_CONFIRM, LANG_SELECT_PROMPT, LANGUAGES
 
     lang = clean_lang(call.data.split("_")[1])
     user_id = call.from_user.id
+    chat_id = call.message.chat.id
+    chat_type = call.message.chat.type
     
     user = await User.filter(user_id=user_id).first()
     if user:
@@ -704,6 +707,19 @@ async def set_lang_callback(call: CallbackQuery):
             username=call.from_user.username,
             lang=lang
         )
+
+    if chat_type in ["group", "supergroup"]:
+        chat = await Chat.filter(chat_id=chat_id).first()
+        if chat:
+            chat.lang = lang
+            await chat.save()
+        else:
+            await Chat.create(
+                chat_id=chat_id,
+                title=call.message.chat.title or f"Chat_{chat_id}",
+                type=chat_type,
+                lang=lang
+            )
 
     await call.answer(LANG_CONFIRM.get(lang, LANG_CONFIRM["uz"]), show_alert=True)
 
@@ -721,3 +737,19 @@ async def set_lang_callback(call: CallbackQuery):
         await call.message.edit_text(LANG_SELECT_PROMPT.get(lang, LANG_SELECT_PROMPT["uz"]), reply_markup=kb, parse_mode="HTML")
     except Exception:
         pass
+
+    if chat_type in ["group", "supergroup"] and bot:
+        try:
+            from utils.redis_game.services.game_service import GameRepository
+            from utils.redis_game.handlers import update_players_list_redis
+            redis_game = await GameRepository.get_game_by_chat(chat_id)
+            if redis_game and redis_game.phase in ["waiting", "starting"]:
+                await update_players_list_redis(redis_game.game_id, bot)
+            else:
+                from models.game_data import Game
+                from utils.game_logic import update_players_list
+                game = await Game.filter(chat__chat_id=chat_id, is_active=True, phase="waiting").first()
+                if game:
+                    await update_players_list(game, bot)
+        except Exception as e:
+            print(f"realtime group language refresh error: {e}")
