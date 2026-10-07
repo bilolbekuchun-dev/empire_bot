@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta, timezone
 from aiogram import Bot
 from models.game_data import Chat, Game, GamePlayer, GamePhase, Giveaway, Tournament
@@ -136,7 +137,7 @@ async def long_games_attack(bot: Bot):
             stale_long_games = await Game.filter(
                 is_active=True, 
                 created_at__lt=long_game_cutoff
-            ).select_related('chat').only("id", "is_active", "phase", "created_at", "chat").all()
+            ).select_related('chat').all()
             
             long_stopped = 0
             for game in stale_long_games:
