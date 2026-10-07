@@ -378,10 +378,17 @@ def get_game_text(key: str, lang: str = "uz", **kwargs) -> str:
 
 async def get_chat_lang(chat_id: int) -> str:
     try:
+        from utils.database import redis_client
+        cached_lang = await redis_client.get(f"chat:{chat_id}:lang")
+        if cached_lang:
+            return clean_lang(str(cached_lang))
+
         from models.game_data import Chat
         chat = await Chat.filter(chat_id=chat_id).first()
         if chat and getattr(chat, "lang", None):
-            return clean_lang(chat.lang)
+            l = clean_lang(chat.lang)
+            await redis_client.set(f"chat:{chat_id}:lang", l)
+            return l
     except Exception:
         pass
     return "uz"

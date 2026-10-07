@@ -492,16 +492,109 @@ async def game_giveaway_callback(call: CallbackQuery, bot: Bot):
     await call.answer("🎉 Sovg'aga qatnashdingiz!", show_alert=True)
 
 async def start_giveaway_redis(message: Message, bot: Bot):
-    await message.answer("🎁 Giveaway e'lon qilindi!")
+    count = _parse_giveaway_count(message, default=10)
+    giveaway_id = message.message_id
+    kb = InlineKeyboardBuilder()
+    kb.button(text=f"🎁 Qatnashish ({count} ta qoldi)", callback_data=f"giveaway_{giveaway_id}_{count}_{count}")
+    msg = (
+        f"🎁 <b>Katta Giveaway e'lon qilindi!</b>\n\n"
+        f"🔢 Sovg'alar soni: <b>{count} ta</b>\n"
+        f"💎 Mukofot: <b>Olmos</b>\n\n"
+        f"<i>Qatnashish va sovg'ani olish uchun quyidagi tugmani bosing!</i>"
+    )
+    sent = await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    if message.from_user:
+        await send_big_giveaway_report(bot, message.from_user, message.chat, "Umumiy giveaway", count)
 
 async def start_giveaway_channel(message: Message, bot: Bot):
-    await message.answer("📢 Kanal giveaway e'lon qilindi!")
-
-async def giveaway_callback_redis(call: CallbackQuery, bot: Bot):
-    await call.answer("🎁 Qatnashish qabul qilindi!", show_alert=True)
+    count = _parse_giveaway_count(message, default=10)
+    giveaway_id = message.message_id
+    kb = InlineKeyboardBuilder()
+    kb.button(text=f"🎁 Qatnashish ({count} ta qoldi)", callback_data=f"channel-giveaway_{giveaway_id}_{count}_{count}")
+    msg = (
+        f"📢 <b>Kanal Giveaway e'lon qilindi!</b>\n\n"
+        f"🔢 Sovg'alar soni: <b>{count} ta</b>\n"
+        f"💎 Mukofot: <b>Olmos</b>\n\n"
+        f"<i>Qatnashish va sovg'ani olish uchun quyidagi tugmani bosing!</i>"
+    )
+    sent = await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    if message.from_user:
+        await send_big_giveaway_report(bot, message.from_user, message.chat, "Kanal giveaway", count)
 
 async def giveaway_callback_channel(call: CallbackQuery, bot: Bot):
-    await call.answer("📢 Qatnashish qabul qilindi!", show_alert=True)
+    await _handle_interactive_giveaway_callback(call, bot, is_channel=True)
+
+async def giveaway_callback_redis(call: CallbackQuery, bot: Bot):
+    await _handle_interactive_giveaway_callback(call, bot, is_channel=False)
+
+async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, is_channel: bool = False):
+    from models.user import User, Profile
+    from utils.giveaways_redis import is_collected_user, add_collected_user, is_processing, mark_as_processing, unmark_as_processing
+    import random
+
+    parts = call.data.split("_")
+    if len(parts) >= 4:
+        giveaway_id = parts[1]
+        try:
+            remaining = int(parts[2])
+            total = int(parts[3])
+        except ValueError:
+            remaining = 1
+            total = 1
+    elif len(parts) >= 2 and parts[-1].isdigit():
+        giveaway_id = str(call.message.message_id if call.message else 0)
+        remaining = int(parts[-1])
+        total = remaining
+    else:
+        giveaway_id = str(call.message.message_id if call.message else 0)
+        remaining = 1
+        total = 1
+
+    user_id = call.from_user.id
+    if is_processing(giveaway_id, user_id):
+        await call.answer("⏳ Iltimos, kuting...", show_alert=True)
+        return
+
+    if is_collected_user(giveaway_id, user_id):
+        await call.answer("❌ Siz ushbu giveawaydan allaqachon sovg'a olgansiz!", show_alert=True)
+        return
+
+    if remaining <= 0:
+        await call.answer("🏁 Afsuski, barcha sovg'alar tugadi!", show_alert=True)
+        return
+
+    mark_as_processing(giveaway_id, user_id)
+    try:
+        user, _ = await User.get_or_create(
+            user_id=user_id,
+            defaults={"full_name": call.from_user.full_name or f"User_{user_id}", "mention": call.from_user.mention_html()}
+        )
+        profile, _ = await Profile.get_or_create(user=user)
+
+        reward = random.randint(1, 3)
+        profile.diamond += reward
+        await profile.save()
+
+        add_collected_user(giveaway_id, user_id)
+        new_remaining = remaining - 1
+
+        kb = InlineKeyboardBuilder()
+        if new_remaining > 0:
+            cb_prefix = "channel-giveaway" if is_channel else "giveaway"
+            kb.button(text=f"🎁 Qatnashish ({new_remaining} ta qoldi)", callback_data=f"{cb_prefix}_{giveaway_id}_{new_remaining}_{total}")
+        else:
+            kb.button(text="🏁 Giveaway yakunlandi", callback_data="giveaway_ended")
+
+        if call.message:
+            try:
+                await call.message.edit_reply_markup(reply_markup=kb.as_markup())
+            except Exception:
+                pass
+
+        await call.answer(f"🎉 Tabriklaymiz! Siz giveawaydan 💎 {reward} olmos yutib oldingiz!", show_alert=True)
+    finally:
+        unmark_as_processing(giveaway_id, user_id)
+
 
 def _parse_giveaway_count(message: Message, default: int = 1) -> int:
     parts = (message.text or "").split()
