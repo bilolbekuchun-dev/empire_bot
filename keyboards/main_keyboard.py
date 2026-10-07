@@ -3,9 +3,22 @@ from aiogram.types import WebAppInfo
 from config import BOT_URL, SUPPORT_ADMIN, CHANNEL_USERNAME, WEBAPP_URL
 
 
-bot_link_markup = InlineKeyboardBuilder()
-bot_link_markup.button(text="Botga o'tish", url=BOT_URL)
-bot_link_markup = bot_link_markup.as_markup()
+def get_bot_link_markup(lang: str = "uz"):
+    b_url = BOT_URL if (BOT_URL and BOT_URL.startswith("http")) else "https://t.me/test_empire_bot"
+    from utils.i18n import clean_lang
+    c = clean_lang(lang)
+    texts = {
+        "uz": "Botga o'tish",
+        "ru": "Перейти в бота",
+        "en": "Go to bot",
+        "tr": "Bota git",
+        "kk": "Ботқа өту"
+    }
+    b = InlineKeyboardBuilder()
+    b.button(text=texts.get(c, texts["uz"]), url=b_url)
+    return b.as_markup()
+
+bot_link_markup = get_bot_link_markup("uz")
 
 def get_start_markup():
     from config import BOT_URL, SUPPORT_ADMIN, CHANNEL_USERNAME, WEBAPP_URL
