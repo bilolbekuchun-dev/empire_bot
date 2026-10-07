@@ -344,25 +344,169 @@ async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
 
 # Do'kon va Valyutalar
 async def show_shop(call: CallbackQuery):
-    await call.message.edit_text("🛒 <b>Do'kon</b>\n\nBarcha xaridlar va olmoslar WebApp da mavjud!", parse_mode="HTML")
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from aiogram.types import WebAppInfo
+    from config import WEBAPP_URL
+    from models.user import User
+    from utils.i18n import clean_lang, PROFILE_LABELS
+
+    user = await User.filter(user_id=call.from_user.id).first()
+    lang = clean_lang(user.lang if user else "uz")
+    lbls = PROFILE_LABELS.get(lang, PROFILE_LABELS["uz"])
+    btn_back = lbls.get("btn_back", "⬅️ Orqaga")
+
+    shop_texts = {
+        "uz": "🛒 <b>Do'kon bo'limi</b>\n\nBarcha anjomlar, himoyalar va olmoslarni sotib olish WebApp ilovamizda mavjud!",
+        "ru": "🛒 <b>Раздел магазина</b>\n\nВсе предметы, защиты и алмазы доступны для покупки в нашем WebApp приложении!",
+        "en": "🛒 <b>Shop Section</b>\n\nAll items, protections, and diamonds are available in our WebApp application!",
+        "tr": "🛒 <b>Mağaza Bölümü</b>\n\nTüm eşyalar, korumalar ve elmaslar WebApp uygulamamızda mevcuttur!"
+    }
+    btn_shop_text = {
+        "uz": "🌐 Do'konni ochish (WebApp)",
+        "ru": "🌐 Открыть магазин (WebApp)",
+        "en": "🌐 Open Shop (WebApp)",
+        "tr": "🌐 Mağazayı Aç (WebApp)"
+    }
+
+    text = shop_texts.get(lang, shop_texts["uz"])
+    kb = InlineKeyboardBuilder()
+    if WEBAPP_URL:
+        kb.button(text=btn_shop_text.get(lang, btn_shop_text["uz"]), web_app=WebAppInfo(url=WEBAPP_URL))
+    kb.button(text=btn_back, callback_data="back_profile")
+    kb.adjust(1)
+    try:
+        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    except Exception:
+        await call.message.answer(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    await call.answer()
 
 async def buy_dollar_callback(call: CallbackQuery):
     await call.answer("Dollar xarid qilish WebApp ilovasi orqali amalga oshiriladi.", show_alert=True)
 
 async def get_dollar_callback(call: CallbackQuery):
-    await call.answer("Dollar olish uchun do'kondan foydalaning.", show_alert=True)
+    await get_diamond_hamyonlar(call)
 
 async def buy_handler(call: CallbackQuery):
     await call.answer("Xarid qabul qilindi!", show_alert=True)
 
 async def open_protections_menu(call: CallbackQuery):
-    await call.message.edit_text("🛡 <b>Himoyalar bo'limi:</b>\n\nHimoyalar holati WebApp da ko'rsatilgan.", parse_mode="HTML")
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from models.user import User, Profile
+    from utils.i18n import clean_lang, PROFILE_LABELS
+
+    user = await User.filter(user_id=call.from_user.id).first()
+    profile = await Profile.get_or_none(user=user) if user else None
+
+    if not profile:
+        await call.answer("Profil topilmadi.", show_alert=True)
+        return
+
+    lang = clean_lang(user.lang if user else "uz")
+    lbls = PROFILE_LABELS.get(lang, PROFILE_LABELS["uz"])
+    btn_back = lbls.get("btn_back", "⬅️ Orqaga")
+
+    headers = {
+        "uz": "🛡 <b>Sizning himoyalaringiz va anjomlaringiz:</b>",
+        "ru": "🛡 <b>Ваши защиты и инвентарь:</b>",
+        "en": "🛡 <b>Your protections and items:</b>",
+        "tr": "🛡 <b>Korumalarınız ve eşyalarınız:</b>"
+    }
+
+    item_names = {
+        "uz": {
+            "himoya": "Tinch axoli himoyasi", "qotildan_himoya": "Qotildan himoya",
+            "osishdan_himoya": "Osishdan himoya", "doridan_himoya": "Doridan himoya",
+            "miltiq": "Miltiq", "hujjat": "Hujjat", "maska": "Maska",
+            "slip_himoya": "Sirpanishdan himoya", "geroy_himoya": "Geroy himoya"
+        },
+        "ru": {
+            "himoya": "Защита жителя", "qotildan_himoya": "Защита от киллера",
+            "osishdan_himoya": "Защита от повешения", "doridan_himoya": "Защита от лекарства",
+            "miltiq": "Винтовка", "hujjat": "Документ", "maska": "Маска",
+            "slip_himoya": "Защита от скольжения", "geroy_himoya": "Защита от героя"
+        },
+        "en": {
+            "himoya": "Civilian protection", "qotildan_himoya": "Killer protection",
+            "osishdan_himoya": "Hang protection", "doridan_himoya": "Medicine protection",
+            "miltiq": "Rifle", "hujjat": "Document", "maska": "Mask",
+            "slip_himoya": "Slip protection", "geroy_himoya": "Hero protection"
+        },
+        "tr": {
+            "himoya": "Sivil koruması", "qotildan_himoya": "Katilden koruma",
+            "osishdan_himoya": "Asılma koruması", "doridan_himoya": "İlaç koruması",
+            "miltiq": "Tüfek", "hujjat": "Belge", "maska": "Maske",
+            "slip_himoya": "Kayma koruması", "geroy_himoya": "Kahraman koruması"
+        }
+    }
+    inames = item_names.get(lang, item_names["uz"])
+
+    text = (
+        f"{headers.get(lang, headers['uz'])}\n\n"
+        f"🔰 {inames['himoya']}: <b>{profile.himoya} ta</b>\n"
+        f"🔪 {inames['qotildan_himoya']}: <b>{profile.qotildan_himoya} ta</b>\n"
+        f"🪢 {inames['osishdan_himoya']}: <b>{profile.osishdan_himoya} ta</b>\n"
+        f"🩺 {inames['doridan_himoya']}: <b>{profile.doridan_himoya} ta</b>\n"
+        f"🎯 {inames['miltiq']}: <b>{profile.miltiq} ta</b>\n"
+        f"📄 {inames['hujjat']}: <b>{profile.hujjat} ta</b>\n"
+        f"🎭 {inames['maska']}: <b>{profile.maska} ta</b>\n"
+        f"🚷 {inames['slip_himoya']}: <b>{profile.slip_himoya} ta</b>\n"
+        f"👑 {inames['geroy_himoya']}: <b>{profile.geroy_himoya} ta</b>"
+    )
+
+    kb = InlineKeyboardBuilder()
+    kb.button(text=btn_back, callback_data="back_profile")
+
+    try:
+        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    except Exception:
+        await call.message.answer(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    await call.answer()
 
 async def back_profile(call: CallbackQuery, state):
     await call.message.edit_text("👤 Profil menyusi", reply_markup=get_start_markup())
 
 async def get_diamond_hamyonlar(call: CallbackQuery):
-    await call.answer("Hamyonlar ro'yxati!", show_alert=True)
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from aiogram.types import WebAppInfo
+    from config import WEBAPP_URL
+    from models.user import User, Profile
+    from utils.i18n import clean_lang, PROFILE_LABELS
+
+    user = await User.filter(user_id=call.from_user.id).first()
+    profile = await Profile.get_or_none(user=user) if user else None
+    lang = clean_lang(user.lang if user else "uz")
+    lbls = PROFILE_LABELS.get(lang, PROFILE_LABELS["uz"])
+    btn_back = lbls.get("btn_back", "⬅️ Orqaga")
+
+    diamonds = profile.diamond if profile else 0
+    dollars = profile.dollar if profile else 0
+
+    bal_texts = {
+        "uz": f"💰 <b>Balans ma'lumotlari:</b>\n\n💎 Olmoslar: <b>{diamonds:,} ta</b>\n💵 Dollar: <b>{dollars:,} $</b>\n\n<i>Olmos va dollarlarni WebApp do'koni orqali xarid qilishingiz mumkin.</i>",
+        "ru": f"💰 <b>Информация о балансе:</b>\n\n💎 Алмазы: <b>{diamonds:,} шт</b>\n💵 Доллары: <b>{dollars:,} $</b>\n\n<i>Вы можете приобрести алмазы и доллары через WebApp магазин.</i>",
+        "en": f"💰 <b>Balance details:</b>\n\n💎 Diamonds: <b>{diamonds:,}</b>\n💵 Dollars: <b>{dollars:,} $</b>\n\n<i>You can purchase diamonds and dollars via the WebApp shop.</i>",
+        "tr": f"💰 <b>Bakiye bilgileri:</b>\n\n💎 Elmaslar: <b>{diamonds:,} adet</b>\n💵 Dolar: <b>{dollars:,} $</b>\n\n<i>Elmas ve dolarları WebApp mağazasından satın alabilirsiniz.</i>"
+    }
+
+    btn_shop_text = {
+        "uz": "🛒 Do'konga o'tish (WebApp)",
+        "ru": "🛒 Перейти в магазин (WebApp)",
+        "en": "🛒 Go to Shop (WebApp)",
+        "tr": "🛒 Mağazaya Git (WebApp)"
+    }
+
+    text = bal_texts.get(lang, bal_texts["uz"])
+    kb = InlineKeyboardBuilder()
+    if WEBAPP_URL:
+        kb.button(text=btn_shop_text.get(lang, btn_shop_text["uz"]), web_app=WebAppInfo(url=WEBAPP_URL))
+    kb.button(text=btn_back, callback_data="back_profile")
+    kb.adjust(1)
+
+    try:
+        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    except Exception:
+        await call.message.answer(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    await call.answer()
 
 async def buy_diamond_hamyonlar(call: CallbackQuery):
     await call.answer("Hamyondan xarid!", show_alert=True)
@@ -445,7 +589,17 @@ async def set_lang_callback(call: CallbackQuery):
         lang = "uz"
 
     user_id = call.from_user.id
-    await User.filter(user_id=user_id).update(lang=lang)
+    user = await User.filter(user_id=user_id).first()
+    if user:
+        user.lang = lang
+        await user.save()
+    else:
+        await User.create(
+            user_id=user_id,
+            full_name=call.from_user.full_name or f"User_{user_id}",
+            username=call.from_user.username,
+            lang=lang
+        )
 
     confirm_map = {
         "uz": "✅ Bot tili O'zbek tiliga o'zgartirildi!",
@@ -475,3 +629,101 @@ async def set_lang_callback(call: CallbackQuery):
         await call.message.edit_text(text_map.get(lang, text_map["uz"]), reply_markup=kb, parse_mode="HTML")
     except Exception:
         pass
+
+# Do'kon va Valyutalar
+async def show_shop(call: CallbackQuery):
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from aiogram.types import WebAppInfo
+    from config import WEBAPP_URL
+    text = (
+        "🛒 <b>Do'kon bo'limi</b>\n\n"
+        "Barcha anjomlar, himoyalar va olmoslarni sotib olish WebApp ilovamizda mavjud!"
+    )
+    kb = InlineKeyboardBuilder()
+    if WEBAPP_URL:
+        kb.button(text="🌐 Do'konni ochish (WebApp)", web_app=WebAppInfo(url=WEBAPP_URL))
+    kb.button(text="⬅️ Orqaga", callback_data="back_profile")
+    kb.adjust(1)
+    try:
+        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    except Exception:
+        await call.message.answer(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    await call.answer()
+
+async def get_dollar_callback(call: CallbackQuery):
+    await get_diamond_hamyonlar(call)
+
+async def open_protections_menu(call: CallbackQuery):
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from models.user import User, Profile
+    user = await User.filter(user_id=call.from_user.id).first()
+    profile = await Profile.get_or_none(user=user) if user else None
+
+    if not profile:
+        await call.answer("Profil topilmadi.", show_alert=True)
+        return
+
+    text = (
+        "🛡 <b>Sizning himoyalaringiz va anjomlaringiz:</b>\n\n"
+        f"🔰 Tinch axoli himoyasi: <b>{profile.himoya} ta</b>\n"
+        f"🔪 Qotildan himoya: <b>{profile.qotildan_himoya} ta</b>\n"
+        f"🪢 Osishdan himoya: <b>{profile.osishdan_himoya} ta</b>\n"
+        f"🩺 Doridan himoya: <b>{profile.doridan_himoya} ta</b>\n"
+        f"🎯 Miltiq: <b>{profile.miltiq} ta</b>\n"
+        f"📄 Hujjat: <b>{profile.hujjat} ta</b>\n"
+        f"🎭 Maska: <b>{profile.maska} ta</b>\n"
+        f"🚷 Slip himoya: <b>{profile.slip_himoya} ta</b>\n"
+        f"👑 Geroy himoya: <b>{profile.geroy_himoya} ta</b>"
+    )
+
+    kb = InlineKeyboardBuilder()
+    kb.button(text="⬅️ Orqaga", callback_data="back_profile")
+
+    try:
+        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    except Exception:
+        await call.message.answer(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    await call.answer()
+
+async def get_diamond_hamyonlar(call: CallbackQuery):
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from aiogram.types import WebAppInfo
+    from config import WEBAPP_URL
+    from models.user import User, Profile
+    user = await User.filter(user_id=call.from_user.id).first()
+    profile = await Profile.get_or_none(user=user) if user else None
+
+    diamonds = profile.diamond if profile else 0
+    dollars = profile.dollar if profile else 0
+
+    text = (
+        "💰 <b>Balans ma'lumotlari:</b>\n\n"
+        f"💎 Olmoslar: <b>{diamonds:,} ta</b>\n"
+        f"💵 Dollar: <b>{dollars:,} $</b>\n\n"
+        "<i>Olmos va dollarlarni WebApp do'koni orqali xarid qilishingiz mumkin.</i>"
+    )
+    kb = InlineKeyboardBuilder()
+    if WEBAPP_URL:
+        kb.button(text="🛒 Do'konga o'tish (WebApp)", web_app=WebAppInfo(url=WEBAPP_URL))
+    kb.button(text="⬅️ Orqaga", callback_data="back_profile")
+    kb.adjust(1)
+
+    try:
+        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    except Exception:
+        await call.message.answer(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    await call.answer()
+
+async def get_premium_groups_on_profile(call: CallbackQuery, bot: Bot):
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    text = (
+        "⭐ <b>Premium va rasmiy guruhlar:</b>\n\n"
+        "Bot ulangan guruhlarda o'yin o'ynab tajriba va mukofotlar oshiring!"
+    )
+    kb = InlineKeyboardBuilder()
+    kb.button(text="⬅️ Orqaga", callback_data="back_profile")
+    try:
+        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    except Exception:
+        await call.message.answer(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    await call.answer()

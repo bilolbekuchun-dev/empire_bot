@@ -147,6 +147,14 @@ async def f(call: CallbackQuery, bot: Bot, state: FSMContext):
 async def f(call: CallbackQuery, bot: Bot):
     await others.open_protections_menu(call)
 
+@router.callback_query(F.data.in_(["get_diamond_hamyonlar", "get_diamond", "get_dollar_hamyonlar"]))
+async def f(call: CallbackQuery, bot: Bot):
+    await others.get_diamond_hamyonlar(call)
+
+@router.callback_query(F.data == "prem_groups")
+async def f(call: CallbackQuery, bot: Bot):
+    await others.get_premium_groups_on_profile(call, bot)
+
 @router.message(Command("gqotil"))
 @router.channel_post(Command("gqotil"))
 async def f(message: Message, bot: Bot):

@@ -220,7 +220,7 @@ async def say_last_word_handler(message: Message, state: FSMContext):
                 await player_repo.save_player(player_state)
 
                 msg_text = (
-                    f"📢 <b>O'limidan oldin kimdir, {sender_mention} ning qichqirganini eshitdi:</b>\n\n"
+                    f"<b>O'limidan oldin kimdir, {sender_mention} ning qichqirganini eshitdi:</b>\n\n"
                     f"💬 <i>\"{message.html_text}\"</i>"
                 )
                 await safe_send_message(message.bot, game_state.chat_id, msg_text, parse_mode="HTML")
@@ -247,7 +247,7 @@ async def say_last_word_handler(message: Message, state: FSMContext):
 
     await safe_send_message(message.bot, 
         game.chat.chat_id,
-        f"📢 <b>O'limidan oldin kimdir, {user.mention} ning qichqirganini eshitdi:</b>\n\n💬 <i>\"{message.html_text}\"</i>",
+        f"<b>O'limidan oldin kimdir, {user.mention} ning qichqirganini eshitdi:</b>\n\n💬 <i>\"{message.html_text}\"</i>",
         parse_mode="HTML"
     )
     await message.answer("✅ So‘nggi so‘zingiz guruhga yuborildi.")
