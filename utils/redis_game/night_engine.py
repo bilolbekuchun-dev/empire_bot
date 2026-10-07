@@ -953,7 +953,9 @@ def lynch_confirm_kb(game_id: int, day_num: int, target_id: int, likes: int = 0,
 async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot, chat: Chat, like_time: int = 30) -> None:
     all_players = await player_repo.get_all_players(game_id)
     names = await _name_map([p.user_id for p in all_players])
-    lang_map = await _user_lang_map([p.user_id for p in all_players])
+    from utils.i18n import get_chat_lang
+    c_lang = await get_chat_lang(chat.chat_id)
+    lang_map = await _user_lang_map([p.user_id for p in all_players], chat_id=chat.chat_id)
     by_uid = {p.user_id: p for p in all_players}
     votes = await VoteService.get_all_votes(game_id, day_num)
 
@@ -961,14 +963,30 @@ async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot,
     for voter, target in votes.items():
         counts[target] = counts.get(target, 0) + 1
 
+    no_vote_text = {
+        "uz": "Bugun hech kim osilmadi.",
+        "ru": "Сегодня никто не был повешен.",
+        "en": "No one was lynched today.",
+        "tr": "Bugün kimse asılmadı.",
+        "kk": "Бүгін ешкім асылған жоқ."
+    }.get(c_lang, "Bugun hech kim osilmadi.")
+
+    tie_vote_text = {
+        "uz": "Ovozlar teng bo'ldi — bugun hech kim osilmadi.",
+        "ru": "Голоса разделились поровну — никто не повешен.",
+        "en": "Tie vote — no one was lynched today.",
+        "tr": "Oylar eşit — bugün kimse asılmadı.",
+        "kk": "Дауыстар тең түсті — бүгін ешкім асылған жоқ."
+    }.get(c_lang, "Ovozlar teng bo'ldi — bugun hech kim osilmadi.")
+
     if not counts:
-        await bot.send_message(chat.chat_id, "Bugun hech kim osilmadi.")
+        await bot.send_message(chat.chat_id, no_vote_text)
         return
 
     mx = max(counts.values())
     top = [t for t, c in counts.items() if c == mx]
     if len(top) != 1:
-        await bot.send_message(chat.chat_id, "Ovozlar teng bo'ldi — bugun hech kim osilmadi.")
+        await bot.send_message(chat.chat_id, tie_vote_text)
         return
 
     victim = by_uid.get(top[0])
@@ -976,7 +994,14 @@ async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot,
         return
 
     mention = _mention_html(victim.user_id, names)
-    confirm_text = f"Rostdan ham {mention}ni osmoqchimisiz?"
+    confirm_text = {
+        "uz": f"Rostdan ham {mention}ni osmoqchimisiz?",
+        "ru": f"Вы действительно хотите повесить {mention}?",
+        "en": f"Do you really want to lynch {mention}?",
+        "tr": f"Gerçekten {mention} kişisini asmak istiyor musunuz?",
+        "kk": f"Шынымен {mention} асуды қалайсыз ба?"
+    }.get(c_lang, f"Rostdan ham {mention}ni osmoqchimisiz?")
+
     msg = await bot.send_message(
         chat.chat_id,
         confirm_text,
@@ -1004,33 +1029,52 @@ async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot,
     dislikes = tally.get("dislikes", 0)
 
     if likes <= dislikes:
-        await bot.send_message(
-            chat.chat_id,
-            f"Aholi kelisha olmadi ({likes} 👍 | {dislikes} 👎 )... Kelisha olmagani uchun hech kim osilmadi."
-        )
+        disagree_text = {
+            "uz": f"Aholi kelisha olmadi ({likes} 👍 | {dislikes} 👎 )... Kelisha olmagani uchun hech kim osilmadi.",
+            "ru": f"Жители не договорились ({likes} 👍 | {dislikes} 👎 )... Никто не повешен.",
+            "en": f"Town couldn't agree ({likes} 👍 | {dislikes} 👎 )... No one was lynched.",
+            "tr": f"Halk anlaşamadı ({likes} 👍 | {dislikes} 👎 )... Kimse asılmadı.",
+            "kk": f"Тұрғындар келісе алмады ({likes} 👍 | {dislikes} 👎 )... Ешкім асылған жоқ."
+        }.get(c_lang, f"Aholi kelisha olmadi ({likes} 👍 | {dislikes} 👎 )... Kelisha olmagani uchun hech kim osilmadi.")
+        await bot.send_message(chat.chat_id, disagree_text)
         return
 
     if await r.get(f"game:{game_id}:adv_osish:{victim.user_id}"):
-        await bot.send_message(chat.chat_id, f"⚖️ Advokat {mention} ni himoya qildi — u osilmadi!", parse_mode="HTML")
+        adv_text = {
+            "uz": f"⚖️ Advokat {mention} ni himoya qildi — u osilmadi!",
+            "ru": f"⚖️ Адвокат защитил {mention} — его не повесили!",
+            "en": f"⚖️ The Lawyer defended {mention} — lynch prevented!",
+            "tr": f"⚖️ Avukat {mention} kişisini savundu — asılmadı!",
+            "kk": f"⚖️ Адвокат {mention} қорғады — ол асылған жоқ!"
+        }.get(c_lang, f"⚖️ Advokat {mention} ni himoya qildi — u osilmadi!")
+        await bot.send_message(chat.chat_id, adv_text, parse_mode="HTML")
         return
 
     victim.is_alive = False
     victim.osildi = True
     victim.deaded_at = datetime.now(timezone.utc)
     await player_repo.save_player(victim)
+
+    v_role_str = role_display(victim.role, lang=c_lang)
+    lynch_res_text = {
+        "uz": f"Ovoz berish natijalari:\n{likes} 👍  |  {dislikes} 👎\n\n{mention} kunduzgi yig'ilishda osildi!\nU edi {v_role_str}.",
+        "ru": f"Результаты голосования:\n{likes} 👍  |  {dislikes} 👎\n\n{mention} был(а) повешен(а) на дневном собрании!\nОн(а) был(а) {v_role_str}.",
+        "en": f"Vote results:\n{likes} 👍  |  {dislikes} 👎\n\n{mention} was lynched at the day meeting!\nThey were {v_role_str}.",
+        "tr": f"Oylama sonuçları:\n{likes} 👍  |  {dislikes} 👎\n\n{mention} gündüz toplantısında asıldı!\nRolü {v_role_str}.",
+        "kk": f"Дауыс беру нәтижелері:\n{likes} 👍  |  {dislikes} 👎\n\n{mention} күндізгі жиналыста асылды!\nОның ролі {v_role_str}."
+    }.get(c_lang, f"Ovoz berish natijalari:\n{likes} 👍  |  {dislikes} 👎\n\n{mention} kunduzgi yig'ilishda osildi!\nU edi {v_role_str}.")
+
     await bot.send_message(
         chat.chat_id,
-        f"Ovoz berish natijalari:\n{likes} 👍  |  {dislikes} 👎\n\n"
-        f"{mention} kunduzgi yig'ilishda osildi!\n"
-        f"U edi {role_display(victim.role)}.",
+        lynch_res_text,
         parse_mode="HTML",
         disable_web_page_preview=True,
     )
     try:
+        d_pm_msg = NIGHT_STRINGS.get(c_lang, NIGHT_STRINGS["uz"]).get("lynch_death_pm_msg", NIGHT_STRINGS["uz"]["death_pm_msg"])
         await bot.send_message(
             victim.user_id,
-            "💀 <b>Siz kunduzgi yig'ilishda osildingiz!</b>\n\n"
-            "💬 Guruhingizga <b>oxirgi so'z</b>ingizni yuborish uchun shu yerga (bot shaxsiyiga) matningizni yuboring!",
+            d_pm_msg,
             parse_mode="HTML"
         )
     except Exception:

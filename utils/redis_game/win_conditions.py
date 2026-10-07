@@ -421,7 +421,7 @@ async def announce_game_result_redis(
     n = 1
     if winners:
         for p in winners:
-            lines.append(f"{n}. {mentions.get(p.user_id, p.user_id)} - {role_display(p.role)}")
+            lines.append(f"{n}. {mentions.get(p.user_id, p.user_id)} - {role_display(p.role, lang=chat_lang)}")
             n += 1
             p.win = True
             try:
@@ -435,7 +435,7 @@ async def announce_game_result_redis(
         lines.append("")
         lines.append(strs["others"])
         for p in others:
-            lines.append(f"{n}. {mentions.get(p.user_id, p.user_id)} - {role_display(p.role)}")
+            lines.append(f"{n}. {mentions.get(p.user_id, p.user_id)} - {role_display(p.role, lang=chat_lang)}")
             n += 1
 
     started = getattr(game_state, "started_at", None) or getattr(game_state, "created_at", None) if game_state else None

@@ -202,34 +202,210 @@ ROLE_CLEAN_MAP = {
     "reverser": RoleNames.REVERSER,
 }
 
-def role_display(role: str) -> str:
+ROLE_NAMES_BY_LANG = {
+    "uz": {
+        RoleNames.DON: "🤵🏻 Don",
+        RoleNames.MAFIA: "🤵🏼 Mafia",
+        RoleNames.KOMISSAR: "🕵🏼 Komissar katani",
+        RoleNames.DOKTOR: "👨🏼‍⚕️ Doktor",
+        RoleNames.SERJANT: "👮🏼 Serjant",
+        RoleNames.FUQARO: "👨🏼 Tinch axoli",
+        RoleNames.DAYDI: "🧙‍♂️ Daydi",
+        RoleNames.KEZUVCHI: "💃 Kezuvchi",
+        RoleNames.ADVOKAT: "👨🏼‍💼 Advokat",
+        RoleNames.SUIDSID: "🤦🏼 Suidsid",
+        RoleNames.OMADLI: "🤞🏼 Omadli",
+        RoleNames.JANOB: "🎖 Janob",
+        RoleNames.BORI: "🐺 Bo'ri",
+        RoleNames.QOTIL: "🔪 Qotil",
+        RoleNames.OVCHI: "🥷 Yollanma qotil",
+        RoleNames.QASOSKOR: "🧨 Qasoskor",
+        RoleNames.AFERIST: "🤹🏻 Aferist",
+        RoleNames.GAZABDOR: "🧌 G'azabkor",
+        RoleNames.SEHRGAR: "🧙‍ Sehrgar",
+        RoleNames.JURNALIST: "👩🏼‍💻 Jurnalist",
+        RoleNames.SOTQIN: "🤓 Sotqin",
+        RoleNames.AYGOQCHI: "🦇 Ayg'oqchi",
+        RoleNames.KONCHI: "👷🏻‍♂️ Konchi",
+        RoleNames.QAROQCHI: "⚔️ Qaroqchi",
+        RoleNames.HAMSHIRA: "👩🏻‍⚕️ Hamshira",
+        RoleNames.QORIQCHI: "🛡 Qo'riqchi",
+        RoleNames.XOYIN: "👺 Xoyin",
+        RoleNames.ZANJIR: "⛓ Zanjir",
+        RoleNames.AKTYOR: "🎭 Aktyor",
+        RoleNames.JIN: "🧞 Jin",
+        RoleNames.TAQLIDCHI: "🎭 Taqlidchi",
+        RoleNames.REVERSER: "🔄 Reverser",
+    },
+    "ru": {
+        RoleNames.DON: "🤵🏻 Дон",
+        RoleNames.MAFIA: "🤵🏼 Мафия",
+        RoleNames.KOMISSAR: "🕵🏼 Комиссар",
+        RoleNames.DOKTOR: "👨🏼‍⚕️ Доктор",
+        RoleNames.SERJANT: "👮🏼 Сержант",
+        RoleNames.FUQARO: "👨🏼 Мирный житель",
+        RoleNames.DAYDI: "🧙‍♂️ Бродяга",
+        RoleNames.KEZUVCHI: "💃 Кутила",
+        RoleNames.ADVOKAT: "👨🏼‍💼 Адвокат",
+        RoleNames.SUIDSID: "🤦🏼 Самоубийца",
+        RoleNames.OMADLI: "🤞🏼 Везунчик",
+        RoleNames.JANOB: "🎖 Дворянин",
+        RoleNames.BORI: "🐺 Оборотень",
+        RoleNames.QOTIL: "🔪 Маньяк",
+        RoleNames.OVCHI: "🥷 Охотник",
+        RoleNames.QASOSKOR: "🧨 Мститель",
+        RoleNames.AFERIST: "🤹🏻 Аферист",
+        RoleNames.GAZABDOR: "🧌 Каратель",
+        RoleNames.SEHRGAR: "🧙‍ Волшебник",
+        RoleNames.JURNALIST: "👩🏼‍💻 Журналист",
+        RoleNames.SOTQIN: "🤓 Предатель",
+        RoleNames.AYGOQCHI: "🦇 Шпион",
+        RoleNames.KONCHI: "👷🏻‍♂️ Шахтер",
+        RoleNames.QAROQCHI: "⚔️ Грабитель",
+        RoleNames.HAMSHIRA: "👩🏻‍⚕️ Медсестра",
+        RoleNames.QORIQCHI: "🛡 Телохранитель",
+        RoleNames.XOYIN: "👺 Отступник",
+        RoleNames.ZANJIR: "⛓ Связной",
+        RoleNames.AKTYOR: "🎭 Актер",
+        RoleNames.JIN: "🧞 Джинн",
+        RoleNames.TAQLIDCHI: "🎭 Мимик",
+        RoleNames.REVERSER: "🔄 Реверсер",
+    },
+    "en": {
+        RoleNames.DON: "🤵🏻 Don",
+        RoleNames.MAFIA: "🤵🏼 Mafia",
+        RoleNames.KOMISSAR: "🕵🏼 Detective",
+        RoleNames.DOKTOR: "👨🏼‍⚕️ Doctor",
+        RoleNames.SERJANT: "👮🏼 Sergeant",
+        RoleNames.FUQARO: "👨🏼 Civilian",
+        RoleNames.DAYDI: "🧙‍♂️ Tracker",
+        RoleNames.KEZUVCHI: "💃 Sleeper",
+        RoleNames.ADVOKAT: "👨🏼‍💼 Lawyer",
+        RoleNames.SUIDSID: "🤦🏼 Jester",
+        RoleNames.OMADLI: "🤞🏼 Lucky One",
+        RoleNames.JANOB: "🎖 Nobleman",
+        RoleNames.BORI: "🐺 Werewolf",
+        RoleNames.QOTIL: "🔪 Serial Killer",
+        RoleNames.OVCHI: "🥷 Hunter",
+        RoleNames.QASOSKOR: "🧨 Vigilante",
+        RoleNames.AFERIST: "🤹🏻 Trickster",
+        RoleNames.GAZABDOR: "🧌 Avenger",
+        RoleNames.SEHRGAR: "🧙‍ Sorcerer",
+        RoleNames.JURNALIST: "👩🏼‍💻 Journalist",
+        RoleNames.SOTQIN: "🤓 Traitor",
+        RoleNames.AYGOQCHI: "🦇 Spy",
+        RoleNames.KONCHI: "👷🏻‍♂️ Miner",
+        RoleNames.QAROQCHI: "⚔️ Robber",
+        RoleNames.HAMSHIRA: "👩🏻‍⚕️ Nurse",
+        RoleNames.QORIQCHI: "🛡 Bodyguard",
+        RoleNames.XOYIN: "👺 Renegade",
+        RoleNames.ZANJIR: "⛓ Linker",
+        RoleNames.AKTYOR: "🎭 Actor",
+        RoleNames.JIN: "🧞 Genie",
+        RoleNames.TAQLIDCHI: "🎭 Mimic",
+        RoleNames.REVERSER: "🔄 Reverser",
+    },
+    "tr": {
+        RoleNames.DON: "🤵🏻 Don",
+        RoleNames.MAFIA: "🤵🏼 Mafya",
+        RoleNames.KOMISSAR: "🕵🏼 Komiser",
+        RoleNames.DOKTOR: "👨🏼‍⚕️ Doktor",
+        RoleNames.SERJANT: "👮🏼 Çavuş",
+        RoleNames.FUQARO: "👨🏼 Sivil",
+        RoleNames.DAYDI: "🧙‍♂️ Gezgin",
+        RoleNames.KEZUVCHI: "💃 Uykucu",
+        RoleNames.ADVOKAT: "👨🏼‍💼 Avukat",
+        RoleNames.SUIDSID: "🤦🏼 İntiharсı",
+        RoleNames.OMADLI: "🤞🏼 Şanslı",
+        RoleNames.JANOB: "🎖 Asilzade",
+        RoleNames.BORI: "🐺 Kurt Adam",
+        RoleNames.QOTIL: "🔪 Katil",
+        RoleNames.OVCHI: "🥷 Avcı",
+        RoleNames.QASOSKOR: "🧨 İntikamcı",
+        RoleNames.AFERIST: "🤹🏻 Sahtekar",
+        RoleNames.GAZABDOR: "🧌 Cezalandırıcı",
+        RoleNames.SEHRGAR: "🧙‍ Büyücü",
+        RoleNames.JURNALIST: "👩🏼‍💻 Gazeteci",
+        RoleNames.SOTQIN: "🤓 Hain",
+        RoleNames.AYGOQCHI: "🦇 Ajan",
+        RoleNames.KONCHI: "👷🏻‍♂️ Madenci",
+        RoleNames.QAROQCHI: "⚔️ Soyguncu",
+        RoleNames.HAMSHIRA: "👩🏻‍⚕️ Hemşire",
+        RoleNames.QORIQCHI: "🛡 Koruma",
+        RoleNames.XOYIN: "👺 İsyankar",
+        RoleNames.ZANJIR: "⛓ Zincirci",
+        RoleNames.AKTYOR: "🎭 Aktör",
+        RoleNames.JIN: "🧞 Cin",
+        RoleNames.TAQLIDCHI: "🎭 Taklitçi",
+        RoleNames.REVERSER: "🔄 Reverser",
+    },
+    "kk": {
+        RoleNames.DON: "🤵🏻 Дон",
+        RoleNames.MAFIA: "🤵🏼 Мафия",
+        RoleNames.KOMISSAR: "🕵🏼 Комиссар",
+        RoleNames.DOKTOR: "👨🏼‍⚕️ Дәрігер",
+        RoleNames.SERJANT: "👮🏼 Сержант",
+        RoleNames.FUQARO: "👨🏼 Бейбіт тұрғын",
+        RoleNames.DAYDI: "🧙‍♂️ Қаңғыбас",
+        RoleNames.KEZUVCHI: "💃 Кезбе",
+        RoleNames.ADVOKAT: "👨🏼‍💼 Адвокат",
+        RoleNames.SUIDSID: "🤦🏼 Суицидші",
+        RoleNames.OMADLI: "🤞🏼 Жолы болғыш",
+        RoleNames.JANOB: "🎖 Мырза",
+        RoleNames.BORI: "🐺 Қасқыр",
+        RoleNames.QOTIL: "🔪 Қаныпезер",
+        RoleNames.OVCHI: "🥷 Аңшы",
+        RoleNames.QASOSKOR: "🧨 Кек алушы",
+        RoleNames.AFERIST: "🤹🏻 Аферист",
+        RoleNames.GAZABDOR: "🧌 Жазалаушы",
+        RoleNames.SEHRGAR: "🧙‍ Сиқыршы",
+        RoleNames.JURNALIST: "👩🏼‍💻 Журналист",
+        RoleNames.SOTQIN: "🤓 Сатқын",
+        RoleNames.AYGOQCHI: "🦇 Тыңшы",
+        RoleNames.KONCHI: "👷🏻‍♂️ Шахтер",
+        RoleNames.QAROQCHI: "⚔️ Қарақшы",
+        RoleNames.HAMSHIRA: "👩🏻‍⚕️ Медбике",
+        RoleNames.QORIQCHI: "🛡 Оққағар",
+        RoleNames.XOYIN: "👺 Бүлікші",
+        RoleNames.ZANJIR: "⛓ Байланыстырушы",
+        RoleNames.AKTYOR: "🎭 Актер",
+        RoleNames.JIN: "🧞 Жын",
+        RoleNames.TAQLIDCHI: "🎭 Еліктеуші",
+        RoleNames.REVERSER: "🔄 Реверсер",
+    }
+}
+
+def role_display(role: str, lang: str = "uz") -> str:
     """
-    Xabarda ko'rsatish uchun rol nomi:
-    Agar admin tomonidan ushbu rol uchun premium emoji o'rnatilgan bo'lsa,
-    o'sha premium emoji bilan ko'rsatadi, aks holda asl nomini qaytaradi.
-    Hech qachon bo'sh yoki 'Noma'lum rol' qaytarmaydi (standart fuqaro qaytaradi).
+    Xabarda ko'rsatish uchun rol nomi.
+    lang parametriga qarab 5 xil tilda (uz, ru, en, tr, kk) tarjima qiladi.
     """
     if not role or str(role).strip() in ("", "None", "null", "Noma'lum rol", "noma'lum rol"):
-        return RoleNames.FUQARO
-    
-    role_str = str(role).strip()
-    full_role = role_str
-    clean_key = role_str.lower()
-    
-    # Emojilarni olib tashlab toza nomni aniqlash
-    for prefix in ["🤵🏻", "🤵🏼", "🕵🏼", "👨🏼‍⚕️", "👮🏼", "👨🏼", "🧙‍♂️", "💃", "👨🏼‍💼", "🤦🏼", "🤞🏼", "🎖", "🐺", "🔪", "🥷", "🧨", "🤹🏻", "🧌", "🧙‍", "👩🏼‍💻", "🤓", "🛡", "👺", "⛓", "🎭", "🧞", "👷🏻‍♂️", "🦇", "⚔️", "👩🏻‍⚕️"]:
-        clean_key = clean_key.replace(prefix.lower(), "").strip()
-    
-    if clean_key in ROLE_CLEAN_MAP:
-        full_role = ROLE_CLEAN_MAP[clean_key]
+        raw_canonical = RoleNames.FUQARO
+    else:
+        role_str = str(role).strip()
+        raw_canonical = role_str
+        clean_key = role_str.lower()
+        
+        for prefix in ["🤵🏻", "🤵🏼", "🕵🏼", "👨🏼‍⚕️", "👮🏼", "👨🏼", "🧙‍♂️", "💃", "👨🏼‍💼", "🤦🏼", "🤞🏼", "🎖", "🐺", "🔪", "🥷", "🧨", "🤹🏻", "🧌", "🧙‍", "👩🏼‍💻", "🤓", "🛡", "👺", "⛓", "🎭", "🧞", "👷🏻‍♂️", "🦇", "⚔️", "👩🏻‍⚕️"]:
+            clean_key = clean_key.replace(prefix.lower(), "").strip()
+        
+        if clean_key in ROLE_CLEAN_MAP:
+            raw_canonical = ROLE_CLEAN_MAP[clean_key]
 
-    custom = get_custom_emoji("roles", full_role) or get_custom_emoji("roles", role_str)
+    lang_code = (lang or "uz").lower()
+    if lang_code not in ("uz", "ru", "en", "tr", "kk"):
+        lang_code = "uz"
+
+    translated = ROLE_NAMES_BY_LANG.get(lang_code, {}).get(raw_canonical, raw_canonical)
+
+    custom = get_custom_emoji("roles", raw_canonical) or get_custom_emoji("roles", str(role))
     if custom:
-        parts = full_role.split(" ", 1)
-        role_text = parts[1] if len(parts) == 2 else full_role
+        parts = translated.split(" ", 1)
+        role_text = parts[1] if len(parts) == 2 else translated
         return f"{custom} {role_text}"
     
-    return full_role
+    return translated
 
 def get_item_display(key: str) -> str:
     """Qurol-aslaha emojisi"""
