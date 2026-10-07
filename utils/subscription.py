@@ -35,7 +35,7 @@ async def get_unsubscribed_channels(bot: Bot, user_id: int):
                 unsubscribed.append(ch)
         except Exception as e:
             logger.warning(f"Obunani tekshirishda xatolik (channel: {target_chat}, user: {user_id}): {e}")
-            unsubscribed.append(ch)
+            pass
 
     return unsubscribed
 
