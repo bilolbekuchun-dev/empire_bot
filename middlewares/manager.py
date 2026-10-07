@@ -285,6 +285,19 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
         except Exception as e:
             logger.warning("User sync failed: %r", e)
 
+        # VIP foydalanuvchilar istagan vaqtida (tunda ham, o'lgan bo'lsa ham) yozishi mumkin
+        if message.from_user:
+            try:
+                from models.user import VipUser
+                if await VipUser.filter(user__user_id=message.from_user.id).exists():
+                    msg_text = (message.text or message.caption or "").strip()
+                    if msg_text and (msg_text.startswith("/") or msg_text.startswith("!")):
+                        if bot_can_delete:
+                            await self._delete_quietly(message)
+                    return await handler(message, data)
+            except Exception:
+                pass
+
         # 4) Redis va DB o'yini hamda fazasini aniqlash
         chat_id = message.chat.id
         msg_text = (message.text or message.caption or "").strip()
