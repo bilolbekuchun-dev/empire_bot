@@ -60,7 +60,7 @@ def protection_toggle_keyboard(profile: Profile, active_roles: list = None):
     return markup.as_markup()
 
 
-def profile_keyboards_on_private(profile: Profile, lang: str = "uz"):
+def profile_keyboards_on_private(profile: Profile, lang: str = "uz", is_vip: bool = False):
     from utils.i18n import clean_lang, PROFILE_LABELS
     code = clean_lang(lang)
     lbls = PROFILE_LABELS.get(code, PROFILE_LABELS["uz"])
@@ -72,6 +72,8 @@ def profile_keyboards_on_private(profile: Profile, lang: str = "uz"):
     markup.button(text=lbls["btn_protections"], callback_data="open_protections")
     markup.button(text=lbls["btn_shop"], callback_data="shop", icon_custom_emoji_id="5373052667671093676")
     markup.button(text=lbls["btn_para"], callback_data="my_para_menu", icon_custom_emoji_id="5402100905883488232")
+    if is_vip:
+        markup.button(text="✨ Statusni o'zgartirish", callback_data="vip_emoji_self_change")
     if dia_id:
         markup.button(text=lbls["btn_buy"], callback_data="get_diamond_hamyonlar", icon_custom_emoji_id=dia_id)
     else:
@@ -83,7 +85,7 @@ def profile_keyboards_on_private(profile: Profile, lang: str = "uz"):
     markup.button(text=lbls["btn_hero"], callback_data="my_geroy")
     markup.button(text=lbls["btn_prem_groups"], callback_data="prem_groups")
     markup.button(text=lbls["btn_news"], url=f"https://t.me/{CHANNEL_USERNAME[1:]}")
-    markup.adjust(1, 2, 2, 2, 1, 2)
+    markup.adjust(1, 2, (3 if is_vip else 2), 2, 1, 2)
     return markup.as_markup()
 
 def blocking_users(user1_id, user2_id):

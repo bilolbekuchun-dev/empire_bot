@@ -284,16 +284,18 @@ async def update_players_list_redis(game_id: str, bot: Bot, new_msg: bool = Fals
     message_text = reg_head.get(chat_lang, reg_head["uz"])
     
     # VS game: group by teams
+    from models.user import VipUser
     if ":vsgame" in game_state.mode:
         colors_dict = TeamColors.all_colors_dict() if hasattr(TeamColors, 'all_colors_dict') else {}
         teams = {}
         for player in players:
             if player.team not in teams:
                 teams[player.team] = []
-            # Get user mention from database
             user = await User.get_or_none(user_id=player.user_id)
+            vip = await VipUser.get_or_none(user=user) if user else None
+            vip_prefix = f"{vip.emoji_char} " if (vip and vip.emoji_char) else ""
             clean_name = html.escape((user.full_name if user and user.full_name else player.first_name) or "O'yinchi")
-            mention = f'<a href="tg://user?id={player.user_id}">{clean_name}</a>'
+            mention = f'{vip_prefix}<a href="tg://user?id={player.user_id}">{clean_name}</a>'
             teams[player.team].append(mention)
         
         for team, team_players in teams.items():
@@ -307,8 +309,10 @@ async def update_players_list_redis(game_id: str, bot: Bot, new_msg: bool = Fals
         player_mentions = []
         for player in players:
             user = await User.get_or_none(user_id=player.user_id)
+            vip = await VipUser.get_or_none(user=user) if user else None
+            vip_prefix = f"{vip.emoji_char} " if (vip and vip.emoji_char) else ""
             clean_name = html.escape((user.full_name if user and user.full_name else player.first_name) or "O'yinchi")
-            mention = f'<a href="tg://user?id={player.user_id}">{clean_name}</a>'
+            mention = f'{vip_prefix}<a href="tg://user?id={player.user_id}">{clean_name}</a>'
             player_mentions.append(mention)
         
         random.shuffle(player_mentions)

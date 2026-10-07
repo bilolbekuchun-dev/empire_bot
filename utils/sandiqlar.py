@@ -129,10 +129,35 @@ async def start_vip_emoji_change_call(call: CallbackQuery, state: FSMContext):
     from handlers.other_handlers import VipEmojiState
     await state.set_state(VipEmojiState.waiting_for_emoji)
     await call.answer()
+    
+    cur_text = f"<b>{vip_user.emoji_char}</b>" if vip_user.emoji_char else "<i>O'rnatilmagan</i>"
+    
+    kb = InlineKeyboardBuilder()
+    if vip_user.emoji_char:
+        kb.row(InlineKeyboardButton(text="🗑 Statusni olib tashlash", callback_data="clear_vip_self_emoji"))
+    kb.row(InlineKeyboardButton(text="🔙 Orqaga", callback_data="back_profile"))
+
     await call.message.answer(
-        "🎨 Menga o'zingiz tanlagan premium (custom) emojini yuboring — u profilingiz va o'yinchilar ro'yxatida ismingiz oldida ko'rinadi.",
-        parse_mode="HTML"
+        f"✨ <b>VIP STATUS EMOJI</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"• Hozirgi status emoji: {cur_text}\n\n"
+        f"<b>Qo'ymoqchi bo'lgan VIP status emoji yuboring:</b>\n"
+        f"<i>(Chatga xabar shaklida istalgan emojingizni yuborishingiz mumkin)</i>",
+        parse_mode="HTML",
+        reply_markup=kb.as_markup()
     )
+
+async def clear_vip_self_emoji(call: CallbackQuery, state: FSMContext):
+    user = await User.get_or_none(user_id=call.from_user.id)
+    vip_user = await VipUser.get_or_none(user=user) if user else None
+    if vip_user:
+        vip_user.emoji_char = None
+        vip_user.emoji_id = None
+        await vip_user.save()
+        await call.answer("✅ VIP status emojisi olib tashlandi!", show_alert=True)
+    await state.clear()
+    from utils.others import get_profile
+    await get_profile(call.bot, call.message)
 
 async def process_vip_emoji_message(message: Message, state: FSMContext):
     sender_id = message.from_user.id if message.from_user else 0
@@ -140,58 +165,55 @@ async def process_vip_emoji_message(message: Message, state: FSMContext):
     target_user_id = state_data.get("target_user_id")
     await state.clear()
 
-    # Agar admin foydalanuvchiga o'rnatayotgan bo'lsa
-    if target_user_id:
-        if sender_id not in ADMINS:
-            return
+    input_text = (message.text or message.caption or "").strip()
+    if not input_text:
+        await message.answer("❗ Iltimos, status uchun emoji yoki matn yuboring.")
+        return
 
-        custom_emoji = None
-        for entity in (message.entities or []):
+    custom_emoji = None
+    if message.entities:
+        for entity in message.entities:
             if entity.type == "custom_emoji":
                 custom_emoji = entity
                 break
-        if not custom_emoji:
-            await message.reply("❗ Iltimos, premium (custom) emoji yuboring.")
-            return
 
+    emoji_char = input_text[:16]
+
+    # Admin editing target user
+    if target_user_id:
+        if sender_id not in ADMINS:
+            return
         target_user = await User.get_or_none(user_id=target_user_id)
         if not target_user:
             await message.reply("❌ Foydalanuvchi topilmadi.")
             return
 
         vip_user, _ = await VipUser.get_or_create(user=target_user, defaults={"duration_days": 30})
-        emoji_char = message.text[custom_emoji.offset:custom_emoji.offset + custom_emoji.length]
-        vip_user.emoji_id = custom_emoji.custom_emoji_id
         vip_user.emoji_char = emoji_char
+        if custom_emoji:
+            vip_user.emoji_id = custom_emoji.custom_emoji_id
         await vip_user.save()
         await message.reply(
-            f"✅ <b>{target_user.full_name}</b> uchun VIP emoji muvaffaqiyatli o'rnatildi: <tg-emoji emoji-id=\"{custom_emoji.custom_emoji_id}\">{emoji_char}</tg-emoji>",
+            f"✅ <b>{target_user.full_name}</b> uchun VIP status emoji o'rnatildi: {vip_user.emoji_char}",
             parse_mode="HTML"
         )
         return
 
-    # Foydalanuvchi o'ziga o'rnatayotgan bo'lsa
-    custom_emoji = None
-    for entity in (message.entities or []):
-        if entity.type == "custom_emoji":
-            custom_emoji = entity
-            break
-    if not custom_emoji:
-        await message.answer("❗ Iltimos, premium (custom) emoji yuboring.")
-        return
-
+    # User editing self
     user = await User.get_or_none(user_id=message.from_user.id)
     vip_user = await VipUser.get_or_none(user=user) if user else None
     if not vip_user:
         await message.answer("❗ Bu funksiya faqat VIP userlar uchun!")
         return
 
-    emoji_char = message.text[custom_emoji.offset:custom_emoji.offset + custom_emoji.length]
-    vip_user.emoji_id = custom_emoji.custom_emoji_id
     vip_user.emoji_char = emoji_char
+    if custom_emoji:
+        vip_user.emoji_id = custom_emoji.custom_emoji_id
     await vip_user.save()
+
     await message.answer(
-        f"✅ VIP emojingiz muvaffaqiyatli o'rnatildi: <tg-emoji emoji-id=\"{custom_emoji.custom_emoji_id}\">{emoji_char}</tg-emoji>",
+        f"✅ VIP status emojisi muvaffaqiyatli o'rnatildi: {vip_user.emoji_char}\n\n"
+        f"<i>Ushbu emoji o'yinlarda tirik o'yinchilar ro'yxatida ismingiz oldidan ko'rinib turadi!</i>",
         parse_mode="HTML"
     )
 
