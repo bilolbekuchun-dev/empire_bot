@@ -80,13 +80,11 @@ class DelCommands(Filter):
                     chat = await Chat.create(chat_id=message.chat.id, title=message.chat.title, type=str(message.chat.type))
 
             updated = False
-            update_fields = []
             if message.chat.username:
                 new_link = f"https://t.me/{message.chat.username}"
                 if chat.invite_link != new_link:
                     chat.invite_link = new_link
                     updated = True
-                    if "invite_link" not in update_fields: update_fields.append("invite_link")
             elif not chat.invite_link:
                 try:
                     from utils.telegram_utils import get_chat_join_link
@@ -94,17 +92,15 @@ class DelCommands(Filter):
                     if link:
                         chat.invite_link = link
                         updated = True
-                        if "invite_link" not in update_fields: update_fields.append("invite_link")
                 except Exception:
                     pass
                     
             if message.chat.title and message.chat.title != chat.title:
                 chat.title = message.chat.title
                 updated = True
-                if "title" not in update_fields: update_fields.append("title")
                 
             if updated:
-                await chat.save(update_fields=update_fields)
+                await chat.save()
         
         if message.from_user:
             from_user = message.from_user
@@ -147,20 +143,17 @@ class DelCommands(Filter):
             if user_is_blocked:
                 return True
             updated = False
-            update_fields = []
 
             if user.full_name != clean_full_name:
                 user.full_name = clean_full_name
                 updated = True
-                update_fields.append("full_name")
 
             if user.mention != mention:
                 user.mention = mention
                 updated = True
-                update_fields.append("mention")
                 
             if updated:
-                await user.save(update_fields=update_fields)
+                await user.save()
 
         if message.chat.type == ChatType.PRIVATE:
             return
@@ -183,12 +176,16 @@ class DelCommands(Filter):
                 )
                 if member.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]:
                     admin = True
-            except:
-                await message.answer(
-                    "<b>❗️ Bot guruhda admin emas! Bot muammosiz ishlashi uchun botni guruhga admin qiling!</b>",
-                    parse_mode="HTML"
-                )
+            except Exception:
+                try:
+                    await message.answer(
+                        "<b>❗️ Bot guruhda admin emas! Bot muammosiz ishlashi uchun botni guruhga admin qiling!</b>",
+                        parse_mode="HTML"
+                    )
+                except Exception:
+                    pass
                 return
+
 
         # 2. Guruh sozlamalari va o'yin mavjudligini tekshirish
         group_perm = await WriteGroupPermis.filter(chat_id=message.chat.id).first()
@@ -289,31 +286,32 @@ class NightSheriklarMessages(Filter):
 
 class SayLastWordFilter(Filter):
     async def __call__(self, message: Message):
-        msg_text = message.text or message.caption or ""
-        if not msg_text:
-            return False
-        if msg_text.startswith("/"):
+        if not message.text:
             return False
         if message.chat.type != "private": 
             return False
-        user = await User.filter(user_id=message.from_user.id).first()
-        if not user: 
-            return False
-
+        user_id = message.from_user.id
+        
+        # 1. Avval Redis o'yinlarida o'lgan va oxirgi so'z aytmagan player borligini tekshiramiz
         try:
             from utils.redis_game.services.player_service import player_service
-            redis_res = await player_service.find_player_dead_last_word_game(user.user_id)
+            redis_res = await player_service.find_player_dead_last_word_game(user_id)
             if redis_res:
                 return True
         except Exception:
             pass
 
-        player = await GamePlayer.filter(
-            user=user,
-            is_alive=False,
-            is_sayed_last_word=False,
-            game__is_active=True
-        ).order_by("-id").first()
+        # 2. Eski DB o'yini:
+        user = await User.filter(user_id=user_id).first()
+        if not user: 
+            return False
+        player = await GamePlayer.filter(user=user, is_alive=False).last()
         if not player:
+            return False
+        await player.fetch_related("game")
+        game = player.game
+        if not game.is_active: 
+            return False
+        if player.is_sayed_last_word:
             return False
         return True

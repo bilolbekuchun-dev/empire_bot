@@ -53,14 +53,26 @@ class LazyRedis:
                 if _fake_redis:
                     self._active = _fake_redis
                 else:
-                    self._active = self._real
+                    try:
+                        import fakeredis.aioredis
+                        self._active = fakeredis.aioredis.FakeRedis(decode_responses=True)
+                    except Exception:
+                        self._active = self._real
         return self._active
 
     def __getattr__(self, name):
         async def method(*args, **kwargs):
-            client = await self._get_client()
-            fn = getattr(client, name)
-            return await fn(*args, **kwargs)
+            try:
+                client = await self._get_client()
+                fn = getattr(client, name)
+                return await fn(*args, **kwargs)
+            except Exception as e:
+                # If real Redis fails during method call, fallback to FakeRedis
+                if _fake_redis:
+                    self._active = _fake_redis
+                    fn = getattr(_fake_redis, name)
+                    return await fn(*args, **kwargs)
+                raise e
         return method
 
 redis_client = LazyRedis()
@@ -77,154 +89,110 @@ async def init():
     await Tortoise.init(
         db_url=pooled_db_url,
         modules={
-            "models": ["models.game_data", "models.user", "models.game_set", "models.airdrop"]
+            "models": ["models.game_data", 'models.user', "models.game_set", "models.airdrop"]
         },
     )
+    await Tortoise.generate_schemas(safe=True)
     
-    # Migrations
+    # Migrations - only run if migration tracking table doesn't exist
     try:
         conn = Tortoise.get_connection("default")
-
-        async def safe_add_column(table: str, column: str, definition: str):
-            table_quoted = f'"{table}"' if table in ("user", "group") else table
-            is_sqlite = "sqlite" in DATABASE_URL.lower()
-            if is_sqlite:
-                sql = f"ALTER TABLE {table_quoted} ADD COLUMN {column} {definition};"
-            else:
-                sql = f"ALTER TABLE {table_quoted} ADD COLUMN IF NOT EXISTS {column} {definition};"
-            try:
-                await conn.execute_query(sql)
-            except Exception as e:
-                err = str(e).lower()
-                if "duplicate column" in err or "already exists" in err or "near" in err:
-                    pass
-
         # Transfers table
-        await safe_add_column("transfers", "caption", "VARCHAR(100) DEFAULT ''")
-        # GroupBalance table — real_money ($)
-        await safe_add_column("groupbalance", "real_money", "INT DEFAULT 0")
-        # GameSetTime table
-        await safe_add_column("game_sets_time", "reg_time", "BIGINT DEFAULT 120")
-        # CommandPermissionsChat table
-        await safe_add_column("commandpermissionschat", "extend_cmd", "VARCHAR(10) DEFAULT 'admin'")
-        await safe_add_column("command_permissions_chat", "extend_cmd", "VARCHAR(10) DEFAULT 'admin'")
-        # VipUser table
-        await safe_add_column("vipuser", "duration_days", "INT DEFAULT 30")
-        # User table
-        await safe_add_column("user", "username", "VARCHAR(64)")
-
-        # Bosh Komissar tizimi
-        await safe_add_column("gameplayer", "kom_success_checks", "INT DEFAULT 0")
-        await safe_add_column("gameplayer", "kom_is_upgraded", "BOOLEAN DEFAULT FALSE")
-        await safe_add_column("gameplayer", "kom_wire_uses", "INT DEFAULT 2")
-        await safe_add_column("gameplayer", "kom_wire_target_pid", "BIGINT")
-        await safe_add_column("gameplayer", "kom_profile_used", "BOOLEAN DEFAULT FALSE")
-        await safe_add_column("gameplayer", "kom_qosh_used", "BOOLEAN DEFAULT FALSE")
-        await safe_add_column("gameplayer", "kom_arrest_pid", "BIGINT")
-        await safe_add_column("gameplayer", "kom_arrest_used", "BOOLEAN DEFAULT FALSE")
-        await safe_add_column("gameplayer", "kom_himoya_target_pid", "BIGINT")
-        await safe_add_column("gameplayer", "kom_himoya_nights", "INT DEFAULT 0")
-        await safe_add_column("gameplayer", "kom_signal_used", "BOOLEAN DEFAULT FALSE")
-        await safe_add_column("gameplayer", "kom_himoya_protected", "BOOLEAN DEFAULT FALSE")
-
-        # Qora Materiya
-        await safe_add_column("game", "qm_portlat_active", "BOOLEAN DEFAULT FALSE")
-        await safe_add_column("gameplayer", "qm_active", "BOOLEAN DEFAULT FALSE")
-        await safe_add_column("gameplayer", "qm_void_swap_role", "VARCHAR(70)")
-        await safe_add_column("gameplayer", "qm_void_swap_days", "INT DEFAULT 0")
-        await safe_add_column("gameplayer", "qm_original_role", "VARCHAR(70)")
-        await safe_add_column("gameplayer", "qm_portlat_used", "BOOLEAN DEFAULT FALSE")
-        await safe_add_column("gameplayer", "qm_tiriltir_used", "BOOLEAN DEFAULT FALSE")
-        await safe_add_column("gameplayer", "qm_xazina_used", "BOOLEAN DEFAULT FALSE")
-
-        # Geroy Market
-        await safe_add_column("geroymarket", "status", "VARCHAR(10) DEFAULT 'active'")
-        await safe_add_column("geroymarket", "channel_message_id", "BIGINT")
-        await safe_add_column("geroymarket", "updated_at", "TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP")
-
-        try: await conn.execute_query("CREATE UNIQUE INDEX IF NOT EXISTS geroys_user_id_unique ON geroys(user_id);")
-        except Exception: pass
-
-        # Tournament
-        await safe_add_column("tournament", "birthday_date", "VARCHAR(5)")
-        await safe_add_column("tournament", "gift_diamond", "INT DEFAULT 0")
-        await safe_add_column("tournament", "gift_dollar", "INT DEFAULT 0")
-        await safe_add_column("tournament", "gift_last_year", "INT")
-
-        try: await conn.execute_query('CREATE UNIQUE INDEX IF NOT EXISTS user_user_id_unique ON "user"(user_id);')
-        except Exception: pass
-
-        # WebApp migrations
-        webapp_migrations = [
-            ('user', 'created_at', "TIMESTAMPTZ DEFAULT NOW()"),
-            ('user', 'lang', "VARCHAR(5) DEFAULT 'uz'"),
-            ('chat', 'lang', "VARCHAR(5) DEFAULT 'uz'"),
-            ('tournament', 'lang', "VARCHAR(5) DEFAULT ''"),
-            ('profile', 'daily_streak', "INT DEFAULT 0"),
-            ('profile', 'last_claim_date', "DATE"),
-            ('profile', 'on_active_role', "BOOLEAN DEFAULT TRUE"),
-            ('profile', 'on_slip_himoya', "BOOLEAN DEFAULT TRUE"),
-            ('profile', 'on_geroy_himoya', "BOOLEAN DEFAULT TRUE"),
-            ('profile', 'slip_himoya', "INT DEFAULT 0"),
-            ('profile', 'geroy_himoya', "INT DEFAULT 0"),
-            ('geroys', 'photo_url', "VARCHAR(500) DEFAULT ''"),
-            ('tournament', 'contact_button_text', "VARCHAR(50) DEFAULT ''"),
-            ('diamondbuystars', 'kind', "VARCHAR(10) DEFAULT 'diamond'"),
-            ('diamondbuystars', 'source', "VARCHAR(10) DEFAULT 'bot'"),
-            ('user', 'last_seen', "TIMESTAMPTZ"),
-            ('user', 'support_cleared_at', "TIMESTAMPTZ"),
-            ('supportmessage', 'image_url', "VARCHAR(300)"),
-            ('supportmessage', 'is_read', "BOOLEAN DEFAULT FALSE"),
-            ('tournament', 'created_by_user_id', "BIGINT"),
-            ('tournament', 'contact_clicks', "INT DEFAULT 0"),
-            ('tournament', 'target_user_id', "BIGINT"),
-            ('tournament', 'kind', "VARCHAR(20) DEFAULT 'ad'"),
-            ('user', 'tournament_manager_lang', "VARCHAR(5)"),
-            ('profile', 'birth_date', "VARCHAR(5)"),
-            ('profile', 'last_birthday_greeted_year', "INT"),
-            ('nftpurchaselog', 'stars_price', "INT"),
-            ('nftmarketsettings', 'spent_baseline', "INT DEFAULT 0"),
+        # Migratsiyalar (SQLite va Postgres mosligi uchun safe-try)
+        queries = [
+            "ALTER TABLE transfers ADD COLUMN caption VARCHAR(100) DEFAULT '';",
+            "ALTER TABLE groupbalance ADD COLUMN real_money INT DEFAULT 0;",
+            "ALTER TABLE game_sets_time ADD COLUMN reg_time BIGINT DEFAULT 120;",
+            "ALTER TABLE commandpermissionschat ADD COLUMN extend_cmd VARCHAR(10) DEFAULT 'admin';",
+            "ALTER TABLE command_permissions_chat ADD COLUMN extend_cmd VARCHAR(10) DEFAULT 'admin';",
+            "ALTER TABLE vipuser ADD COLUMN duration_days INT DEFAULT 30;",
+            'ALTER TABLE "user" ADD COLUMN username VARCHAR(64);',
+            "ALTER TABLE gameplayer ADD COLUMN kom_success_checks INT DEFAULT 0;",
+            "ALTER TABLE gameplayer ADD COLUMN kom_is_upgraded BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE gameplayer ADD COLUMN kom_wire_uses INT DEFAULT 2;",
+            "ALTER TABLE gameplayer ADD COLUMN kom_wire_target_pid BIGINT;",
+            "ALTER TABLE gameplayer ADD COLUMN kom_profile_used BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE gameplayer ADD COLUMN kom_qosh_used BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE gameplayer ADD COLUMN kom_arrest_pid BIGINT;",
+            "ALTER TABLE gameplayer ADD COLUMN kom_arrest_used BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE gameplayer ADD COLUMN kom_himoya_target_pid BIGINT;",
+            "ALTER TABLE gameplayer ADD COLUMN kom_himoya_nights INT DEFAULT 0;",
+            "ALTER TABLE gameplayer ADD COLUMN kom_signal_used BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE gameplayer ADD COLUMN kom_himoya_protected BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE game ADD COLUMN qm_portlat_active BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE gameplayer ADD COLUMN qm_active BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE gameplayer ADD COLUMN qm_void_swap_role VARCHAR(70);",
+            "ALTER TABLE gameplayer ADD COLUMN qm_void_swap_days INT DEFAULT 0;",
+            "ALTER TABLE gameplayer ADD COLUMN qm_original_role VARCHAR(70);",
+            "ALTER TABLE gameplayer ADD COLUMN qm_portlat_used BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE gameplayer ADD COLUMN qm_tiriltir_used BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE gameplayer ADD COLUMN qm_xazina_used BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE geroymarket ADD COLUMN status VARCHAR(10) DEFAULT 'active';",
+            "ALTER TABLE geroymarket ADD COLUMN channel_message_id BIGINT;",
+            "ALTER TABLE geroymarket ADD COLUMN updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;",
+            "CREATE UNIQUE INDEX IF NOT EXISTS geroys_user_id_unique ON geroys(user_id);",
+            "ALTER TABLE tournament ADD COLUMN birthday_date VARCHAR(5);",
+            "ALTER TABLE tournament ADD COLUMN gift_diamond INT DEFAULT 0;",
+            "ALTER TABLE tournament ADD COLUMN gift_dollar INT DEFAULT 0;",
+            "ALTER TABLE tournament ADD COLUMN gift_last_year INT;",
         ]
-        for tbl, col, dfn in webapp_migrations:
-            await safe_add_column(tbl, col, dfn)
+        for q in queries:
+            try:
+                await conn.execute_query(q)
+            except Exception:
+                pass
+
+
+        # User.user_id (Telegram ID) bazada haqiqiy UNIQUE bo'lishi kerak — model unique=True deb
+        # e'lon qilingan, lekin profil almashish funksiyasidagi nosoz holatlar buni buzishi mumkin edi.
+        try: await conn.execute_query('CREATE UNIQUE INDEX IF NOT EXISTS user_user_id_unique ON "user"(user_id);')
+        except Exception as e: print(f"ℹ️ Migration (user.user_id unique index): {e}")
 
         print("✅ Database migrations completed.")
     except Exception as e:
         print(f"ℹ️ Migration error: {e}")
 
+    # WebApp uchun qo'shilgan yangi ustunlar (alohida try/except — biri ishlamasa qolganlari to'xtamasin)
+    webapp_migrations = [
+        ('user', 'created_at', "TIMESTAMPTZ DEFAULT NOW()"),
+        ('user', 'lang', "VARCHAR(5) DEFAULT 'uz'"),
+        ('profile', 'daily_streak', "INT DEFAULT 0"),
+        ('profile', 'last_claim_date', "DATE"),
+        ('geroys', 'photo_url', "VARCHAR(500) DEFAULT ''"),
+        ('tournament', 'contact_button_text', "VARCHAR(50) DEFAULT ''"),
+        ('diamondbuystars', 'kind', "VARCHAR(10) DEFAULT 'diamond'"),
+        ('diamondbuystars', 'source', "VARCHAR(10) DEFAULT 'bot'"),
+        ('user', 'last_seen', "TIMESTAMPTZ"),
+        ('user', 'support_cleared_at', "TIMESTAMPTZ"),
+        ('supportmessage', 'image_url', "VARCHAR(300)"),
+        ('supportmessage', 'is_read', "BOOLEAN DEFAULT FALSE"),
+        ('tournament', 'created_by_user_id', "BIGINT"),
+        ('tournament', 'contact_clicks', "INT DEFAULT 0"),
+        ('tournament', 'target_user_id', "BIGINT"),
+        ('tournament', 'kind', "VARCHAR(20) DEFAULT 'ad'"),
+        ('user', 'tournament_manager_lang', "VARCHAR(5)"),
+        ('profile', 'birth_date', "VARCHAR(5)"),
+        ('profile', 'last_birthday_greeted_year', "INT"),
+        ('nftpurchaselog', 'stars_price', "INT"),
+        ('nftmarketsettings', 'spent_baseline', "INT DEFAULT 0"),
+    ]
+    for table, column, definition in webapp_migrations:
+        try:
+            conn = Tortoise.get_connection("default")
+            table_quoted = f'"{table}"' if table == "user" else table
+            await conn.execute_query(f'ALTER TABLE {table_quoted} ADD COLUMN IF NOT EXISTS {column} {definition};')
+        except Exception as e:
+            print(f"ℹ️ WebApp migration ({table}.{column}): {e}")
+
     # Turnir - banner_text uzunroq matnlarga (masalan reklama e'lonlari) moslashishi uchun
     # VARCHAR(300) dan TEXT (cheksiz)ga o'tkazamiz.
     try:
         conn = Tortoise.get_connection("default")
-        try:
-            await conn.execute_query("ALTER TABLE tournament ALTER COLUMN banner_text TYPE TEXT;")
-        except Exception:
-            pass
+        await conn.execute_query("ALTER TABLE tournament ALTER COLUMN banner_text TYPE TEXT;")
     except Exception as e:
         print(f"ℹ️ Migration (tournament.banner_text -> TEXT): {e}")
 
     await Tortoise.generate_schemas()
-    # Dublikat geroylarni tozalash (bitta egaga bir necha Geroys bo'lsa)
-    geroys = await Geroys.all().prefetch_related('user')
-    user_geroys = {}
-    
-    for geroy in geroys:
-        user_id = geroy.user.user_id if geroy.user else None
-        if user_id:
-            if user_id not in user_geroys:
-                user_geroys[user_id] = []
-            user_geroys[user_id].append(geroy)
-    
-    # Har bir foydalanuvchi uchun eng ko'p ballga ega geroy qoldiriladi
-    for user_id, geroy_list in user_geroys.items():
-        if len(geroy_list) > 1:
-            # Ball bo'yicha tartiblash (eng ko'p ball birinchi)
-            geroy_list.sort(key=lambda x: x.ball, reverse=True)
-            # Birinchisidan tashqari hammasini o'chirish
-            for geroy in geroy_list[1:]:
-                await geroy.delete()
-            print(f"✅ User {user_id} uchun {len(geroy_list)-1} ta dublikat geroy o'chirildi.")
-
     print("🎉 Database initialization muvaffaqiyatli tugadi!")
 
 
@@ -334,7 +302,7 @@ TORTOISE_ORM = {
     "connections": {"default": "sqlite://db.sqlite3"},  # Bazangiz qanday bo‘lsa shunga qarab yoziladi
     "apps": {
         "models": {
-            "models": ["models.game_data", "models.user", "models.game_set", "models.airdrop", "aerich.models"],  # model fayllaringiz nomi
+            "models": ["models.game_data", "models.user", "models.game_set", "aerich.models"],  # model fayllaringiz nomi
             "default_connection": "default",
         }
     }

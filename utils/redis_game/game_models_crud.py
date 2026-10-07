@@ -75,7 +75,7 @@ class GameStateRepository:
         self._vote_like = RedisStateManager[VoteLikeState](VoteLikeState)
         self._action = RedisStateManager[ActionState](ActionState)
         self._geroy_action = RedisStateManager[GeroyActionState](GeroyActionState)
-        player_game_ball_state = RedisStateManager[PlayerState](PlayerState)
+        self._player_game_ball = RedisStateManager[PlayerGameBallState](PlayerGameBallState)
 
     # ============ GAME STATE ============
     async def save_game(self, state: GameState, ttl_sec: Optional[int] = None) -> None:

@@ -17,156 +17,6 @@ from utils.role_names import RoleNames  # agar kerak bo‘lsa
 from utils.vsgame import TeamCOlors
 import asyncio
 
-async def day_action(message: Message, players: List[GamePlayer], phase: GamePhase, bot: Bot):
-    """Kunduzgi ovoz berish uchun barcha tirik o'yinchilarga tugmalarni shaxsiy chatiga yuborish"""
-    try:
-        await phase.fetch_related("game")
-        game = phase.game
-        vsgame = "vsgame" in game.mode
-        nik = game.mode.split(">")[1] if len(game.mode.split(">")) > 1 else None
-
-        alive_players = [p for p in players if p.is_alive]
-        for player in alive_players:
-            if not player.user:
-                try: await player.fetch_related("user")
-                except: pass
-            if not player.user:
-                continue
-            try:
-                kb = await vote_buttons(
-                    user_id=player.user.user_id,
-                    role=player.role,
-                    players=alive_players,
-                    phease_id=phase.id,
-                    vsgame=vsgame,
-                    nik=nik
-                )
-                await safe_send_message(
-                    bot,
-                    player.user.user_id,
-                    "<b>Ovoz berish</b>: Bugun kimga qarshi ovoz berasiz?",
-                    reply_markup=kb,
-                    parse_mode="HTML"
-                )
-            except Exception as e:
-                print(f"day_action send error ({getattr(player.user, 'user_id', '?')}): {e}")
-    except Exception as e:
-        print(f"day_action error: {e}")
-
-
-async def vote_like_action(phase: GamePhase, bot: Bot, chat: Chat, new_phase: GamePhase):
-    """Kunduzgi ovoz berish yakunlangach, gumondorni sudga tortish va Like/Dislike yig'ib hukm chiqarish"""
-    from collections import Counter
-    from aiogram.utils.keyboard import InlineKeyboardBuilder
-    from models.game_data import VoteLike
-
-    try:
-        votes = await Vote.filter(phase=phase).prefetch_related("target__user", "target__game", "voter").all()
-        if not votes:
-            await safe_send_message(
-                bot,
-                chat.chat_id,
-                "<b>Ovoz berish natijasi:</b> Bugun hech kim ovoz bermadi. Hech kim sudga tortilmadi.",
-                parse_mode="HTML"
-            )
-            return
-
-        # Target bo'yicha ovozlarni sanash
-        counts = Counter(v.target for v in votes if v.target and v.target.is_alive)
-        if not counts:
-            await safe_send_message(
-                bot,
-                chat.chat_id,
-                "<b>Ovoz berish natijasi:</b> Hech kimga qarshi ovoz berilmadi. Hech kim sudga tortilmadi.",
-                parse_mode="HTML"
-            )
-            return
-
-        most_common = counts.most_common()
-        top_target, top_votes = most_common[0]
-
-        # Teng ovoz bo'lsa
-        if len(most_common) > 1 and most_common[1][1] == top_votes:
-            await safe_send_message(
-                bot,
-                chat.chat_id,
-                f"<b>Ovoz berish natijasi:</b> Ovozlar teng kelib qoldi ({top_votes} ta ovoz). Bugun hech kim sudga tortilmadi.",
-                parse_mode="HTML"
-            )
-            return
-
-        # Gumondorni sudga chiqarish va Like/Dislike tugmalarini guruhga yuborish
-        from keyboards.game_keyboard import build_vote_like_keyboard
-        mention = top_target.user.mention if (hasattr(top_target, 'user') and top_target.user) else "O'yinchi"
-        colors_dict = TeamCOlors.all_colors_dict()
-        team_color = colors_dict.get(top_target.team, '') if getattr(top_target, 'team', None) else ''
-
-        kb = build_vote_like_keyboard(top_target.id, new_phase.id, 0, 0)
-
-        game_times, _ = await GameSetTime.get_or_create(chat_id=chat.chat_id)
-        vote_like_duration = getattr(game_times, "afternoon_time", 20) or 20
-
-        await safe_send_message(
-            bot,
-            chat.chat_id,
-            f"⚖️ <b>Sud jarayoni boshlandi!</b>\n\n"
-            f"Ko'pchilik {team_color}<b>{mention}</b> dan gumon qilmoqda.\n\n"
-            f"❓ <b>Chindan ham {team_color}<b>{mention}</b> ni osishni istaysizmi?</b>\n"
-            f"<i>Hukm chiqarish uchun pastdagi tugmalardan birini bosing:</i>\n\n"
-            f"⏳ Vaqt: {vote_like_duration} soniya...",
-            reply_markup=kb,
-            parse_mode="HTML"
-        )
-
-        # Ovozlar yig'ilishini kutiladi
-        await asyncio.sleep(vote_like_duration)
-
-        # Ovozlarini hisoblash (VoteLike)
-        likes = await VoteLike.filter(phase=new_phase, target=top_target, is_like=True).count()
-        dislikes = await VoteLike.filter(phase=new_phase, target=top_target, is_like=False).count()
-
-        await safe_send_message(
-            bot,
-            chat.chat_id,
-            f"⚖️ <b>Sud natijalari:</b>\n"
-            f"👍 Osish: {likes} ta | 👎 Oqlash: {dislikes} ta",
-            parse_mode="HTML"
-        )
-
-        if likes > dislikes:
-            top_target.is_alive = False
-            top_target.deaded_at = datetime.now(timezone.utc)
-            top_target.is_sayed_last_word = False
-            await top_target.save()
-
-            role_name = role_display(top_target.role)
-            await safe_send_message(
-                bot,
-                chat.chat_id,
-                f"💀 <b>Sud qaroriga ko'ra {team_color}{mention} qatl qilindi!</b>\n\nU <b>{role_name}</b> edi.",
-                parse_mode="HTML"
-            )
-
-            if hasattr(top_target, 'user') and top_target.user:
-                await safe_send_message(
-                    bot,
-                    top_target.user.user_id,
-                    "💀 <b>Siz sud qaroriga ko'ra qatl qilindingiz!</b>\n💬 Guruhingizga <b>oxirgi so'z</b>ingizni yuborish uchun shu yerga (bot shaxsiyiga) matningizni yuboring!",
-                    parse_mode="HTML"
-                )
-
-            await assign_new_role(top_target, new_phase, bot, chat)
-        else:
-            await safe_send_message(
-                bot,
-                chat.chat_id,
-                f"🤝 <b>Sud qaroriga ko'ra {team_color}{mention} oqlandi va tirik qoldi!</b>",
-                parse_mode="HTML"
-            )
-    except Exception as e:
-        print(f"vote_like_action error: {e}")
-
-
 async def vote_target_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
     colors_dict = TeamCOlors.all_colors_dict()
     if call.data.endswith("skype"):
@@ -353,7 +203,6 @@ async def vote_target_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
 async def say_last_word_handler(message: Message, state: FSMContext):
     user_id = message.from_user.id
     sender_mention = message.from_user.mention_html()
-    text_content = message.html_text or message.caption or message.text or ""
 
     # 1. Avval Redis game tekshiramiz:
     try:
@@ -372,7 +221,7 @@ async def say_last_word_handler(message: Message, state: FSMContext):
 
                 msg_text = (
                     f"<b>O'limidan oldin kimdir, {sender_mention} ning qichqirganini eshitdi:</b>\n\n"
-                    f"💬 <i>\"{text_content}\"</i>"
+                    f"💬 <i>\"{message.html_text}\"</i>"
                 )
                 await safe_send_message(message.bot, game_state.chat_id, msg_text, parse_mode="HTML")
                 await message.answer("✅ So‘nggi so‘zingiz guruhga yuborildi.")
@@ -380,38 +229,28 @@ async def say_last_word_handler(message: Message, state: FSMContext):
     except Exception as e:
         print(f"⚠️ say_last_word_handler redis error: {e}")
 
-    # 2. DB o'yini:
-    try:
-        from utils.telegram_utils import safe_send_message
-        user = await User.filter(user_id=user_id).first()
-        if not user:
-            return
-        player = await GamePlayer.filter(
-            user=user,
-            is_alive=False,
-            is_sayed_last_word=False,
-            game__is_active=True
-        ).prefetch_related("game", "user").order_by("-id").first()
-        if not player or not player.game:
-            return
+    # 2. Eski DB o'yini:
+    user = await User.filter(user_id=user_id).first()
+    if not user:
+        return
+    player = await GamePlayer.filter(user=user, is_alive=False).last()
+    if not player:
+        return
+    await player.fetch_related("game")
+    game = player.game
+    if not game.is_active:
+        return
 
-        await player.game.fetch_related("chat")
-        chat = player.game.chat
-        if not chat:
-            return
+    player.is_sayed_last_word = True
+    await player.save()
+    await game.fetch_related("chat")
 
-        player.is_sayed_last_word = True
-        await player.save()
-
-        await safe_send_message(
-            message.bot, 
-            chat.chat_id,
-            f"<b>O'limidan oldin kimdir, {user.mention} ning qichqirganini eshitdi:</b>\n\n💬 <i>\"{text_content}\"</i>",
-            parse_mode="HTML"
-        )
-        await message.answer("✅ So‘nggi so‘zingiz guruhga yuborildi.")
-    except Exception as e:
-        print(f"⚠️ say_last_word_handler DB error: {e}")
+    await safe_send_message(message.bot, 
+        game.chat.chat_id,
+        f"<b>O'limidan oldin kimdir, {user.mention} ning qichqirganini eshitdi:</b>\n\n💬 <i>\"{message.html_text}\"</i>",
+        parse_mode="HTML"
+    )
+    await message.answer("✅ So‘nggi so‘zingiz guruhga yuborildi.")
 
 async def select_card_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
     colors_dict = TeamCOlors.all_colors_dict()
@@ -456,17 +295,8 @@ async def select_card_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
     if card_id == death_card_id:
         player.is_alive = False
         player.deaded_at = datetime.now(timezone.utc)
-        player.is_sayed_last_word = False
         await player.save()
         
-        if hasattr(player, 'user') and player.user:
-            await safe_send_message(
-                bot,
-                player.user.user_id,
-                "💀 <b>Siz o'lim kartasini tanladingiz va halok bo'ldingiz!</b>\n💬 Guruhingizga <b>oxirgi so'z</b>ingizni yuborish uchun shu yerga (bot shaxsiyiga) matningizni yuboring!",
-                parse_mode="HTML"
-            )
-
         # Zanjir tekshirish
         night_phase = await GamePhase.filter(game=phase.game, phase_type="night", number=phase.number).first()
         if night_phase:
@@ -480,15 +310,7 @@ async def select_card_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
                     if other_player:
                         other_player.is_alive = False
                         other_player.deaded_at = datetime.now(timezone.utc)
-                        other_player.is_sayed_last_word = False
                         await other_player.save()
-                        if hasattr(other_player, 'user') and other_player.user:
-                            await safe_send_message(
-                                bot,
-                                other_player.user.user_id,
-                                "💀 <b>Siz sherigingiz bilan birga halok bo'ldingiz!</b>\n💬 Guruhingizga <b>oxirgi so'z</b>ingizni yuborish uchun shu yerga (bot shaxsiyiga) matningizni yuboring!",
-                                parse_mode="HTML"
-                            )
                         await safe_send_message(bot, 
                             chat.chat_id,
                             f"⛓ {colors_dict[other_player.team] if other_player.team else ''}{other_player.user.mention} <b>{user.mention}</b> bilan zanjirlangan edi va u bilan birga halok bo'ldi!\nU edi <b>{role_display(other_player.role)}</b>.",

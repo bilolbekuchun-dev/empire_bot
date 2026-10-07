@@ -1,90 +1,67 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from config import CHANNEL_USERNAME
 from models.user import Profile
-from utils.premium_emojis import get_custom_emoji_id, get_diamond_display, get_dollar_display, get_item_display
+from utils.premium_emojis import get_custom_emoji_id, get_diamond_display, get_dollar_display
 
-def protection_toggle_keyboard(profile: Profile, active_roles: list = None):
+def protection_toggle_keyboard(profile: Profile):
     markup = InlineKeyboardBuilder()
-    ic_himoya = get_item_display("himoya")
-    ic_hujjat = get_item_display("hujjat")
-    ic_osish = get_item_display("osishdan_himoya")
-    ic_dori = get_item_display("doridan_himoya")
-    ic_maska = get_item_display("mask")
-    ic_qotil = get_item_display("himoya")
-    ic_slip = get_item_display("himoya")
-    ic_geroy = get_item_display("himoya")
-
     if profile.on_himoya:
-        markup.button(text=f"{ic_himoya} - 🟢 ON", callback_data="off_himoya")
+        markup.button(text=f"🛡 - 🟢 ON", callback_data="off_himoya")
     else:
-        markup.button(text=f"{ic_himoya} - 🔴 OFF", callback_data="on_himoya")
+        markup.button(text=f"🛡 - 🔴 OFF", callback_data="on_himoya")
     if profile.on_hujjat:
-        markup.button(text=f"{ic_hujjat} - 🟢 ON", callback_data="off_hujjat")
+        markup.button(text=f"📁 - 🟢 ON", callback_data="off_hujjat")
     else:
-        markup.button(text=f"{ic_hujjat} - 🔴 OFF", callback_data="on_hujjat")
+        markup.button(text=f"📁 - 🔴 OFF", callback_data="on_hujjat")
     if profile.on_osishdan_himoya:
-        markup.button(text=f"{ic_osish} - 🟢 ON", callback_data="off_osish-himoya")
+        markup.button(text=f"⚖️ - 🟢 ON", callback_data="off_osish-himoya")
     else:
-        markup.button(text=f"{ic_osish} - 🔴 OFF", callback_data="on_osish-himoya")
+        markup.button(text=f"⚖️ - 🔴 OFF", callback_data="on_osish-himoya")
     if profile.on_doridan_himoya:
-        markup.button(text=f"{ic_dori} - 🟢 ON", callback_data="off_dori-himoya")
+        markup.button(text=f"💊 - 🟢 ON", callback_data="off_dori-himoya")
     else:
-        markup.button(text=f"{ic_dori} - 🔴 OFF", callback_data="on_dori-himoya")
+        markup.button(text=f"💊 - 🔴 OFF", callback_data="on_dori-himoya")
     if profile.on_maska:
-        markup.button(text=f"{ic_maska} - 🟢 ON", callback_data="off_maska")
+        markup.button(text=f"🎭 - 🟢 ON", callback_data="off_maska")
     else:
-        markup.button(text=f"{ic_maska} - 🔴 OFF", callback_data="on_maska")
+        markup.button(text=f"🎭 - 🔴 OFF", callback_data="on_maska")
     if profile.on_qotildan_himoya:
-        markup.button(text=f"{ic_qotil} - 🟢 ON", callback_data="off_qotildan-himoya")
+        markup.button(text=f"⛑️ - 🟢 ON", callback_data="off_qotildan-himoya")
     else:
-        markup.button(text=f"{ic_qotil} - 🔴 OFF", callback_data="on_qotildan-himoya")
+        markup.button(text=f"⛑️ - 🔴 OFF", callback_data="on_qotildan-himoya")
     if profile.on_slip_himoya:
-        markup.button(text=f"{ic_slip} - 🟢 ON", callback_data="off_slip-himoya")
+        markup.button(text=f"🪤 - 🟢 ON", callback_data="off_slip-himoya")
     else:
-        markup.button(text=f"{ic_slip} - 🔴 OFF", callback_data="on_slip-himoya")
+        markup.button(text=f"🪤 - 🔴 OFF", callback_data="on_slip-himoya")
     if profile.on_geroy_himoya:
-        markup.button(text=f"{ic_geroy} - 🟢 ON", callback_data="off_geroy-himoya")
+        markup.button(text=f"🔰 - 🟢 ON", callback_data="off_geroy-himoya")
     else:
-        markup.button(text=f"{ic_geroy} - 🔴 OFF", callback_data="on_geroy-himoya")
-
-    # Faol rol yoqish/o'chirish (eng pastda)
-    if getattr(profile, "on_active_role", True):
-        markup.button(text="🃏 Faol rol - 🟢 ON", callback_data="off_active-role")
-    else:
-        markup.button(text="🃏 Faol rol - 🔴 OFF", callback_data="on_active-role")
-
+        markup.button(text=f"🔰 - 🔴 OFF", callback_data="on_geroy-himoya")
     markup.button(text="⬅️ Orqaga", callback_data="back_profile")
-    
-    # Himoyalar: 2 tadan (jami 8 ta himoya -> [2, 2, 2, 2]), keyin Faol rol (1), oxirida Orqaga (1)
-    markup.adjust(2, 2, 2, 2, 1, 1)
+    markup.adjust(2)
     return markup.as_markup()
 
-
-def profile_keyboards_on_private(profile: Profile, lang: str = "uz", is_vip: bool = False):
-    from utils.i18n import clean_lang, PROFILE_LABELS
-    code = clean_lang(lang)
-    lbls = PROFILE_LABELS.get(code, PROFILE_LABELS["uz"])
-    
+def profile_keyboards_on_private(profile: Profile, is_vip: bool = False):
     markup = InlineKeyboardBuilder()
     dia_id = get_custom_emoji_id("currency", "diamond")
     dollar_id = get_custom_emoji_id("currency", "dollar")
     
-    markup.button(text=lbls["btn_protections"], callback_data="open_protections")
-    markup.button(text=lbls["btn_shop"], callback_data="shop", icon_custom_emoji_id="5373052667671093676")
-    markup.button(text=lbls["btn_para"], callback_data="my_para_menu", icon_custom_emoji_id="5402100905883488232")
+    markup.button(text="🛡 Himoyalar", callback_data="open_protections")
+    markup.button(text="Do'kon", callback_data="shop", icon_custom_emoji_id="5373052667671093676")
+    markup.button(text="Mening param", callback_data="my_para_menu", icon_custom_emoji_id="5402100905883488232")
     if is_vip:
         markup.button(text="✨ Statusni o'zgartirish", callback_data="vip_emoji_self_change")
     if dia_id:
-        markup.button(text=lbls["btn_buy"], callback_data="get_diamond_hamyonlar", icon_custom_emoji_id=dia_id)
+        markup.button(text="Xarid qilish", callback_data="get_diamond_hamyonlar", icon_custom_emoji_id=dia_id)
     else:
-        markup.button(text=lbls["btn_buy_diamond"], callback_data="get_diamond_hamyonlar")
+        markup.button(text="💎 Xarid qilish", callback_data="get_diamond_hamyonlar")
     if dollar_id:
-        markup.button(text=lbls["btn_buy"], callback_data="get_dollar", icon_custom_emoji_id=dollar_id)
+        markup.button(text="Xarid qilish", callback_data="get_dollar", icon_custom_emoji_id=dollar_id)
     else:
-        markup.button(text=lbls["btn_buy_dollar"], callback_data="get_dollar")
-    markup.button(text=lbls["btn_hero"], callback_data="my_geroy")
-    markup.button(text=lbls["btn_prem_groups"], callback_data="prem_groups")
-    markup.button(text=lbls["btn_news"], url=f"https://t.me/{CHANNEL_USERNAME[1:]}")
+        markup.button(text="💵 Xarid qilish", callback_data="get_dollar")
+    markup.button(text="🥷 Mening geroyim", callback_data="my_geroy")
+    markup.button(text="🎲 Premium guruhlar", callback_data="prem_groups")
+    markup.button(text="Yangiliklar", url=f"https://t.me/{CHANNEL_USERNAME[1:]}")
     markup.adjust(1, 2, (3 if is_vip else 2), 2, 1, 2)
     return markup.as_markup()
 
@@ -93,57 +70,41 @@ def blocking_users(user1_id, user2_id):
     m.button(text="Ikkalasini ham bloklash", callback_data=f"block_{user1_id}_{user2_id}")
     return m.as_markup()
 
-def profile_keyboards(lang: str = "uz"):
-    from utils.i18n import clean_lang, PROFILE_LABELS
-    code = clean_lang(lang)
-    lbls = PROFILE_LABELS.get(code, PROFILE_LABELS["uz"])
-
+def profile_keyboards():
     markup = InlineKeyboardBuilder()
     dia_id = get_custom_emoji_id("currency", "diamond")
     dollar_id = get_custom_emoji_id("currency", "dollar")
     
-    markup.button(text=lbls["btn_shop"], callback_data="shop", icon_custom_emoji_id="5373052667671093676")
-    markup.button(text=lbls["btn_para"], callback_data="my_para_menu", icon_custom_emoji_id="5402100905883488232")
+    markup.button(text="Do'kon", callback_data="shop", icon_custom_emoji_id="5373052667671093676")
+    markup.button(text="Mening param", callback_data="my_para_menu", icon_custom_emoji_id="5402100905883488232")
     if dollar_id:
-        markup.button(text=lbls["btn_buy"], callback_data="get_dollar", icon_custom_emoji_id=dollar_id)
+        markup.button(text="Xarid qilish", callback_data="get_dollar", icon_custom_emoji_id=dollar_id)
     else:
-        markup.button(text=lbls["btn_buy_dollar"], callback_data="get_dollar")
+        markup.button(text="💵 Xarid qilish", callback_data="get_dollar")
     if dia_id:
-        markup.button(text=lbls["btn_buy"], callback_data="get_diamond_hamyonlar", icon_custom_emoji_id=dia_id)
+        markup.button(text="Xarid qilish", callback_data="get_diamond_hamyonlar", icon_custom_emoji_id=dia_id)
     else:
-        markup.button(text=lbls["btn_buy_diamond"], callback_data="get_diamond_hamyonlar")
-    markup.button(text=lbls["btn_prem_groups"], callback_data="prem_groups")
-    markup.button(text=lbls["btn_news"], url=f"https://t.me/{CHANNEL_USERNAME[1:]}")
+        markup.button(text="💎 Xarid qilish", callback_data="get_diamond_hamyonlar")
+    markup.button(text="🎲 Premium guruhlar", callback_data="prem_groups")
+    markup.button(text="Yangiliklar", url=f"https://t.me/{CHANNEL_USERNAME[1:]}")
     
     markup.adjust(2, 2, 2)
     return markup.as_markup()
 
 def shop_keyboard(himoya_price, hujjat_price, osish_himoya_price, dori_himoya_price, maska_price, qotildan_himoya_price, militiq_price, geroy_price, slip_himoya_price, send_profile_price, geroydan_himoya_price):
     builder = InlineKeyboardBuilder()
-    m_icon = get_dollar_display()
-    d_icon = get_diamond_display()
 
-    ic_himoya = get_item_display("himoya")
-    ic_hujjat = get_item_display("hujjat")
-    ic_osish = get_item_display("osishdan_himoya")
-    ic_miltiq = get_item_display("miltiq")
-    ic_dori = get_item_display("doridan_himoya")
-    ic_maska = get_item_display("mask")
-    ic_qotil = get_item_display("himoya")
-    ic_slip = get_item_display("himoya")
-    ic_geroy = get_item_display("himoya")
-
-    builder.button(text=f"{ic_himoya} Himoya - {himoya_price}{m_icon}", callback_data="buy_himoya")
-    builder.button(text=f"{ic_hujjat} Hujjat - {hujjat_price}{m_icon}", callback_data="buy_hujjat")
-    builder.button(text=f"{ic_osish} Ovozdan himoya - {osish_himoya_price}{d_icon}", callback_data="buy_osish_himoya")
-    builder.button(text=f"{ic_miltiq} Miltiq - {militiq_price}{d_icon}", callback_data="buy_miltiq")
-    builder.button(text=f"{ic_dori} Doridan himoya - {dori_himoya_price}{m_icon}", callback_data="buy_dori_himoya")
-    builder.button(text=f"{ic_maska} Maska - {maska_price}{m_icon}", callback_data="buy_maska")
-    builder.button(text=f"{ic_qotil} Qotildan himoya {qotildan_himoya_price}{d_icon}", callback_data="buy_qotildan_himoya")
-    builder.button(text=f"{ic_slip} Sirpanishdan himoya {slip_himoya_price}{d_icon}", callback_data="buy_slip_himoya")
-    builder.button(text=f"{ic_geroy} Geroydan himoya {geroydan_himoya_price}{d_icon}", callback_data="buy_geroydan_himoya")
-    builder.button(text=f"🔄 Profil almashish {send_profile_price}{d_icon}", callback_data="replace_profile")
-    builder.button(text=f"🥷 Geroy {geroy_price}{d_icon}", callback_data="buy_geroy")
+    builder.button(text=f"🛡 Himoya - {himoya_price}💵", callback_data="buy_himoya")
+    builder.button(text=f"📁 Hujjat - {hujjat_price}💵", callback_data="buy_hujjat")
+    builder.button(text=f"⚖️ Ovozdan himoya - {osish_himoya_price}💎", callback_data="buy_osish_himoya")
+    builder.button(text=f"🔫 Miltiq - {militiq_price}💎", callback_data="buy_miltiq")
+    builder.button(text=f"💊 Doridan himoya - {dori_himoya_price}💵", callback_data="buy_dori_himoya")
+    builder.button(text=f"🎭 Maska - {maska_price}💵", callback_data="buy_maska")
+    builder.button(text=f"⛑️ Qotildan himoya {qotildan_himoya_price}💎", callback_data="buy_qotildan_himoya")
+    builder.button(text=f"🪤 Sirpanishdan himoya {slip_himoya_price}💎", callback_data="buy_slip_himoya")
+    builder.button(text=f"🔰 Geroydan himoya {geroydan_himoya_price}💎", callback_data="buy_geroydan_himoya")
+    builder.button(text=f"🔄 Profil almashish {send_profile_price}💎", callback_data="replace_profile")
+    builder.button(text=f"🥷 Geroy {geroy_price}💎", callback_data="buy_geroy")
     builder.button(text="🗃 Sandiqlar", callback_data="open-sandiq")
     builder.button(text=f"🃏 Faol rol", callback_data="active_role")
     builder.button(text="🎨 VIP emoji o'zgartirish", callback_data="vip_emoji_change")
@@ -154,27 +115,25 @@ def shop_keyboard(himoya_price, hujjat_price, osish_himoya_price, dori_himoya_pr
 
 def active_role_keyboard(role_price: dict):
     builder = InlineKeyboardBuilder()
-    m_icon = get_dollar_display()
-    d_icon = get_diamond_display()
 
     for role, price in role_price.items():
+        # Telegram xato bermasligi uchun premium kodni qirqib, faqat ismini (masalan, " Bo'ri") olyapmiz:
         clean_role = role.split(">")[-1].strip() if "<tg-emoji" in role else role
 
         if price < 10:
             builder.button(
-                text=f"{role} - {price}{d_icon}",
+                text=f"{role} - {price}💎",
                 callback_data=f"role-buy_{clean_role}"
             )
         else:
             builder.button(
-                text=f"{role} - {price}{m_icon}",
+                text=f"{role} - {price}💵",
                 callback_data=f"role-buy_{clean_role}"
             )
-    builder.button(text=f"🗑 Faol rolni o'chirish - 100{m_icon}", callback_data="role-del")
+    builder.button(text="🗑 Faol rolni o'chirish - 100💵", callback_data="role-del")
     builder.button(text="⬅️ Orqaga", callback_data="back_shop")
     builder.adjust(2)
     return builder.as_markup()
-
 
 sandiqlar_menu = InlineKeyboardBuilder()
 sandiqlar_menu.button(text="💰 Super sandiq", callback_data="super_sandiq")

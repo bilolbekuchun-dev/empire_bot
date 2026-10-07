@@ -332,12 +332,18 @@ async def send_night_actions(
                                 _target_kb("qa", game_id, night_num, mk_targets))
             continue
 
-        # --- Jin: tanlov menyusi (nishon keyin) ---
+        # --- Jin: tilak tanlash menyusi ---
         if role == RoleNames.JIN:
+            kb = InlineKeyboardBuilder()
+            kb.button(text="✨ Hayot", callback_data=_cb("ji", game_id, night_num, "jh_menu", 0))
+            kb.button(text="💰 Pul", callback_data=_cb("ji", game_id, night_num, "jp_menu", 0))
+            kb.button(text="💀 Qotillik", callback_data=_cb("ji", game_id, night_num, "jq_menu", 0))
+            kb.button(text="🚷 O'tkazib yuborish", callback_data=_cb("ji", game_id, night_num, "s", 0))
+            kb.adjust(1)
             await _send_private(
                 bot, uid,
-                "🧞 <b>Jin</b>, nishonni tanlang — so'ng unga sovg'a turini berasiz.",
-                _target_kb("ji", game_id, night_num, mk_targets)
+                "🧞 <b>Jin</b> keldi, tilagingizni tanlang:",
+                kb.as_markup()
             )
             continue
 
@@ -610,7 +616,7 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
     # --- Jin hayot (himoya) xabari ---
     for target in jin_protect:
         try:
-            await _send_private(bot, target, "general 🧞 <b>Jin sizni bu tun 🛡️ o'limdan saqlab qoldi!</b>".replace("general ", ""))
+            await _send_private(bot, target, "🧞 <b>Jin sizni bu tun 🛡️ o'limdan saqlab qoldi!</b>")
         except Exception:
             pass
 

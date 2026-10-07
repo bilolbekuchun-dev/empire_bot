@@ -1,6 +1,5 @@
 from utils.role_names import RoleNames
 from utils.premium_emojis import role_display
-from utils.i18n import clean_lang
 
 class Roles:
     _DESCRIPTIONS = {
@@ -39,128 +38,126 @@ class Roles:
             RoleNames.REVERSER: "Siz reversersiz. Har tun bir o'yinchining harakatini boshqa o'yinchiga yo'naltirib qo'yasiz."
         },
         "ru": {
-            RoleNames.KOMISSAR: "Главный защитник города. Ночью вы можете проверить роль игрока или выстрелить в него.",
-            RoleNames.FUQARO: "Ваша задача — найти мафию и повесить их во время голосования.",
-            RoleNames.SERJANT: "Помощник комиссара.",
-            RoleNames.DOKTOR: "Городской врач. Каждую ночь вы лечите одного игрока.",
-            RoleNames.HAMSHIRA: "Медсестра. Если доктор погибнет, вы займете его место.",
-            RoleNames.DAYDI: "Ночью вы следите за кем-то и можете стать свидетелем убийства.",
-            RoleNames.KEZUVCHI: "Ночью даете кому-то снотворное, и этот игрок спит целый день.",
-            RoleNames.OMADLI: "Мирный житель с повышенным шансом выжить при нападении.",
-            RoleNames.JANOB: "Мирный житель, но ваш голос имеет больший вес.",
-            RoleNames.SOTQIN: "Мирный житель, но мафия считает вас своим.",
-            RoleNames.XOYIN: "Ищете мафию ночью. Найдете — станете мафией, не найдете за 3 раза — погибаете.",
-            RoleNames.QORIQCHI: "Телохранитель. Каждую ночь защищаете одного игрока.",
-            RoleNames.ZANJIR: "Связываете двоих игроков каждую ночь. Если один умрет, погибнет и второй!",
-            RoleNames.DON: "Глава мафии. Вы отдаете приказы ночью.",
-            RoleNames.MAFIA: "Исполнитель мафии. Выполняете приказы Дона и ходите на охоту.",
-            RoleNames.ADVOKAT: "Адвокат мафии. Защищаете мафию на суде.",
-            RoleNames.OVCHI: "Наемный убийца. Каждую ночь можете убить игрока. Цель — уничтожить всех!",
-            RoleNames.JURNALIST: "Агент мафии.",
-            RoleNames.AYGOQCHI: "Шпион мафии. Узнаете роль игрока ночью и передаете мафии.",
-            RoleNames.QOTIL: "Серийный убийца. Все в городе должны умереть, кроме вас :)",
-            RoleNames.BORI: "Оборотень. Ваша сторона меняется в зависимости от того, кто вас убьет.",
-            RoleNames.AFERIST: "Нейтральная роль. Ваша цель — просто выжить!",
-            RoleNames.GAZABDOR: "Ваша цель — выжить и покарать виновных!",
-            RoleNames.SEHRGAR: "Волшебник. Ночью можете поменять местами роли двух игроков.",
-            RoleNames.SUIDSID: "Самоубийца. Если вас повесят на голосовании — вы выиграли! :)",
-            RoleNames.QASOSKOR: "Мститель. Ваша цель — помочь мирным жителям.",
-            RoleNames.QAROQCHI: "Грабитель. Ночью воруете деньги или алмазы у игрока.",
-            RoleNames.AKTYOR: "Актер. Каждую ночь бот дает вам новую случайную роль.",
-            RoleNames.JIN: "Джинн. Даете выбор игроку: жизнь, деньги или убийство.",
-            RoleNames.KONCHI: "Шахтер. Добываете деньги и алмазы в шахтах.",
-            RoleNames.TAQLIDCHI: "Подражатель. Занимаете роль первого погибшего игрока.",
-            RoleNames.REVERSER: "Реверсер. Перенаправляете действие одного игрока на другого."
+            RoleNames.KOMISSAR: "Вы главный защитник города. Ночью вы можете проверить роль игрока или застрелить его.",
+            RoleNames.FUQARO: "Ваша задача — найти мафию и выгнать на голосовании.",
+            RoleNames.SERJANT: "Вы помощник комиссара.",
+            RoleNames.DOKTOR: "Вы городской врач. Каждую ночь лечите одного игрока.",
+            RoleNames.HAMSHIRA: "Вы медсестра. Если доктор погибнет, вы займете его место.",
+            RoleNames.DAYDI: "Вы бродяга. Следя за кем-то ночью, вы можете стать свидетелем убийства.",
+            RoleNames.KEZUVCHI: "Вы кутила. Усыпляете игрока ночью, и он пропускает ход.",
+            RoleNames.OMADLI: "Вы везунчик. У вас высокий шанс выжить при нападении.",
+            RoleNames.JANOB: "Вы дворянин. Ваш голос имеет больший вес на голосовании.",
+            RoleNames.SOTQIN: "Вы предатель. Вы на стороне мирных, но мафия считает вас своим.",
+            RoleNames.XOYIN: "Вы отступник. Ищете мафию; если найдете — примкнете, если ошибётесь 3 раза — умрете.",
+            RoleNames.QORIQCHI: "Вы телохранитель. Защищаете одного игрока каждую ночь.",
+            RoleNames.ZANJIR: "Вы связной. Связываете двух игроков; если умрет один, погибнет и второй!",
+            RoleNames.DON: "Вы Дон мафии. Отдаете приказы ночью.",
+            RoleNames.MAFIA: "Вы Мафия. Выполняете приказ Дона и выходите на охоту.",
+            RoleNames.ADVOKAT: "Вы адвокат. Защищаете мафию на голосовании.",
+            RoleNames.OVCHI: "Вы охотник. Можете убивать каждую ночь. Ваша цель — устранить всех!",
+            RoleNames.JURNALIST: "Вы журналист. Агент мафии.",
+            RoleNames.AYGOQCHI: "Вы шпион. Узнаете роли игроков для мафии.",
+            RoleNames.QOTIL: "Вы маньяк. Все в городе должны умереть, кроме вас! :)",
+            RoleNames.BORI: "Вы оборотень. Ваша сторона зависит от того, кто вас атакует.",
+            RoleNames.AFERIST: "Вы аферист. Ваша цель — просто выжить!",
+            RoleNames.GAZABDOR: "Вы каратель. Ваша цель — выжить и наказать виновных!",
+            RoleNames.SEHRGAR: "Вы волшебник. Можете поменять роли двух игроков местами.",
+            RoleNames.SUIDSID: "Вы самоубийца. Вы выиграете, если вас повесят! :)",
+            RoleNames.QASOSKOR: "Вы мститель. Ваша цель — помочь мирным жителям.",
+            RoleNames.QAROQCHI: "Вы грабитель. Забираете деньги у игроков ночью.",
+            RoleNames.AKTYOR: "Вы актер. Каждую ночь получаете случайную роль и исполняете ее.",
+            RoleNames.JIN: "Вы джинн. Даете игроку выбор: 1. Жизнь 2. Деньги 3. Убийство.",
+            RoleNames.KONCHI: "Вы шахтер. Добываете богатства ночью, но берегитесь смертельных ловушек!",
+            RoleNames.TAQLIDCHI: "Вы мимик. Принимаете роль первого погибшего игрока.",
+            RoleNames.REVERSER: "Вы реверсер. Каждую ночь перенаправляете действие первого игрока на второго."
         },
         "en": {
-            RoleNames.KOMISSAR: "The city's main defender. At night you can check a player's role or shoot them.",
-            RoleNames.FUQARO: "Your task is to find the mafia and hang them during daytime voting.",
-            RoleNames.SERJANT: "Sergeant, assistant to the Detective/Commissioner.",
-            RoleNames.DOKTOR: "City Doctor. Heal one player every night.",
-            RoleNames.HAMSHIRA: "Nurse. If the doctor dies, you take their place.",
-            RoleNames.DAYDI: "Street Vagrant. Watch someone at night and potentially witness a murder.",
-            RoleNames.KEZUVCHI: "Seductress/Lover. Put a player to sleep for one day.",
-            RoleNames.OMADLI: "Lucky Citizen. High chance to survive an attack.",
-            RoleNames.JANOB: "Nobleman. Your vote carries extra weight in trials.",
-            RoleNames.SOTQIN: "Traitor. Innocent citizen, but mafia sees you as an ally.",
-            RoleNames.XOYIN: "Turncoat. Look for mafia at night to join them, or perish after 3 failed tries.",
-            RoleNames.QORIQCHI: "Bodyguard. Protect one player every night.",
-            RoleNames.ZANJIR: "Chain master. Chain two players together; if one dies, both die!",
-            RoleNames.DON: "Mafia Boss (Don). Give orders at night.",
-            RoleNames.MAFIA: "Mafia member. Execute orders and hunt at night with your team.",
-            RoleNames.ADVOKAT: "Mafia Lawyer. Defend mafia members in court.",
-            RoleNames.OVCHI: "Hitman / Hunter. Kill one target per night.",
-            RoleNames.JURNALIST: "Journalist / Mafia agent.",
-            RoleNames.AYGOQCHI: "Spy. Discover a player's role at night and report to mafia.",
-            RoleNames.QOTIL: "Serial Killer. Everyone in the city must die except you :)",
-            RoleNames.BORI: "Werewolf. Your alignment changes depending on who kills you.",
-            RoleNames.AFERIST: "Con artist / Neutral role. Goal: Survive!",
-            RoleNames.GAZABDOR: "Avenger. Goal: Survive and punish!",
-            RoleNames.SEHRGAR: "Wizard. Swap the roles of two players at night.",
-            RoleNames.SUIDSID: "Suicide / Jester. If the village hangs you, you win! :)",
-            RoleNames.QASOSKOR: "Vindicator. Goal: Help the innocent citizens win.",
-            RoleNames.QAROQCHI: "Bandit / Robber. Rob players of dollars or diamonds at night.",
-            RoleNames.AKTYOR: "Actor. Get a new random role every night.",
-            RoleNames.JIN: "Genie. Offer a choice: life, wealth, or assassination.",
-            RoleNames.KONCHI: "Miner. Mine dollars and diamonds at night.",
-            RoleNames.TAQLIDCHI: "Imitator. Inherit the role of the first player who dies.",
-            RoleNames.REVERSER: "Reverser. Redirect one player's night action to another."
+            RoleNames.KOMISSAR: "You are the main protector of the city. At night, you can check a player's role or shoot them.",
+            RoleNames.FUQARO: "Your goal is to find the mafia and vote them out.",
+            RoleNames.SERJANT: "You are the Detective's assistant.",
+            RoleNames.DOKTOR: "You are the city Doctor. You heal one player each night.",
+            RoleNames.HAMSHIRA: "You are the Nurse. If the doctor dies, you become the doctor.",
+            RoleNames.DAYDI: "You are the Tracker. Watching someone at night, you may witness a murder.",
+            RoleNames.KEZUVCHI: "You are the Sleeper. Put a player to sleep for a night.",
+            RoleNames.OMADLI: "You are the Lucky One. You have a high chance of surviving attacks.",
+            RoleNames.JANOB: "You are the Nobleman. Your vote carries more weight.",
+            RoleNames.SOTQIN: "You are the Traitor. You are a civilian, but mafia sees you as partner.",
+            RoleNames.XOYIN: "You are the Renegade. Try to find mafia to join them. 3 misses and you die.",
+            RoleNames.QORIQCHI: "You are the Bodyguard. Protect one player each night.",
+            RoleNames.ZANJIR: "You are the Linker. Link two players; if one dies, both die!",
+            RoleNames.DON: "You are the Mafia Don. Give kill orders at night.",
+            RoleNames.MAFIA: "You are Mafia. Execute the Don't order and hunt together.",
+            RoleNames.ADVOKAT: "You are the Lawyer. Protect mafia during daytime voting.",
+            RoleNames.OVCHI: "You are the Hunter. Kill a player each night to eliminate everyone!",
+            RoleNames.JURNALIST: "You are the Journalist. Mafia's secret agent.",
+            RoleNames.AYGOQCHI: "You are the Spy. Reveal player roles to the mafia.",
+            RoleNames.QOTIL: "You are the Serial Killer. Everyone must die except you! :)",
+            RoleNames.BORI: "You are the Werewolf. Your team shifts depending on who attacks you.",
+            RoleNames.AFERIST: "You are the Trickster. Your goal is survival!",
+            RoleNames.GAZABDOR: "You are the Avenger. Survive and punish your targets!",
+            RoleNames.SEHRGAR: "You are the Sorcerer. Swap roles of two players at night.",
+            RoleNames.SUIDSID: "You are the Jester. Win if you get voted off and lynched! :)",
+            RoleNames.QASOSKOR: "You are the Vigilante. Help the civilians win.",
+            RoleNames.QAROQCHI: "You are the Robber. Steal money or gems at night.",
+            RoleNames.AKTYOR: "You are the Actor. Each night you assume a new random role.",
+            RoleNames.JIN: "You are the Genie. Grant a choice to a player: 1. Life 2. Money 3. Kill.",
+            RoleNames.KONCHI: "You are the Miner. Mine diamonds and gold at night, but watch out for traps!",
+            RoleNames.TAQLIDCHI: "You are the Mimic. Start roleless; inherit the role of the first player who dies.",
+            RoleNames.REVERSER: "You are the Reverser. Each night redirect target 1's action to target 2."
         },
         "tr": {
-            RoleNames.KOMISSAR: "Şehrin ana koruyucusu. Gece bir oyuncunun rolünü kontrol edebilir veya vurabilirsiniz.",
-            RoleNames.FUQARO: "Göreviniz mafyayı bulmak ve gündüz oylamasında asmaktır.",
-            RoleNames.SERJANT: "Komiser yardımcısı.",
-            RoleNames.DOKTOR: "Şehir doktoru. Her gece bir oyuncuyu iyileştirirsiniz.",
-            RoleNames.HAMSHIRA: "Hemşire. Doktor ölürse onun yerini alırsınız.",
-            RoleNames.DAYDI: "Gece birini izler ve cinayete tanık olabilirsiniz.",
-            RoleNames.KEZUVCHI: "Gece birine uyku hapı verirsiniz, o gün uyur.",
-            RoleNames.OMADLI: "Şanslı köylü. Saldırılardan hayatta kalma şansı yüksek.",
-            RoleNames.JANOB: "Soylu vatandaş. Oy hakkınız daha ağırdır.",
-            RoleNames.SOTQIN: "Hain. Mafya sizi kendi safında görür.",
-            RoleNames.XOYIN: "Döneklik yapmaya çalışan vatandaş.",
-            RoleNames.QORIQCHI: "Koruma. Her gece bir kişiyi korursunuz.",
-            RoleNames.ZANJIR: "Her gece iki kişiyi birbirine bağlarsınız. Biri ölürse diğeri de ölür!",
-            RoleNames.DON: "Mafya Babası (Don). Gece emir verirsiniz.",
-            RoleNames.MAFIA: "Mafya üyesi. Gece ava çıkarsınız.",
-            RoleNames.ADVOKAT: "Mafya Avukatı. Mahkemede mafyayı savunursunuz.",
-            RoleNames.OVCHI: "Kiralık katil. Her gece bir kişiyi öldürebilirsiniz.",
-            RoleNames.JURNALIST: "Gazeteci / Mafya ajanı.",
-            RoleNames.AYGOQCHI: "Casus. Gece bir oyuncunun rolünü öğrenip mafyaya bildirirsiniz.",
-            RoleNames.QOTIL: "Seri Katil. Şehirdeki herkes ölmeli, siz hariç :)",
-            RoleNames.BORI: "Kurtadam. Sizi kimin öldürdüğüne bağlı olarak tarafınız değişir.",
-            RoleNames.AFERIST: "Sahtekâr. Amacınız hayatta kalmak!",
-            RoleNames.GAZABDOR: "Öfkeli. Amacınız hayatta kalmak ve cezalandırmaktır!",
-            RoleNames.SEHRGAR: "Büyücü. Gece iki oyuncunun rollerini takas edersiniz.",
-            RoleNames.SUIDSID: "İntihar sevdalısı. Eğer oylamada asılırsanız kazanırsınız! :)",
-            RoleNames.QASOSKOR: "İntikamcı. Masumlara yardım edersiniz.",
-            RoleNames.QAROQCHI: "Haydut. Gece oyunculardan para veya elmas çalarsınız.",
-            RoleNames.AKTYOR: "Aktör. Her gece yeni bir rastgele rol alırsınız.",
-            RoleNames.JIN: "Cin. Bir oyuncuya 3 seçenek sunarsınız: Hayat, Servet veya Suikast.",
-            RoleNames.KONCHI: "Madenci. Gece madenlerden para ve elmas çıkarırsınız.",
-            RoleNames.TAQLIDCHI: "Taklitçi. İlk ölen oyuncunun rolünü üstlenirsiniz.",
-            RoleNames.REVERSER: "Reverser. Bir oyuncunun gece eylemini başkasına yönlendirirsiniz."
+            RoleNames.KOMISSAR: "Şehrin ana koruyususunuz. Gece bir oyuncunun rolünü kontrol edebilir veya onu vurabilirsiniz.",
+            RoleNames.FUQARO: "Göreviniz mafyayı bulmak ve oylamada asmaktır.",
+            RoleNames.SERJANT: "Komiserin yardımcısısınız.",
+            RoleNames.DOKTOR: "Şehir doktorusunuz. Her gece bir oyuncuyu iyileştirirsiniz.",
+            RoleNames.HAMSHIRA: "Hemşiresiniz. Doktor ölürse onun yerine doktor olursunuz.",
+            RoleNames.DAYDI: "Sokak gezginisiniz. Gece birini izleyerek cinayet tanığı olabilirsiniz.",
+            RoleNames.KEZUVCHI: "Gezginsiniz. Gece birine uyku hapı verip uyutursunuz.",
+            RoleNames.OMADLI: "Şanslı sivilsiniz. Ölümden kurtulma olasılığınız yüksektir.",
+            RoleNames.JANOB: "Asilzadesiniz, oyunuz daha ağırlıklıdır.",
+            RoleNames.SOTQIN: "Hain sivilsiniz. Mafya sizi kendi tarafında görür.",
+            RoleNames.XOYIN: "İsyankarsınız. Mafyayı bulmaya çalışırsınız, 3 hatada ölürsünüz.",
+            RoleNames.QORIQCHI: "Korumasınız. Her gece bir kişiyi korursunuz.",
+            RoleNames.ZANJIR: "Zincircisiniz. İki oyuncuyu bağlarsınız; biri ölürse diğeri de ölür!",
+            RoleNames.DON: "Mafya Liderisiniz (Don). Gece emir verirsiniz.",
+            RoleNames.MAFIA: "Mafyasınız. Don'un emrini yerine getirirsiniz.",
+            RoleNames.ADVOKAT: "Avukatsınız. Oylamada mafyayı savunursunuz.",
+            RoleNames.OVCHI: "Avcısınız. Her gece bir kişiyi öldürebilirsiniz.",
+            RoleNames.JURNALIST: "Gazetecisiniz. Mafya ajanı.",
+            RoleNames.AYGOQCHI: "Ajasınız. Oyuncuların rollerini mafyaya bildirirsiniz.",
+            RoleNames.QOTIL: "Katilsiniz. Şehirdeki herkes ölmeli, siz hariç! :)",
+            RoleNames.BORI: "Kurt adamsınız. Tarafınız ölüm şeklinize göre değişir.",
+            RoleNames.AFERIST: "Sahtekarsınız. Amacınız hayatta kalmaktır!",
+            RoleNames.GAZABDOR: "Cezalandırıcısınız. Amacınız hayatta kalmak ve cezalandırmaktır!",
+            RoleNames.SEHRGAR: "Büyücüsünüz. Gece iki oyuncunun rolünü değiştirebilirsiniz.",
+            RoleNames.SUIDSID: "İntiharcısınız. Oylamada asılırsanız kazanırsınız! :)",
+            RoleNames.QASOSKOR: "Intikamcısınız. Sivillere yardım edin.",
+            RoleNames.QAROQCHI: "Soyguncusunuz. Gece birinden para veya elmas çalarsınız.",
+            RoleNames.AKTYOR: "Aktörsünüz. Her gece rastgele yeni bir rol alıp onu oynarsınız.",
+            RoleNames.JIN: "Cinsiniz. Gece bir oyuncuya 3 dilek seçeneği sunarsınız: 1. Hayat 2. Para 3. Cinayet.",
+            RoleNames.KONCHI: "Madencisiniz. Gece elmas ve altın kazarsınız, tuzaklara dikkat edin!",
+            RoleNames.TAQLIDCHI: "Taklitçisiniz. Oyuna rolsüz başlarsınız, ölen ilk oyuncunun rolünü alırsınız.",
+            RoleNames.REVERSER: "Reversersiniz. Her gece 1. oyuncunun eylemini 2. oyuncuya yönlendirirsiniz."
         }
     }
 
     @classmethod
     def get_description(cls, role_with_emoji: str, lang: str = "uz") -> str:
-        code = clean_lang(lang)
-        lang_dict = cls._DESCRIPTIONS.get(code, cls._DESCRIPTIONS["uz"])
-        if isinstance(lang_dict, dict):
-            return lang_dict.get(role_with_emoji, cls._DESCRIPTIONS["uz"].get(role_with_emoji, "Vazifasi kiritilmagan."))
-        return cls._DESCRIPTIONS["uz"].get(role_with_emoji, "Vazifasi kiritilmagan.")
+        lang_code = (lang or "uz").lower()
+        descriptions = cls._DESCRIPTIONS.get(lang_code, cls._DESCRIPTIONS["uz"])
+        return descriptions.get(role_with_emoji, cls._DESCRIPTIONS["uz"].get(role_with_emoji, "Vazifasi kiritilmagan."))
 
     @classmethod
     def get_by_role(cls, role_with_emoji: str, lang: str = "uz") -> str:
-        """Rol xabari: premium emoji bilan va tanlangan dildagi matn."""
-        code = clean_lang(lang)
+        """Rol xabari: premium emoji bilan va tanlangan tildagi matn."""
         disp = role_display(role_with_emoji)
-        desc = cls.get_description(role_with_emoji, lang=code)
-        
-        headers = {
-            "uz": f"Siz - <b>{disp}</b>!\n{desc}",
-            "ru": f"Вы - <b>{disp}</b>!\n{desc}",
-            "en": f"You are <b>{disp}</b>!\n{desc}",
-            "tr": f"Siz - <b>{disp}</b>!\n{desc}"
+        desc = cls.get_description(role_with_emoji, lang=lang)
+        lang_code = (lang or "uz").lower()
+        prefix_map = {
+            "uz": f"Siz - <b>{disp}</b>!",
+            "ru": f"Вы — <b>{disp}</b>!",
+            "en": f"You are — <b>{disp}</b>!",
+            "tr": f"Sen — <b>{disp}</b>!"
         }
-        return headers.get(code, headers["uz"])
+        prefix = prefix_map.get(lang_code, prefix_map["uz"])
+        return f"{prefix}\n{desc}"

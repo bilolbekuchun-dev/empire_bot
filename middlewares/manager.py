@@ -2,6 +2,8 @@ import html
 import logging
 import unicodedata
 from typing import Any, Optional
+from collections import OrderedDict
+from time import monotonic, time
 
 from aiogram import BaseMiddleware, types
 from aiogram.enums import ChatType, ChatMemberStatus
@@ -14,16 +16,33 @@ from models.game_data import Chat, Game, GamePlayer, GamePhase
 from models.user import User, Blocked_user
 from models.game_set import WriteGroupPermis
 from config import ADMINS
-import time
 
 logger = logging.getLogger(__name__)
 
-bot_admin_cache = {}
-chat_sync_cache = {}
-user_sync_cache = {}
-group_perm_cache = {}
-game_phase_cache = {}
-player_status_cache = {}
+# LRU cache for bot admin status - prevents unbounded growth
+_MAX_ADMIN_CACHE_SIZE = 1000
+_ADMIN_CACHE_TTL = 300  # 5 minutes
+bot_admin_cache = OrderedDict()
+
+def _get_bot_admin_status(chat_id: int, is_admin: bool, can_delete: bool) -> dict:
+    """Get or set bot admin status with LRU eviction."""
+    now = monotonic()
+    
+    # Evict old entries
+    while len(bot_admin_cache) > _MAX_ADMIN_CACHE_SIZE:
+        bot_admin_cache.popitem(last=False)
+    
+    # Remove entries older than TTL
+    expired_keys = [cid for cid, data in bot_admin_cache.items() 
+                   if now - data['time'] > _ADMIN_CACHE_TTL]
+    for cid in expired_keys:
+        bot_admin_cache.pop(cid, None)
+    
+    # Add or update entry
+    bot_admin_cache[chat_id] = {'time': now, 'is_admin': is_admin, 'can_delete': can_delete}
+    bot_admin_cache.move_to_end(chat_id)
+    
+    return bot_admin_cache[chat_id]
 
 class GroupWriteGuardMiddleware(BaseMiddleware):
     """
@@ -44,6 +63,10 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
         """
         super().__init__()
         self.warn_user_if_cant_delete = warn_user_if_cant_delete
+        self._user_sync_cache: dict[int, float] = {}
+        self._chat_sync_cache: dict[int, float] = {}
+        self._blocked_users_cache: set[int] = set()
+        self._last_blocked_cache_time: float = 0.0
 
     # --------------- Yordamchi funksiyalar ---------------
 
@@ -72,15 +95,15 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
             pass
 
     async def _bot_admin_and_can_delete(self, message: types.Message, force: bool = False) -> tuple[bool, bool]:
-        now = time.time()
+        now = monotonic()
         chat_id = message.chat.id
-        if not force and chat_id in bot_admin_cache and now - bot_admin_cache[chat_id]['time'] < 300:
+        if not force and chat_id in bot_admin_cache and now - bot_admin_cache[chat_id]['time'] < _ADMIN_CACHE_TTL:
             return bot_admin_cache[chat_id]['is_admin'], bot_admin_cache[chat_id]['can_delete']
 
         try:
             me = await message.bot.get_chat_member(message.chat.id, message.bot.id)
         except (TelegramForbiddenError, TelegramBadRequest):
-            bot_admin_cache[chat_id] = {'time': now, 'is_admin': False, 'can_delete': False}
+            _get_bot_admin_status(chat_id, False, False)
             return False, False
         except Exception as e:
             logger.warning("Bot admin check failed transiently for chat %s: %r", chat_id, e)
@@ -96,18 +119,20 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
                 can_delete = True
 
         is_admin = self._is_admin_status(getattr(me, "status", ""))
-        bot_admin_cache[chat_id] = {'time': now, 'is_admin': is_admin, 'can_delete': can_delete}
+        _get_bot_admin_status(chat_id, is_admin, can_delete)
         return is_admin, can_delete
 
     async def _sync_chat_db(self, message: types.Message) -> None:
-        now = time.time()
+        """
+        Chat nomi DB bilan sinxronlash (300s TTL kesh bilan).
+        """
+        now = monotonic()
         chat_id = message.chat.id
-        cached = chat_sync_cache.get(chat_id)
-        if cached and now - cached['time'] < 120 and cached.get('title') == message.chat.title:
+        if chat_id in self._chat_sync_cache and now - self._chat_sync_cache[chat_id] < 300:
             return
 
         chat, _ = await Chat.get_or_create(
-            chat_id=message.chat.id,
+            chat_id=chat_id,
             defaults={"title": message.chat.title, "type": str(message.chat.type)},
         )
 
@@ -125,48 +150,61 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
         if updated:
             await chat.save()
 
-        chat_sync_cache[chat_id] = {'time': now, 'title': message.chat.title}
+        self._chat_sync_cache[chat_id] = now
+        if len(self._chat_sync_cache) > 1000:
+            expired = [cid for cid, t in self._chat_sync_cache.items() if now - t > 300]
+            for cid in expired:
+                del self._chat_sync_cache[cid]
+            while len(self._chat_sync_cache) > 1000:
+                self._chat_sync_cache.pop(next(iter(self._chat_sync_cache)))
 
     async def _sync_user_db_or_blocked(self, message: types.Message) -> bool:
+        """
+        Userni DB bilan sinxronlash (300s TTL kesh bilan).
+        """
         if not message.from_user:
             return True
 
         fu = message.from_user
-        now = time.time()
-        cached = user_sync_cache.get(fu.id)
-        if cached and now - cached['time'] < 120 and cached.get('full_name') == fu.full_name:
-            return cached.get('is_blocked', False)
+        now = monotonic()
 
-        clean_full_name = html.escape(self._sanitize_display_name((fu.full_name or "")[:100]))
-        mention = fu.mention_html(clean_full_name)
+        if fu.id not in self._user_sync_cache or (now - self._user_sync_cache[fu.id] >= 300):
+            clean_full_name = html.escape(self._sanitize_display_name((fu.full_name or "")[:100]))
+            mention = fu.mention_html(clean_full_name)
 
-        user, _ = await User.get_or_create(
-            user_id=fu.id,
-            defaults={"full_name": clean_full_name, "mention": mention, "is_bot": fu.is_bot},
-        )
+            user, _ = await User.get_or_create(
+                user_id=fu.id,
+                defaults={"full_name": clean_full_name, "mention": mention, "is_bot": fu.is_bot},
+            )
 
-        updated = False
-        if user.full_name != clean_full_name:
-            user.full_name = clean_full_name
-            updated = True
-        if user.mention != mention:
-            user.mention = mention
-            updated = True
-        if updated:
-            await user.save()
+            updated = False
+            if user.full_name != clean_full_name:
+                user.full_name = clean_full_name
+                updated = True
+            if user.mention != mention:
+                user.mention = mention
+                updated = True
+            if updated:
+                await user.save()
 
-        is_blocked = bool(await Blocked_user.filter(user=user).first())
-        user_sync_cache[fu.id] = {'time': now, 'full_name': fu.full_name, 'is_blocked': is_blocked}
-        return is_blocked
+            self._user_sync_cache[fu.id] = now
+            if len(self._user_sync_cache) > 5000:
+                expired = [uid for uid, t in self._user_sync_cache.items() if now - t > 300]
+                for uid in expired:
+                    del self._user_sync_cache[uid]
+                while len(self._user_sync_cache) > 5000:
+                    self._user_sync_cache.pop(next(iter(self._user_sync_cache)))
+
+        # Refresh blocked users cache every 60 seconds
+        if now - self._last_blocked_cache_time > 60:
+            blocked_rows = await Blocked_user.all().prefetch_related('user').values_list('user__user_id', flat=True)
+            self._blocked_users_cache = set(blocked_rows)
+            self._last_blocked_cache_time = now
+
+        return fu.id in self._blocked_users_cache
 
     @staticmethod
     def _admin_command_allowed(phase: str | None, group_perm: Optional[WriteGroupPermis]) -> bool:
-        """
-        Adminlar uchun '!' buyruqlariga ruxsat siyosati:
-        - night faza: group_perm.night != "ega" bo‘lsa ruxsat
-        - day/afternoon: group_perm.day  != "ega" bo‘lsa ruxsat
-        - boshqa hollarda: default False (faqat o‘yin fazalarida ishlasin)
-        """
         if not group_perm:
             return False
         if phase == "night":
@@ -177,12 +215,6 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
 
     @staticmethod
     def _who_can_write(mode_value: Optional[str], *, is_player: bool, is_alive: bool) -> bool:
-        """
-        'all'    → hamma
-        'member' → faqat o‘yinchilar (tirik/o'lgan)
-        'alive'  → faqat tirik o‘yinchilar
-        boshqasi ('ega', 'admin') → ruxsat yo‘q
-        """
         if not mode_value:
             return True
         mode_value = mode_value.lower()
@@ -195,18 +227,26 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
         return False
 
     async def _phase_info(self, game: Game) -> tuple[Optional[str], bool]:
+        """
+        Joriy fazani aniqlash:
+        Pervichno game.phase dan foydalanadi (night, day, afternoon, waiting), 
+        kerak bo'lganda GamePhase holatini tekshiradi.
+        """
+        is_waiting = getattr(game, "phase", "") == "waiting"
+        phase_key = getattr(game, "phase", None)
+        if phase_key in ("night", "day", "afternoon", "waiting"):
+            return phase_key, is_waiting
+
         night_phase = await GamePhase.filter(game=game, phase_type="night", is_end=False).first()
         if night_phase:
             return "night", False
 
         day_or_afternoon = await GamePhase.filter(
-            game=game, phase_type__in=["day", "afternoon", "morning"], is_end=False
+            game=game, phase_type__in=["day", "afternoon"], is_end=False
         ).first()
         if day_or_afternoon:
             return day_or_afternoon.phase_type, False
 
-        is_waiting = getattr(game, "phase", "") == "waiting"
-        phase_key = getattr(game, "phase", None)
         return phase_key, is_waiting
 
     # --------------- Asosiy chaqiruv ---------------
@@ -224,12 +264,13 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
                     pass
             return await handler(event, data)
 
+        # Faqat Message bilan ishlaymiz
         if not isinstance(event, types.Message):
             return await handler(event, data)
 
         message = event
         
-        # Xizmat xabarlarini o'tkazib yuborish
+        # Xizmat xabarlarini o'tkazib yuborish (qotib qolish va mute qilishni oldini olish)
         if getattr(message, "new_chat_members", None) or getattr(message, "left_chat_member", None) or getattr(message, "new_chat_title", None):
             return await handler(event, data)
 
@@ -249,14 +290,18 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
                     pass
             return await handler(event, data)
 
+        # Guruh/kanal bo‘lmasa ham ishlatmaslik
         if not self._is_group(message):
             return await handler(event, data)
 
         # 1) Bot adminligi va delete ruxsatlari
         bot_is_admin, bot_can_delete = await self._bot_admin_and_can_delete(message)
         if not bot_is_admin:
+            # Kesh eskirgan bo'lishi mumkin (bot hozirgina admin qilingan) — xabar ko'rsatishdan
+            # oldin Telegram'dan darhol qayta tekshiramiz, shunda yolg'on ogohlantirish chiqmaydi.
             bot_is_admin, bot_can_delete = await self._bot_admin_and_can_delete(message, force=True)
         if not bot_is_admin:
+            # Foydalanuvchini ogohlantiramiz (bir marta bo‘lishi mumkin, spamlab yubormaslik uchun logger)
             try:
                 await message.answer(
                     "<b>❗️ Bot guruhda admin emas! Bot muammosiz ishlashi uchun botni guruhga admin qiling "
@@ -265,6 +310,7 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
                 )
             except Exception:
                 pass
+            # Handlerga uzatmaymiz — bu bot o‘zi ishlay olmaydi
             return
 
         # 2) Chat ma'lumotini DB bilan sinxronlash (title, invite_link)

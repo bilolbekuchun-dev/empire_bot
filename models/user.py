@@ -1,6 +1,5 @@
 from tortoise import fields
 from tortoise.models import Model
-from tortoise.exceptions import MultipleObjectsReturned
 
 class User(Model):
     id = fields.BigIntField(pk=True)
@@ -101,19 +100,10 @@ class Profile(Model):
     on_maska = fields.BooleanField(default=True)
     on_slip_himoya = fields.BooleanField(default=True)
     on_geroy_himoya = fields.BooleanField(default=True)
-    on_active_role = fields.BooleanField(default=True)
     daily_streak = fields.IntField(default=0)  # kunlik kirish ketma-ketligi (1-7, keyin 7 da qoladi)
     last_claim_date = fields.DateField(null=True)  # oxirgi kunlik mukofot olingan sana
     birth_date = fields.CharField(max_length=5, null=True)  # "OO-KK" formatida (yil saqlanmaydi) — tug'ilgan kunni tabriklash uchun
     last_birthday_greeted_year = fields.IntField(null=True)  # shu yilda allaqachon tabriklanganmi (qayta-qayta bermaslik uchun)
-
-    @classmethod
-    async def get_or_create(cls, defaults=None, using_db=None, **kwargs):
-        # user ustunida unique yo'q — bazada bitta userga 2+ profil bo'lsa ham yiqilmasin, eng eskisini qaytaramiz
-        try:
-            return await super().get_or_create(defaults=defaults, using_db=using_db, **kwargs)
-        except MultipleObjectsReturned:
-            return await cls.filter(**kwargs).using_db(using_db).order_by("id").first(), False
 
 class ActiveRole(Model):
     profile = fields.ForeignKeyField("models.Profile", related_name="active_roles", on_delete=fields.CASCADE) 
@@ -251,13 +241,10 @@ class PremiumPurchaseLog(Model):
     created_at = fields.DatetimeField(auto_now_add=True)
 
 
-class RequiredChannel(Model):
-    """Majburiy obuna kanallari"""
+class BotAdmin(Model):
+    """Koddasiz dinamik ravishda botga qo'shilgan adminlar."""
     id = fields.BigIntField(pk=True)
-    title = fields.CharField(max_length=150, default="Kanal")
-    channel_id = fields.CharField(max_length=100, null=True)
-    invite_link = fields.CharField(max_length=255, default="")
-    username = fields.CharField(max_length=100, null=True)
-    is_active = fields.BooleanField(default=True)
+    user_id = fields.BigIntField(unique=True)
+    added_by = fields.BigIntField(null=True)
     created_at = fields.DatetimeField(auto_now_add=True)
 

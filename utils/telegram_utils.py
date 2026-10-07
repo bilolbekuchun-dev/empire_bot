@@ -275,17 +275,3 @@ async def get_chat_join_link(bot: Bot, chat_id: int) -> str:
 
     return ""
 
-
-import logging
-logger = logging.getLogger(__name__)
-
-async def safe_send_message(bot: Bot, chat_id: int, text: str, parse_mode: str = "HTML", reply_markup=None, **kwargs):
-    """
-    Xabarni xavfsiz yuboradi. Uzun xabarlar bo'lsa bo'lib yuboradi.
-    Xatolik yuz berganda exception tashlamaydi (catch qiladi).
-    """
-    try:
-        return await send_long_message(bot, chat_id, text, parse_mode=parse_mode, reply_markup=reply_markup, **kwargs)
-    except Exception as e:
-        logger.warning(f"safe_send_message error ({chat_id}): {e}")
-        return None

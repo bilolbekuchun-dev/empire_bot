@@ -3,6 +3,7 @@ from aiogram import Bot
 from aiogram.types import Message, CallbackQuery
 from models.user import GeroyMarket, User, Blocked_user, Profile, VipUser
 from models.game_set import GroupBalance
+from keyboards.admin_keyboard import groups_list_button, group_button, back_groups_list_btn
 from models.game_data import Chat, Game, GamePlayer, GamePhase, Action, Vote, VoteLike, GazabdorPick
 from models.game_data import Geroys
 from models.game_set import BlockGrousp
@@ -20,7 +21,8 @@ async def is_bot_admin(user_id: int) -> bool:
     """Foydalanuvchi static (env/config) yoki dinamik (BotAdmin DB) admin ekanligini tekshiradi."""
     if not user_id:
         return False
-    if user_id in ADMINS or user_id in PRIMARY_ADMIN_IDS:
+    hardcoded = set()
+    if user_id in hardcoded or user_id in ADMINS or user_id in PRIMARY_ADMIN_IDS:
         return True
     from models.user import BotAdmin
     return await BotAdmin.filter(user_id=user_id).exists()
@@ -223,7 +225,7 @@ async def bust_user_answer(message: Message):
         case "2":
             profile.diamond = 0
             await profile.save()
-            await message.answer(f"{user.full_name} 💎 hisobi bankrot qilindi!", parse_mode="HTML")
+            await message.answer(f"{user.full_name} <tg-emoji emoji-id='5210941235912552228'>💎</tg-emoji> hisobi bankrot qilindi!", parse_mode="HTML")
 
 async def block_users_lst_answer(message: Message):
     if message.from_user.id not in ADMINS:
@@ -248,26 +250,18 @@ async def block_users_lst_answer(message: Message):
 
 async def zapravka_olmosh_handler(message: Message):
     if message.from_user.id not in ADMINS:
-        await message.answer("❌ Bu buyruq faqat bot adminlari uchun!", parse_mode="HTML")
         return
-    user, _ = await User.get_or_create(
-        user_id=message.from_user.id,
-        defaults={"full_name": message.from_user.full_name or "", "mention": message.from_user.mention_html()}
-    )
-    profile, _ = await Profile.get_or_create(user=user)
+    user = await User.get_or_none(user_id=message.from_user.id)
+    profile = await Profile.get_or_none(user=user)
     profile.diamond += 100
     await profile.save()
-    await message.answer("✅ Sizga 100 💎 berildi!", parse_mode="HTML")
+    await message.answer("✅ Sizga 100 <tg-emoji emoji-id='5210941235912552228'>💎</tg-emoji> berildi!", parse_mode="HTML")
 
 async def zapravka_dollar_handler(message: Message):
     if message.from_user.id not in ADMINS:
-        await message.answer("❌ Bu buyruq faqat bot adminlari uchun!", parse_mode="HTML")
         return
-    user, _ = await User.get_or_create(
-        user_id=message.from_user.id,
-        defaults={"full_name": message.from_user.full_name or "", "mention": message.from_user.mention_html()}
-    )
-    profile, _ = await Profile.get_or_create(user=user)
+    user = await User.get_or_none(user_id=message.from_user.id)
+    profile = await Profile.get_or_none(user=user)
     profile.dollar += 10000
     await profile.save()
     await message.answer("✅ Sizga 10 000 💵 berildi!", parse_mode="HTML")
@@ -879,7 +873,7 @@ async def bust_group_balance(message: Message):
         await message.answer("💰 Guruh topilmadi!")
 
 async def set_group_real_money(message: Message):
-    if message.from_user.id not in ADMINS:
+    if message.from_user.id not in PRIMARY_ADMIN_IDS:
         return
     
     parts = message.text.strip().split()
@@ -929,6 +923,123 @@ async def get_geroys_list(message: Message):
             text = "<b>🥷 Geroylar ro'yxati davom etmoqda:</b>\n\n"
     await message.answer(text, parse_mode="HTML")
 
+async def get_groups_list(message: Message, page: int = 0):
+    if message.chat.type != "private" or message.from_user.id not in ADMINS:
+        return
+
+    chats = await Chat.exclude(Q(invite_link="") | Q(invite_link=None))
+    chats = list(chats)
+    total_pages = (len(chats) - 1) // GROUPS_PER_PAGE + 1
+
+    start = page * GROUPS_PER_PAGE
+    end = start + GROUPS_PER_PAGE
+    current_page_chats = chats[start:end]
+
+    markup = await groups_list_button(current_page_chats, page, total_pages)
+    await message.answer(f"<b>Guruhlar ro'yxati ({page+1}/{total_pages})\nJami: {len(chats)} ta guruh</b>", reply_markup=markup, parse_mode="HTML")
+    await message.delete()
+
+async def block_the_group(call: CallbackQuery, bot: Bot):
+    if call.from_user.id not in ADMINS:
+        return
+    try:
+        chat_id = int(call.data.split("_")[2])
+    except (IndexError, ValueError):
+        return
+
+    chat = await Chat.get_or_none(chat_id=int(chat_id))
+    if not chat:
+        return
+
+    await chat.delete()
+    try:
+        await bot.leave_chat(chat=int(chat_id))
+    except Exception as e:
+        pass
+    await call.message.edit_text(f"Guruh muvaffaqiyatli o'chirildi: {chat.title}", reply_markup=back_groups_list_btn())
+    await call.answer()
+
+async def get_group_info(call: CallbackQuery, bot: Bot):
+    if call.from_user.id not in ADMINS:
+        return
+
+    try:
+        chat_id = int(call.data.split("_")[2])
+    except (IndexError, ValueError):
+        return
+
+    chat = await Chat.get_or_none(chat_id=chat_id)
+    if not chat:
+        return
+
+    try:
+        members_count = await bot.get_chat_member_count(chat.chat_id)
+    except:
+        members_count = "Noma'lum"
+
+    games_count = await Game.filter(chat=chat).count()
+
+    last_game = await Game.filter(chat=chat).order_by("-id").first()
+    if last_game:
+        game_status = last_game.phase
+        status_text = {
+            "waiting": "⏳ Boshlanmoqda",
+            "night": "🌙 Tunda",
+            "day": "🌞 Kunduzi",
+            "end": "🛑 Tugagan"
+        }.get(game_status, "❓ Noma'lum")
+    else:
+        status_text = "🚫 O‘yinlar hali bo‘lmagan"
+
+    text = (
+        f"<b>📋 Guruh haqida:</b>\n"
+        f"• Nomi: <b>{chat.title}</b>\n"
+        f"• A'zolar soni: <b>{members_count}</b>\n"
+        f"• O‘yinlar soni: <b>{games_count}</b>\n"
+        f"• Oxirgi o‘yinning holati: <b>{status_text}</b>"
+    )
+
+    markup = await group_button(chat.invite_link, chat.chat_id)
+
+    await call.message.delete()
+    await call.message.answer(text, reply_markup=markup, parse_mode="HTML")
+
+async def paginate_groups_list(call: CallbackQuery, bot: Bot):
+    if call.from_user.id not in ADMINS:
+        return
+
+    try:
+        page = int(call.data.split("_")[-1])
+    except ValueError:
+        page = 0
+
+    await get_groups_list_from_callback(call, page=page)
+
+async def get_groups_list_from_callback(call: CallbackQuery, page: int = 0):
+    chats = await Chat.exclude(Q(invite_link="") | Q(invite_link=None))
+    chats = list(chats)
+    total_pages = (len(chats) - 1) // GROUPS_PER_PAGE + 1
+
+    start = page * GROUPS_PER_PAGE
+    end = start + GROUPS_PER_PAGE
+    current_page_chats = chats[start:end]
+
+    markup = await groups_list_button(current_page_chats, page, total_pages)
+    await call.message.edit_text(f"Guruhlar ro'yxati ({page+1}/{total_pages})", reply_markup=markup)
+
+async def back_groups_list(call: CallbackQuery, bot: Bot, page: int = 0):
+    chats = await Chat.exclude(Q(invite_link="") | Q(invite_link=None))
+    chats = list(chats)
+    total_pages = (len(chats) - 1) // GROUPS_PER_PAGE + 1
+
+    start = page * GROUPS_PER_PAGE
+    end = start + GROUPS_PER_PAGE
+    current_page_chats = chats[start:end]
+
+    markup = await groups_list_button(current_page_chats, page, total_pages)
+    await call.message.answer(f"Guruhlar ro'yxati ({page+1}/{total_pages})", reply_markup=markup)
+    await call.message.delete()
+
 async def find_active_game(message: Message):
     if message.chat.type != "private": return
     if message.from_user.id not in ADMINS: return
@@ -964,7 +1075,7 @@ async def take_vip_handler(message: Message, bot: Bot):
     Foydalanuvchidan VIP maqomini bekor qilish.
     """
     sender_id = message.from_user.id if message.from_user else None
-    if sender_id not in ADMINS:
+    if sender_id not in ADMINS and sender_id not in PRIMARY_ADMIN_IDS:
         return
 
     target_user = None
@@ -1035,7 +1146,7 @@ async def give_vip_handler(message: Message, bot: Bot):
     Foydalanuvchiga VIP maqomini berish.
     """
     sender_id = message.from_user.id if message.from_user else None
-    if sender_id not in ADMINS:
+    if sender_id not in ADMINS and sender_id not in PRIMARY_ADMIN_IDS:
         return
 
     target_user = None
@@ -1106,3 +1217,112 @@ async def give_vip_handler(message: Message, bot: Bot):
         )
     except Exception:
         pass
+
+
+async def add_bot_admin_handler(message: Message):
+    """
+    Koddasiz dinamik ravishda bot adminini qo'shish.
+    Format: /addadmin 123456789 yoki foydalanuvchi xabariga reply qilib: /addadmin
+    """
+    target_uid = None
+    if message.reply_to_message and message.reply_to_message.from_user:
+        target_uid = message.reply_to_message.from_user.id
+    else:
+        parts = message.text.strip().split()
+        if len(parts) >= 2 and parts[1].lstrip("-").isdigit():
+            target_uid = int(parts[1])
+    
+    if not target_uid:
+        await message.answer(
+            "ℹ️ <b>Admin qo'shish formati:</b>\n"
+            "• Foydalanuvchi xabariga reply qilib: <code>/addadmin</code>\n"
+            "• Telegram ID orqali: <code>/addadmin 123456789</code>",
+            parse_mode="HTML"
+        )
+        return
+
+    from models.user import BotAdmin
+    admin_record, created = await BotAdmin.get_or_create(
+        user_id=target_uid,
+        defaults={"added_by": message.from_user.id if message.from_user else None}
+    )
+    if created:
+        await message.answer(f"✅ <b>{target_uid}</b> foydalanuvchisi bot adminlari ro'yxatiga muvaffaqiyatli qo'shildi!", parse_mode="HTML")
+    else:
+        await message.answer(f"⚠️ <b>{target_uid}</b> allaqachon bot admini!", parse_mode="HTML")
+
+
+async def del_bot_admin_handler(message: Message):
+    """
+    Dinamik bot adminini ro'yxatdan o'chirish.
+    Format: /deladmin 123456789 yoki reply: /deladmin
+    """
+    target_uid = None
+    if message.reply_to_message and message.reply_to_message.from_user:
+        target_uid = message.reply_to_message.from_user.id
+    else:
+        parts = message.text.strip().split()
+        if len(parts) >= 2 and parts[1].lstrip("-").isdigit():
+            target_uid = int(parts[1])
+    
+    if not target_uid:
+        await message.answer(
+            "ℹ️ <b>Adminni o'chirish formati:</b>\n"
+            "• Foydalanuvchi xabariga reply qilib: <code>/deladmin</code>\n"
+            "• Telegram ID orqali: <code>/deladmin 123456789</code>",
+            parse_mode="HTML"
+        )
+        return
+
+    from models.user import BotAdmin
+    deleted = await BotAdmin.filter(user_id=target_uid).delete()
+    if deleted:
+        await message.answer(f"🗑 <b>{target_uid}</b> bot adminlari ro'yxatidan o'chirildi.", parse_mode="HTML")
+    else:
+        await message.answer(f"⚠️ <b>{target_uid}</b> dinamik adminlar ro'yxatida topilmadi.", parse_mode="HTML")
+
+
+async def list_bot_admins_handler(message: Message):
+    """Barcha bot adminlari ro'yxatini ko'rsatish."""
+    from models.user import BotAdmin
+    dynamic_admins = await BotAdmin.all()
+    lines = ["👑 <b>BOT ADMINLARI RO'YXATI:</b>\n"]
+    lines.append("<b>📌 Asosiy adminlar (env/kod):</b>")
+    for a_id in set(ADMINS + list(PRIMARY_ADMIN_IDS)):
+        lines.append(f"• <code>{a_id}</code>")
+
+    lines.append("\n<b>⚡️ Dinamik qo'shilgan adminlar:</b>")
+    if dynamic_admins:
+        for da in dynamic_admins:
+            date_str = da.created_at.strftime('%Y-%m-%d') if da.created_at else "---"
+            lines.append(f"• <code>{da.user_id}</code> (qo'shilgan: {date_str})")
+    else:
+        lines.append("• <i>Hozircha yo'q</i>")
+
+    await message.answer("\n".join(lines), parse_mode="HTML")
+
+
+async def del_vip_handler(message: Message):
+    """Foydalanuvchining VIP statusini olib tashlash."""
+    target_uid = None
+    if message.reply_to_message and message.reply_to_message.from_user:
+        target_uid = message.reply_to_message.from_user.id
+    else:
+        parts = message.text.strip().split()
+        if len(parts) >= 2 and parts[1].lstrip("-").isdigit():
+            target_uid = int(parts[1])
+
+    if not target_uid:
+        await message.answer("ℹ️ Foydalanish: <code>/delvip 123456789</code> yoki reply qilgan holda <code>/delvip</code>", parse_mode="HTML")
+        return
+
+    user = await User.filter(user_id=target_uid).first()
+    if not user:
+        await message.answer("❌ Foydalanuvchi topilmadi!", parse_mode="HTML")
+        return
+
+    deleted = await VipUser.filter(user=user).delete()
+    if deleted:
+        await message.answer(f"❌ <b>{user.full_name}</b> (<code>{target_uid}</code>) dan VIP status olib tashlandi.", parse_mode="HTML")
+    else:
+        await message.answer("⚠️ Foydalanuvchida VIP status mavjud emas.", parse_mode="HTML")

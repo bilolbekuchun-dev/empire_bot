@@ -1,10 +1,12 @@
 from aiogram import Router, Bot, F
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message, CallbackQuery
-from utils import start, night_actions, day_actions, game_logic, others
+from utils import game_logic, night_actions, day_actions, start
+from utils import qora_materiya as qm
 from filters.more import DelCommands, NightSheriklarMessages, SayLastWordFilter
 from utils.role_names import RoleNames
 from aiogram.fsm.context import FSMContext
+from utils import others
 from utils.redis_game.handler_wrappers import (
     create_game_handler_wrapper,
     create_vs_game_handler_wrapper,
@@ -14,8 +16,7 @@ from utils.redis_game.handler_wrappers import (
     stop_game_handler_wrapper,
     start_game_handler_wrapper
 )
-
-from utils.subscription import ensure_subscribed_or_prompt, get_unsubscribed_channels, build_sub_keyboard
+from utils.subscription import ensure_subscribed_or_prompt
 from utils.i18n import clean_lang, SUB_REQUIRED_TEXT, GENDER_PROMPT
 from keyboards.main_keyboard import gender_keyboard
 from models.user import User
@@ -42,14 +43,10 @@ async def f(message: Message, bot: Bot):
 async def f(message: Message, bot: Bot):
     await leave_game_wrapper(message, bot)
 
-@router.message(Command("extend"))
-async def f(message: Message, bot: Bot):
-    await game_logic.extend_game_timer(message, bot)
-
 
 @router.message(Command("start"), F.chat.type == "private")
 async def f(message: Message, bot: Bot, state: FSMContext, command: CommandObject):
-    args = command.args
+    args = command.args  # "buy_star_10" yoki None
     if args:
         await state.update_data(pending_start_args=args)
 
@@ -60,7 +57,7 @@ async def f(message: Message, bot: Bot, state: FSMContext, command: CommandObjec
 
     data = await state.get_data()
 
-    # 1-bosqich: Til tanlash (yangi foydalanuvchi yoki onboarding hali tugamagan bo'lsa)
+    # 1-bosqich: Til tanlash
     if not user.gender and not data.get("onboard_lang_selected"):
         from keyboards.main_keyboard import get_onboard_lang_keyboard
         text = "🌐 <b>Bot tilini tanlang / Choose bot language / Выберите язык бота / Bot dilini seçin:</b>"
@@ -78,50 +75,13 @@ async def f(message: Message, bot: Bot, state: FSMContext, command: CommandObjec
         await message.answer(prompt, reply_markup=gender_keyboard(lang), parse_mode="HTML")
         return
 
-    # 4-bosqich: Bosh menyu / Buyruqlar
+    # 4-bosqich: Bosh menyu
     if args and "buy_star_" in args:
         await others.process_buy_star_main_bot(message=message, args=args)
     elif args and len(args.split("_")) > 1:
         await join_game_handler_wrapper(message, bot, state=state)
     else:
         await start.start_msg_handler(message)
-
-
-@router.callback_query(F.data == "check_sub")
-async def check_sub_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
-    user = await User.get_or_none(user_id=call.from_user.id)
-    lang = clean_lang(user.lang if user else "uz")
-    unsubscribed = await get_unsubscribed_channels(bot, call.from_user.id)
-
-    if unsubscribed:
-        prompt = SUB_REQUIRED_TEXT.get(lang, SUB_REQUIRED_TEXT["uz"])
-        await call.answer(prompt, show_alert=True)
-        try:
-            await call.message.edit_text(
-                prompt,
-                reply_markup=build_sub_keyboard(unsubscribed, lang=lang),
-                parse_mode="HTML"
-            )
-        except Exception:
-            pass
-    else:
-        confirm_map = {
-            "uz": "✅ Rahmat! Barcha kanallarga obuna bo'ldingiz.",
-            "ru": "✅ Спасибо! Вы подписались на все каналы.",
-            "en": "✅ Thank you! You subscribed to all channels.",
-            "tr": "✅ Teşekkürler! Tüm kanallara abone oldunuz."
-        }
-        await call.answer(confirm_map.get(lang, confirm_map["uz"]), show_alert=True)
-        if not user or not user.gender:
-            prompt = GENDER_PROMPT.get(lang, GENDER_PROMPT["uz"])
-            kb = gender_keyboard(lang)
-            try:
-                await call.message.edit_text(prompt, reply_markup=kb, parse_mode="HTML")
-            except Exception:
-                await call.message.answer(prompt, reply_markup=kb, parse_mode="HTML")
-        else:
-            await start.start_call_handler(call)
-
 
 @router.message(Command("start"))
 async def f(message: Message, bot: Bot, state: FSMContext):
@@ -219,6 +179,7 @@ async def f(call: CallbackQuery, bot: Bot, state: FSMContext):
 async def f(call: CallbackQuery, bot: Bot, state: FSMContext):
     await night_actions.aferist_action_handler(call, bot, state)
 
+
 @router.callback_query(F.data.startswith("sehrgar_"))
 async def f(call: CallbackQuery, bot: Bot, state: FSMContext):
     await night_actions.sehr_action_handler(call, bot, state)
@@ -247,10 +208,55 @@ async def f(call: CallbackQuery, bot: Bot, state: FSMContext):
 async def f(call: CallbackQuery, bot: Bot, state: FSMContext):
     await night_actions.konchi_action_handler(call, bot, state)
 
-@router.callback_query(F.data.startswith(RoleNames.REVERSER))
-async def f(call: CallbackQuery, bot: Bot, state: FSMContext):
-    await night_actions.reverser_action_handler(call, bot, state)
+@router.callback_query(F.data.startswith(qm.QM_VS_SELECT))
+async def f(call: CallbackQuery, bot: Bot):
+    await qm.qm_voidswap_select(call, bot)
 
-@router.callback_query(F.data.startswith(RoleNames.TAQLIDCHI))
+@router.callback_query(F.data.startswith(qm.QM_VS_PICK))
+async def f(call: CallbackQuery, bot: Bot):
+    await qm.qm_voidswap_pick(call, bot)
+
+@router.callback_query(F.data.startswith(qm.QM_PORTLAT))
+async def f(call: CallbackQuery, bot: Bot):
+    await qm.qm_portlatish(call, bot)
+
+@router.callback_query(F.data.startswith(qm.QM_TIR_SELECT))
+async def f(call: CallbackQuery, bot: Bot):
+    await qm.qm_tiriltir_select(call, bot)
+
+@router.callback_query(F.data.startswith(qm.QM_TIR_PICK))
+async def f(call: CallbackQuery, bot: Bot):
+    await qm.qm_tiriltir_pick(call, bot)
+
+@router.callback_query(F.data.startswith(qm.QM_XAZINA_NUM))
+async def f(call: CallbackQuery, bot: Bot):
+    await qm.qm_xazina_pick(call, bot)
+
+@router.callback_query(F.data.startswith(qm.QM_XAZINA))
+async def f(call: CallbackQuery, bot: Bot):
+    await qm.qm_xazina_start(call, bot)
+
+@router.callback_query(F.data == "qm_noop")
+async def f(call: CallbackQuery):
+    await call.answer()
+
+@router.callback_query(F.data.startswith("jin_choice_"))
 async def f(call: CallbackQuery, bot: Bot, state: FSMContext):
-    await night_actions.taqlidchi_action_handler(call, bot, state)
+    await night_actions.jin_choice_handler(call, bot, state)
+
+@router.callback_query(F.data.startswith("jin-victim_"))
+async def f(call: CallbackQuery, bot: Bot, state: FSMContext):
+    await night_actions.jin_victim_handler(call, bot, state)
+
+@router.callback_query(F.data.startswith(RoleNames.JIN))
+async def f(call: CallbackQuery, bot: Bot, state: FSMContext):
+    await night_actions.jin_action_handler(call, bot, state)
+
+@router.message(Command("ngame"))
+async def f(message: Message, bot: Bot):
+    await game_logic.create_nick_game_handler(message, bot)
+
+@router.message(Command("extend"))
+async def f(message: Message, bot: Bot):
+    await game_logic.extend_game_timer(message, bot)
+

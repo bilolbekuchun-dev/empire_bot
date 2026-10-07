@@ -97,7 +97,7 @@ async def rol_taqsimlash_redis(
         ).order_by("id").all()
         
         # Skip active roles for para and vs games
-        if "para x" in game_mode and "vsgame" in game_mode:
+        if "para x" in game_mode or "vsgame" in game_mode:
             active_roles = []
         
         # Build profile to bought roles map
@@ -219,6 +219,8 @@ async def _finalize_role_assignment(
     """
     Final rol tayinlash va notification yuborish.
     """
+    from utils.redis_game.repositories.player_repository import player_repository as player_repo
+
     chat = await Chat.get(chat_id=chat_id)
     err_players = []
     i = 1
@@ -249,11 +251,15 @@ async def _finalize_role_assignment(
         p.role = rol
         p.maxsus_raqam = i
         i += 1
+
+        # Save updated player state to Redis
+        await player_repo.save_player(p)
         
         # Send role description
         try:
             user = await User.get(user_id=p.user_id)
-            rol_matni = Roles.get_by_role(rol)
+            user_lang = user.lang if (user and user.lang) else "uz"
+            rol_matni = Roles.get_by_role(rol, lang=user_lang)
             await bot.send_message(
                 user.user_id,
                 rol_matni,
@@ -273,6 +279,7 @@ async def _finalize_role_assignment(
     # In Redis version, we'll just mark them as inactive or remove
     for p in err_players:
         p.is_alive = False
+        await player_repo.save_player(p)
 
 
 async def get_role_config_text(mode: str = None) -> list:

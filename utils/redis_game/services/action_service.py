@@ -14,6 +14,16 @@ class ActionService:
     """Action management - tungi va kunduzi action'lar."""
     
     @staticmethod
+    async def clear_player_actions(game_id: int, phase_id: int, actor_id: int):
+        """Eski harakatlarni tozalash (foydalanuvchi qayta tanlaganda)."""
+        existing_keys = await r.smembers(f"game:{game_id}:phase:{phase_id}:action_keys")
+        for ek in existing_keys:
+            key_str = ek.decode() if isinstance(ek, bytes) else ek
+            parts = key_str.split(":")
+            if len(parts) == 3 and int(parts[0]) == actor_id:
+                await r.srem(f"game:{game_id}:phase:{phase_id}:action_keys", ek)
+
+    @staticmethod
     async def save_action(
         game_id: int,
         phase_id: int,
@@ -23,16 +33,6 @@ class ActionService:
     ) -> ActionState:
         """
         Action saqlash.
-        
-        Args:
-            game_id: O'yin ID
-            phase_id: Phase ID
-            actor_id: Harakat qiluvchi player ID
-            target_id: Nishon player ID (None bo'lishi mumkin)
-            action_type: Action turi (kill/heal/protect/investigate/etc.)
-        
-        Returns:
-            ActionState
         """
         action = ActionState(
             game_id=game_id,
@@ -45,6 +45,15 @@ class ActionService:
         
         await game_repo.save_action(action, ttl_sec=86400)
         
+        # Bir xil turdagi eski action kalitini tozalash (masalan qayta bosganda)
+        existing_keys = await r.smembers(f"game:{game_id}:phase:{phase_id}:action_keys")
+        for ek in existing_keys:
+            key_str = ek.decode() if isinstance(ek, bytes) else ek
+            parts = key_str.split(":")
+            if len(parts) == 3 and int(parts[0]) == actor_id:
+                if action_type not in ("zanjir", "sehrgar") or parts[2] == action_type:
+                    await r.srem(f"game:{game_id}:phase:{phase_id}:action_keys", ek)
+
         # Action'ni set ga qo'shish (phase bo'yicha)
         action_key = f"{actor_id}:{target_id}:{action_type}"
         await r.sadd(f"game:{game_id}:phase:{phase_id}:action_keys", action_key)

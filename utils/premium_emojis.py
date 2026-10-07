@@ -81,7 +81,8 @@ ACTIVE_ROLES_YAKKA = [
     RoleNames.QOTIL, RoleNames.BORI, RoleNames.AFERIST,
     RoleNames.GAZABDOR, RoleNames.SEHRGAR, RoleNames.SUIDSID,
     RoleNames.QASOSKOR, RoleNames.QAROQCHI, RoleNames.AKTYOR,
-    RoleNames.JIN, RoleNames.KONCHI, RoleNames.TAQLIDCHI, RoleNames.REVERSER
+    RoleNames.JIN, RoleNames.KONCHI, RoleNames.TAQLIDCHI,
+    RoleNames.REVERSER
 ]
 
 ALL_ACTIVE_ROLES = ACTIVE_ROLES_TINCH + ACTIVE_ROLES_MAFIA + ACTIVE_ROLES_YAKKA
@@ -216,8 +217,7 @@ def role_display(role: str) -> str:
     clean_key = role_str.lower()
     
     # Emojilarni olib tashlab toza nomni aniqlash
-    for prefix in ["🤵🏻", "🤵🏼", "🕵🏼", "👨🏼‍⚕️", "👮🏼", "👨🏼", "🧙‍♂️", "💃", "👨🏼‍💼", "🤦🏼", "🤞🏼", "🎖", "🐺", "🔪", "🥷", "🧨", "🤹🏻", "🧌", "🧙‍", "👩🏼‍💻", "🤓", "🛡", "👺", "⛓", "🎭", "🧞", "👷🏻‍♂️", "🦇", "⚔️", "👩🏻‍⚕️", "🔄"]:
-        clean_key = clean_key.replace(prefix.lower(), "").strip()
+    for prefix in ["🤵🏻", "🤵🏼", "🕵🏼", "👨🏼‍⚕️", "👮🏼", "👨🏼", "🧙‍♂️", "💃", "👨🏼‍💼", "🤦🏼", "🤞🏼", "🎖", "🐺", "🔪", "🥷", "🧨", "🤹🏻", "🧌", "🧙‍", "👩🏼‍💻", "🤓", "🛡", "👺", "⛓", "🎭", "🧞", "👷🏻‍♂️", "🦇", "⚔️", "👩🏻‍⚕️"]:
         clean_key = clean_key.replace(prefix.lower(), "").strip()
     
     if clean_key in ROLE_CLEAN_MAP:

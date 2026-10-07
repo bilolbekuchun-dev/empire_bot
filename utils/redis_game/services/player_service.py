@@ -112,38 +112,41 @@ class PlayerService:
                 return (game_id, player)
         
         return None
-    
+
     @staticmethod
-    async def find_player_dead_last_word_game(user_id: int) -> Optional[tuple[str, PlayerState]]:
+    async def find_player_dead_last_word_game(user_id: int) -> Optional[tuple[int, PlayerState]]:
         """
-        User ning oxirgi so'z aytmagan va o'lgan o'yinini topish.
-        
-        Returns:
-            (game_id, player_state) - agar topilsa
-            None - agar topilmasa
+        User o'lgan va hali oxirgi so'zini aytmagan faol Redis o'yinini topish.
         """
         from utils.database import redis_client
+        from datetime import datetime, timezone
         
-        active_games = []
-        cursor = 0
-        while True:
-            cursor, keys = await redis_client.scan(cursor, match="game:*:state", count=100)
-            active_games.extend(keys)
-            if cursor == 0:
-                break
-        
-        for game_key in active_games:
-            if isinstance(game_key, bytes):
-                game_key = game_key.decode()
-            game_id = game_key.split(":")[1]
+        active_game_ids = await redis_client.smembers("global:active_games")
+        if not active_game_ids:
+            return None
+
+        for game_id_str in active_game_ids:
+            if isinstance(game_id_str, bytes):
+                game_id_str = game_id_str.decode()
+            try:
+                game_id = int(game_id_str)
+            except (TypeError, ValueError):
+                continue
             player = await player_repository.load_player(game_id, user_id)
-            if player and not player.is_alive and not getattr(player, 'is_sayed_last_word', False):
-                return (game_id, player)
-        
+            if player and not player.is_alive and not player.is_sayed_last_word:
+                if player.deaded_at:
+                    now = datetime.now(timezone.utc)
+                    dt = player.deaded_at
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=timezone.utc)
+                    if (now - dt).total_seconds() <= 120:
+                        return (game_id, player)
+                else:
+                    return (game_id, player)
+
         return None
     
     @staticmethod
-
     async def get_game_statistics(game_id: int) -> dict:
         """
         O'yin statistikasini olish.
