@@ -336,30 +336,45 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
         if not is_game_active and not game:
             return await handler(message, data)
 
-        # 8) O‘yinchi ma’lumotlari (rol/holat tekshiruvi uchun)
-        player = None
-        if message.from_user and game:
-            player = await GamePlayer.filter(
-                game=game, user__user_id=message.from_user.id
-            ).first()
+        # 8) O‘yinchi ma’lumotlarini tekshirish (Redis hamda DB o'yinlari uchun)
+        is_player = False
+        is_alive = False
+        is_sleep = False
 
-        is_player = bool(player)
-        is_alive = bool(player and player.is_alive)
-        is_sleep = bool(player and getattr(player, "is_sleep", False))
+        if message.from_user:
+            user_id = message.from_user.id
+            if active_redis_id:
+                try:
+                    from utils.redis_game.repositories.player_repository import player_repository
+                    rp = await player_repository.load_player(active_redis_id, user_id)
+                    if rp:
+                        is_player = True
+                        is_alive = rp.is_alive
+                        is_sleep = getattr(rp, "is_sleep", False)
+                except Exception:
+                    pass
 
-        # 9) Fazaga qarab yozish ruxsati (kun va boshqa fazalar)
+            if not is_player and game:
+                gp = await GamePlayer.filter(game=game, user__user_id=user_id).first()
+                if gp:
+                    is_player = True
+                    is_alive = gp.is_alive
+                    is_sleep = getattr(gp, "is_sleep", False)
+
+        # 9) O'lik yoki uxlayotgan o'yinchi o'yin davomida yozsa — XABARNI O'CHIRISH!
+        if is_player and (not is_alive or is_sleep):
+            if bot_can_delete:
+                await self._delete_quietly(message)
+            return
+
+        # 10) Guruh ruxsatlariga mos ravishda kunduzgi yozish tekshiruvi
         if phase_key in ("day", "afternoon", "morning", "day_actions") and group_perm:
-            allowed = self._who_can_write(group_perm.day, is_player=is_player, is_alive=is_alive)
+            day_mode = getattr(group_perm, "day", "all")
+            allowed = self._who_can_write(day_mode, is_player=is_player, is_alive=is_alive)
             if not allowed:
                 if bot_can_delete:
                     await self._delete_quietly(message)
                 return
-
-        # 10) O'lik yoki uxlayotgan o'yinchi yozsa cheklash
-        if game and (not is_player or not is_alive or is_sleep):
-            if bot_can_delete:
-                await self._delete_quietly(message)
-            return
 
         # Hammasi joyida: handlerlarga uzatamiz
         return await handler(message, data)
