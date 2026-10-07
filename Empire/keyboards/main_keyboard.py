@@ -28,10 +28,21 @@ def get_start_markup():
 start_markup = get_start_markup()
 
 
-def gender_keyboard():
+def gender_keyboard(lang: str = "uz"):
+    lang = (lang or "uz").lower()
     m = InlineKeyboardBuilder()
-    m.button(text="👦 Yigit / Erkak", callback_data="gender_select_m")
-    m.button(text="👧 Qiz / Ayol", callback_data="gender_select_f")
+    if lang == "ru":
+        m.button(text="👦 Мужчина", callback_data="gender_select_m")
+        m.button(text="👧 Женщина", callback_data="gender_select_f")
+    elif lang == "en":
+        m.button(text="👦 Male", callback_data="gender_select_m")
+        m.button(text="👧 Female", callback_data="gender_select_f")
+    elif lang == "tr":
+        m.button(text="👦 Erkek", callback_data="gender_select_m")
+        m.button(text="👧 Kadın", callback_data="gender_select_f")
+    else:
+        m.button(text="👦 Yigit / Erkak", callback_data="gender_select_m")
+        m.button(text="👧 Qiz / Ayol", callback_data="gender_select_f")
     m.adjust(2)
     return m.as_markup()
 

@@ -96,12 +96,19 @@ async def f(message: Message, bot: Bot):
 @router.message(Command("send"))
 @router.message(F.text.startswith("/send "))
 async def f(message: Message, bot: Bot):
-    await others.transfer_funds_handler(message=message, bot=bot)
+    parts = (message.text or "").split()
+    if len(parts) >= 2 and any(p.replace("$", "").replace("💎", "").isdigit() for p in parts[1:]) and not message.reply_to_message:
+        await others.start_giveaway_redis(message=message, bot=bot)
+    else:
+        await others.transfer_funds_handler(message=message, bot=bot)
     
 @router.channel_post(Command("send"))
+@router.channel_post(F.text.startswith("/send "))
 async def f(message: Message, bot: Bot):
-    await message.delete()
-    
+    try:
+        await message.delete()
+    except Exception:
+        pass
     await others.start_giveaway_channel(message, bot)
     
 @router.callback_query(F.data.startswith("giveaway_"))
@@ -258,7 +265,9 @@ async def f(message: Message, bot: Bot):
 async def f(message: Message, bot: Bot):
     await statistika.give_stat(message, bot)
 
+@router.message(Command("boylar", "top"))
 @router.message(F.text.startswith("/boylar"))
+@router.message(F.text.startswith("/top"))
 async def f(message: Message, bot: Bot):
     await statistika.show_richest_users(message)
 

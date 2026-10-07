@@ -15,6 +15,7 @@ from utils.redis_game.handler_wrappers import (
     leave_game_wrapper,
     stop_game_handler_wrapper,
     start_game_handler_wrapper
+)
 from utils.subscription import ensure_subscribed_or_prompt
 from utils.i18n import clean_lang, SUB_REQUIRED_TEXT, GENDER_PROMPT
 from keyboards.main_keyboard import gender_keyboard

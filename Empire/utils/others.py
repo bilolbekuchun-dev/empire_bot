@@ -204,39 +204,184 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
         except Exception:
             pass
 
-        from config import INFO_GROUP
-        if INFO_GROUP:
-            try:
-                chat_title = (message.chat.title or message.chat.username or "Private") if message.chat else "Private"
-                chat_id_val = message.chat.id if message.chat else 0
-                if message.chat and message.chat.type in ("group", "supergroup"):
-                    chat_str = f"🏠 Guruh: {chat_title} ({chat_id_val})"
-                elif message.chat and message.chat.type == "channel":
-                    chat_str = f"📢 Kanal: {chat_title} ({chat_id_val})"
-                else:
-                    chat_str = f"🏠 Chat: Private ({chat_id_val})"
+        await send_transfer_report(
+            bot=bot,
+            sender_user=sender_db,
+            sender_profile=sender_profile,
+            target_user=target_user,
+            target_profile=target_profile,
+            amount=amount,
+            unit_name="olmos" if is_diamond else "dollar",
+            chat=message.chat
+        )
 
-                if is_diamond:
-                    header_str = f"💎 {amount} olmos o'tkazma aniqlandi."
-                else:
-                    header_str = f"💸 {amount} dollar o'tkazma aniqlandi."
+async def send_transfer_report(
+    bot: Bot,
+    sender_user: User,
+    sender_profile: Profile = None,
+    target_user: User = None,
+    target_profile: Profile = None,
+    amount: int = 0,
+    unit_name: str = "olmos",
+    chat = None,
+    is_giveaway: bool = False,
+    is_claim: bool = False,
+    extra_note: str = None
+):
+    from config import INFO_GROUP
+    if not INFO_GROUP or not bot:
+        return
 
-                log_msg = (
-                    f"{header_str}\n"
-                    f"💸 O'tkazuvchi: #{sender_db.full_name} {sender_db.user_id}\n"
-                    f"🎯 Qabul qiluvchi: {target_user.full_name} {target_user.user_id}\n"
-                    f"{chat_str}"
-                )
-                from keyboards.user_keyboards import blocking_users
-                await bot.send_message(
-                    chat_id=INFO_GROUP,
-                    text=log_msg,
-                    parse_mode="HTML",
-                    reply_markup=blocking_users(sender_db.user_id, target_user.user_id)
-                )
-            except Exception as e:
-                import logging
-                logging.warning(f"O'tkazma hisobotini INFO_GROUP ga yuborishda xatolik: {e}")
+    try:
+        from datetime import datetime
+        now_str = datetime.now().strftime("%H:%M:%S")
+
+        chat_title = (chat.title or chat.username or "Private") if chat else "Private"
+        chat_id_val = chat.id if chat else 0
+        if chat and chat.type in ("group", "supergroup"):
+            chat_str = f"🏠 Guruh: {chat_title} ({chat_id_val})"
+        elif chat and chat.type == "channel":
+            chat_str = f"📢 Kanal: {chat_title} ({chat_id_val})"
+        else:
+            chat_str = f"🏠 Chat: Private ({chat_id_val})"
+
+        sender_name = sender_user.full_name or "Foydalanuvchi"
+        sender_line = f"💸 O'tkazuvchi: {sender_name} {sender_user.user_id}"
+
+        if is_giveaway:
+            header_str = f"🎁 {amount:,} {unit_name} guruhga tarqatish (Giveaway) aniqlandi."
+        elif is_claim:
+            header_str = f"🎉 {amount:,} {unit_name} giveaway yig'ib olindi."
+        elif unit_name.lower() in ("olmos", "diamond", "💎"):
+            header_str = f"💎 {amount:,} olmos o'tkazma aniqlandi."
+        else:
+            header_str = f"💸 {amount:,} dollar o'tkazma aniqlandi."
+
+        lines = [header_str, sender_line]
+
+        if target_user:
+            lines.append(f"🎯 Qabul qiluvchi: {target_user.full_name} {target_user.user_id}")
+
+        lines.append(chat_str)
+
+        if sender_profile or target_profile:
+            bal_parts = []
+            if sender_profile:
+                bal_parts.append(f"O'tkazuvchi: {sender_profile.diamond:,}💎 / ${sender_profile.dollar:,}")
+            if target_profile:
+                bal_parts.append(f"Qabul qiluvchi: {target_profile.diamond:,}💎 / ${target_profile.dollar:,}")
+            lines.append(f"💳 Balanslar: " + " | ".join(bal_parts))
+
+        lines.append(f"⏰ Vaqt: {now_str}")
+
+        if extra_note:
+            lines.append(f"📝 {extra_note}")
+
+        log_msg = "\n".join(lines)
+
+        from keyboards.user_keyboards import blocking_users
+        target_id_for_btn = target_user.user_id if target_user else sender_user.user_id
+
+        await bot.send_message(
+            chat_id=INFO_GROUP,
+            text=log_msg,
+            parse_mode="HTML",
+            reply_markup=blocking_users(sender_user.user_id, target_id_for_btn)
+        )
+    except Exception as e:
+        import logging
+        logging.warning(f"O'tkazma hisobotini INFO_GROUP ga yuborishda xatolik: {e}")
+
+async def send_big_giveaway_report(
+    bot: Bot,
+    user: User,
+    chat,
+    giveaway_type: str = "Pul giveaway",
+    count: int = 1
+):
+    from config import INFO_GROUP
+    if not INFO_GROUP or not bot:
+        return
+
+    try:
+        chat_title = (chat.title or chat.username or "Guruh") if chat else "Guruh"
+        chat_id_val = chat.id if chat else 0
+        user_name = user.full_name or "Foydalanuvchi"
+
+        log_msg = (
+            f"🎁 <b>Katta giveaway aniqlandi!</b>\n\n"
+            f"🎉 <b>Turi:</b> {giveaway_type}\n"
+            f"🔢 <b>Soni:</b> {count}\n"
+            f"👤 <b>Foydalanuvchi:</b> {user_name} {user.user_id}\n"
+            f"💬 <b>Guruh:</b> {chat_title} {chat_id_val}"
+        )
+
+        from keyboards.user_keyboards import blocking_users
+        await bot.send_message(
+            chat_id=INFO_GROUP,
+            text=log_msg,
+            parse_mode="HTML",
+            reply_markup=blocking_users(user.user_id, user.user_id)
+        )
+    except Exception as e:
+        import logging
+        logging.warning(f"Big giveaway report yuborishda xatolik: {e}")
+
+async def send_super_sandiq_report(
+    bot: Bot,
+    user: User,
+    diamonds: int
+):
+    from config import INFO_GROUP
+    if not INFO_GROUP or not bot:
+        return
+
+    try:
+        user_name = user.full_name or "Foydalanuvchi"
+        log_msg = (
+            f"🎉 <b>Foydalanuvchi super sandiqni ochdi!</b>\n\n"
+            f"👤 <b>Foydalanuvchi:</b> {user_name} ({user.user_id})\n"
+            f"💎 <b>Yutuq:</b> {diamonds}"
+        )
+
+        from keyboards.user_keyboards import blocking_users
+        await bot.send_message(
+            chat_id=INFO_GROUP,
+            text=log_msg,
+            parse_mode="HTML",
+            reply_markup=blocking_users(user.user_id, user.user_id)
+        )
+    except Exception as e:
+        import logging
+        logging.warning(f"Super sandiq report yuborishda xatolik: {e}")
+
+async def send_new_vip_report(
+    bot: Bot,
+    user: User,
+    diamond_count: int = 0
+):
+    from config import INFO_GROUP
+    if not INFO_GROUP or not bot:
+        return
+
+    try:
+        user_name = user.full_name or "Foydalanuvchi"
+        log_msg = (
+            f"🎉 <b>Yangi Vip User!</b>\n\n"
+            f"👤 <b>Foydalanuvchi:</b> {user_name} ({user.user_id})\n"
+            f"💎 <b>Olmoslar soni:</b> {diamond_count}"
+        )
+
+        from keyboards.user_keyboards import blocking_users
+        await bot.send_message(
+            chat_id=INFO_GROUP,
+            text=log_msg,
+            parse_mode="HTML",
+            reply_markup=blocking_users(user.user_id, user.user_id)
+        )
+    except Exception as e:
+        import logging
+        logging.warning(f"Vip report yuborishda xatolik: {e}")
 
 async def transfer_money(message: Message, bot: Bot = None):
     await transfer_funds_handler(message, bot)
@@ -346,74 +491,341 @@ async def start_game_giveaway(message: Message, bot: Bot):
 async def game_giveaway_callback(call: CallbackQuery, bot: Bot):
     await call.answer("🎉 Sovg'aga qatnashdingiz!", show_alert=True)
 
+GIVEAWAY_STRINGS = {
+    "uz": {
+        "title_redis": "🎁 <b>Katta Giveaway e'lon qilindi!</b>",
+        "title_channel": "📢 <b>Kanal Giveaway e'lon qilindi!</b>",
+        "count": "🔢 Sovg'alar soni: <b>{count} ta</b>",
+        "reward": "💎 Mukofot: <b>Olmos</b>",
+        "body": "<i>Qatnashish va sovg'ani olish uchun quyidagi tugmani bosing!</i>",
+        "btn_enter": "🎁 Qatnashish ({remaining} ta qoldi)",
+        "btn_ended": "🏁 Giveaway yakunlandi",
+        "alert_success": "🎉 Tabriklaymiz! Siz giveawaydan 💎 {reward} olmos yutib oldingiz!",
+        "alert_already": "❌ Siz ushbu giveawaydan allaqachon sovg'a olgansiz!",
+        "alert_ended": "🏁 Afsuski, barcha sovg'alar tugadi!",
+        "alert_wait": "⏳ Iltimos, kuting..."
+    },
+    "ru": {
+        "title_redis": "🎁 <b>Объявлен Большой Гивавей!</b>",
+        "title_channel": "📢 <b>Объявлен Канал Гивавей!</b>",
+        "count": "🔢 Количество призов: <b>{count} шт.</b>",
+        "reward": "💎 Награда: <b>Алмазы</b>",
+        "body": "<i>Нажмите кнопку ниже, чтобы участвовать и получить приз!</i>",
+        "btn_enter": "🎁 Участвовать (осталось {remaining})",
+        "btn_ended": "🏁 Гивавей завершён",
+        "alert_success": "🎉 Поздравляем! Вы выиграли 💎 {reward} алм. в гивавее!",
+        "alert_already": "❌ Вы уже получили приз в этом гивавее!",
+        "alert_ended": "🏁 К сожалению, все призы закончились!",
+        "alert_wait": "⏳ Пожалуйста, подождите..."
+    },
+    "en": {
+        "title_redis": "🎁 <b>Big Giveaway Announced!</b>",
+        "title_channel": "📢 <b>Channel Giveaway Announced!</b>",
+        "count": "🔢 Number of prizes: <b>{count}</b>",
+        "reward": "💎 Reward: <b>Diamonds</b>",
+        "body": "<i>Click the button below to enter and claim your prize!</i>",
+        "btn_enter": "🎁 Enter (left: {remaining})",
+        "btn_ended": "🏁 Giveaway ended",
+        "alert_success": "🎉 Congratulations! You won 💎 {reward} diamonds in the giveaway!",
+        "alert_already": "❌ You have already claimed a prize from this giveaway!",
+        "alert_ended": "🏁 Unfortunately, all prizes are claimed!",
+        "alert_wait": "⏳ Please wait..."
+    },
+    "tr": {
+        "title_redis": "🎁 <b>Büyük Çekiliş Duyuruldu!</b>",
+        "title_channel": "📢 <b>Kanal Çekilişi Duyuruldu!</b>",
+        "count": "🔢 Ödül sayısı: <b>{count} adet</b>",
+        "reward": "💎 Ödül: <b>Elmas</b>",
+        "body": "<i>Katılmak ve ödülü almak için aşağıdaki butona basın!</i>",
+        "btn_enter": "🎁 Katıl ({remaining} kaldı)",
+        "btn_ended": "🏁 Çekiliş bitti",
+        "alert_success": "🎉 Tebrikler! Çekilişten 💎 {reward} elmas kazandınız!",
+        "alert_already": "❌ Bu çekilişten zaten ödül aldınız!",
+        "alert_ended": "🏁 Maalesef tüm ödüller bitti!",
+        "alert_wait": "⏳ Lütfen bekleyin..."
+    }
+}
+
 async def start_giveaway_redis(message: Message, bot: Bot):
-    await message.answer("🎁 Giveaway e'lon qilindi!")
+    from utils.i18n import get_chat_lang
+    lang = await get_chat_lang(message.chat.id)
+    strs = GIVEAWAY_STRINGS.get(lang, GIVEAWAY_STRINGS["uz"])
+    count = _parse_giveaway_count(message, default=10)
+    giveaway_id = message.message_id
+    kb = InlineKeyboardBuilder()
+    kb.button(text=strs["btn_enter"].format(remaining=count), callback_data=f"giveaway_{giveaway_id}_{count}_{count}")
+    msg = (
+        f"{strs['title_redis']}\n\n"
+        f"{strs['count'].format(count=count)}\n"
+        f"{strs['reward']}\n\n"
+        f"{strs['body']}"
+    )
+    sent = await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    if message.from_user:
+        await send_big_giveaway_report(bot, message.from_user, message.chat, "Umumiy giveaway", count)
 
 async def start_giveaway_channel(message: Message, bot: Bot):
-    await message.answer("📢 Kanal giveaway e'lon qilindi!")
-
-async def giveaway_callback_redis(call: CallbackQuery, bot: Bot):
-    await call.answer("🎁 Qatnashish qabul qilindi!", show_alert=True)
+    from utils.i18n import get_chat_lang
+    lang = await get_chat_lang(message.chat.id)
+    strs = GIVEAWAY_STRINGS.get(lang, GIVEAWAY_STRINGS["uz"])
+    count = _parse_giveaway_count(message, default=10)
+    giveaway_id = message.message_id
+    kb = InlineKeyboardBuilder()
+    kb.button(text=strs["btn_enter"].format(remaining=count), callback_data=f"channel-giveaway_{giveaway_id}_{count}_{count}")
+    msg = (
+        f"{strs['title_channel']}\n\n"
+        f"{strs['count'].format(count=count)}\n"
+        f"{strs['reward']}\n\n"
+        f"{strs['body']}"
+    )
+    sent = await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    if message.from_user:
+        await send_big_giveaway_report(bot, message.from_user, message.chat, "Kanal giveaway", count)
 
 async def giveaway_callback_channel(call: CallbackQuery, bot: Bot):
-    await call.answer("📢 Qatnashish qabul qilindi!", show_alert=True)
+    await _handle_interactive_giveaway_callback(call, bot, is_channel=True)
+
+async def giveaway_callback_redis(call: CallbackQuery, bot: Bot):
+    await _handle_interactive_giveaway_callback(call, bot, is_channel=False)
+
+async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, is_channel: bool = False):
+    from models.user import User, Profile
+    from utils.giveaways_redis import is_collected_user, add_collected_user, is_processing, mark_as_processing, unmark_as_processing
+    from utils.i18n import get_chat_lang
+    import random
+
+    chat_id = call.message.chat.id if call.message else 0
+    lang = await get_chat_lang(chat_id)
+    strs = GIVEAWAY_STRINGS.get(lang, GIVEAWAY_STRINGS["uz"])
+
+    parts = call.data.split("_")
+    if len(parts) >= 4:
+        giveaway_id = parts[1]
+        try:
+            remaining = int(parts[2])
+            total = int(parts[3])
+        except ValueError:
+            remaining = 1
+            total = 1
+    elif len(parts) >= 2 and parts[-1].isdigit():
+        giveaway_id = str(call.message.message_id if call.message else 0)
+        remaining = int(parts[-1])
+        total = remaining
+    else:
+        giveaway_id = str(call.message.message_id if call.message else 0)
+        remaining = 1
+        total = 1
+
+    user_id = call.from_user.id
+    if is_processing(giveaway_id, user_id):
+        await call.answer(strs["alert_wait"], show_alert=True)
+        return
+
+    if is_collected_user(giveaway_id, user_id):
+        await call.answer(strs["alert_already"], show_alert=True)
+        return
+
+    if remaining <= 0:
+        await call.answer(strs["alert_ended"], show_alert=True)
+        return
+
+    mark_as_processing(giveaway_id, user_id)
+    try:
+        user, _ = await User.get_or_create(
+            user_id=user_id,
+            defaults={"full_name": call.from_user.full_name or f"User_{user_id}", "mention": call.from_user.mention_html()}
+        )
+        profile, _ = await Profile.get_or_create(user=user)
+
+        reward = random.randint(1, 3)
+        profile.diamond += reward
+        await profile.save()
+
+        add_collected_user(giveaway_id, user_id)
+        new_remaining = remaining - 1
+
+        kb = InlineKeyboardBuilder()
+        if new_remaining > 0:
+            cb_prefix = "channel-giveaway" if is_channel else "giveaway"
+            kb.button(text=strs["btn_enter"].format(remaining=new_remaining), callback_data=f"{cb_prefix}_{giveaway_id}_{new_remaining}_{total}")
+        else:
+            kb.button(text=strs["btn_ended"], callback_data="giveaway_ended")
+
+        if call.message:
+            try:
+                await call.message.edit_reply_markup(reply_markup=kb.as_markup())
+            except Exception:
+                pass
+
+        await call.answer(strs["alert_success"].format(reward=reward), show_alert=True)
+    finally:
+        unmark_as_processing(giveaway_id, user_id)
+
+
+def _parse_giveaway_count(message: Message, default: int = 1) -> int:
+    parts = (message.text or "").split()
+    for p in parts[1:]:
+        clean = p.replace("$", "").replace("💎", "")
+        if clean.isdigit():
+            return max(1, int(clean))
+    return default
 
 async def start_qotil_protection_giveaway(message: Message, bot: Bot):
-    await message.answer(f"🎁 {EMOJI_QOTIL_HIMOYA} sovg'asi!", parse_mode="HTML")
+    count = _parse_giveaway_count(message)
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🎁 Qatnashish", callback_data=f"qotil-giveaway_{count}")
+    msg = (
+        f"🎁 <b>{EMOJI_QOTIL_HIMOYA} sovg'asi!</b>\n\n"
+        f"🔢 Soni: <b>{count} ta</b>\n"
+        f"<i>Qatnashish uchun tugmani bosing!</i>"
+    )
+    await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    if message.from_user:
+        await send_big_giveaway_report(bot, message.from_user, message.chat, "Qotildan himoya giveaway", count)
 
 async def qotil_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
     await call.answer("⛑️ Qotildan himoya sovg'asiga yozildingiz!", show_alert=True)
 
 async def start_ovozdan_protection_giveaway(message: Message, bot: Bot):
-    await message.answer("🎁 Ovozdan himoya sovg'asi!", parse_mode="HTML")
+    count = _parse_giveaway_count(message)
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🎁 Qatnashish", callback_data=f"ovoz-giveaway_{count}")
+    msg = (
+        f"🎁 <b>Ovozdan himoya sovg'asi!</b>\n\n"
+        f"🔢 Soni: <b>{count} ta</b>\n"
+        f"<i>Qatnashish uchun tugmani bosing!</i>"
+    )
+    await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    if message.from_user:
+        await send_big_giveaway_report(bot, message.from_user, message.chat, "Ovozdan himoya giveaway", count)
 
 async def ovoz_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
     await call.answer("🛡 Ovozdan himoya yozildingiz!", show_alert=True)
 
 async def start_doridan_protection_giveaway(message: Message, bot: Bot):
-    await message.answer("🎁 Doridan himoya sovg'asi!", parse_mode="HTML")
+    count = _parse_giveaway_count(message)
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🎁 Qatnashish", callback_data=f"dori-giveaway_{count}")
+    msg = (
+        f"🎁 <b>Doridan himoya sovg'asi!</b>\n\n"
+        f"🔢 Soni: <b>{count} ta</b>\n"
+        f"<i>Qatnashish uchun tugmani bosing!</i>"
+    )
+    await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    if message.from_user:
+        await send_big_giveaway_report(bot, message.from_user, message.chat, "Doridan himoya giveaway", count)
 
 async def doridan_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
     await call.answer("💊 Doridan himoya yozildingiz!", show_alert=True)
 
 async def start_miltiq_giveaway(message: Message, bot: Bot):
-    await message.answer("🎁 Miltiq sovg'asi!", parse_mode="HTML")
+    count = _parse_giveaway_count(message)
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🎁 Qatnashish", callback_data=f"miltiq-giveaway_{count}")
+    msg = (
+        f"🎁 <b>Miltiq sovg'asi!</b>\n\n"
+        f"🔢 Soni: <b>{count} ta</b>\n"
+        f"<i>Qatnashish uchun tugmani bosing!</i>"
+    )
+    await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    if message.from_user:
+        await send_big_giveaway_report(bot, message.from_user, message.chat, "Miltiq giveaway", count)
 
 async def miltiq_giveaway_callback(call: CallbackQuery, bot: Bot):
     await call.answer("🔫 Miltiq sovg'asiga yozildingiz!", show_alert=True)
 
 async def start_slip_protection_giveaway(message: Message, bot: Bot):
-    await message.answer(f"🎁 {EMOJI_SLIP_HIMOYA} sovg'asi!", parse_mode="HTML")
+    count = _parse_giveaway_count(message)
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🎁 Qatnashish", callback_data=f"sirpanish-giveaway_{count}")
+    msg = (
+        f"🎁 <b>{EMOJI_SLIP_HIMOYA} sovg'asi!</b>\n\n"
+        f"🔢 Soni: <b>{count} ta</b>\n"
+        f"<i>Qatnashish uchun tugmani bosing!</i>"
+    )
+    await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    if message.from_user:
+        await send_big_giveaway_report(bot, message.from_user, message.chat, "Sirpanishdan himoya giveaway", count)
 
 async def slip_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
     await call.answer("🪤 Sirpanishdan himoya yozildingiz!", show_alert=True)
 
 async def start_geroy_himoya_giveaway(message: Message, bot: Bot):
-    await message.answer(f"🎁 {EMOJI_GEROY_HIMOYA} sovg'asi!", parse_mode="HTML")
+    count = _parse_giveaway_count(message)
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🎁 Qatnashish", callback_data=f"geroy-giveaway_{count}")
+    msg = (
+        f"🎁 <b>{EMOJI_GEROY_HIMOYA} sovg'asi!</b>\n\n"
+        f"🔢 Soni: <b>{count} ta</b>\n"
+        f"<i>Qatnashish uchun tugmani bosing!</i>"
+    )
+    await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    if message.from_user:
+        await send_big_giveaway_report(bot, message.from_user, message.chat, "Geroy himoya giveaway", count)
 
 async def geroy_himoya_giveaway_callback(call: CallbackQuery, bot: Bot):
     await call.answer("🔰 Geroy himoya yozildingiz!", show_alert=True)
 
 async def start_protection_giveaway(message: Message, bot: Bot):
-    await message.answer(f"🎁 {EMOJI_HIMOYA} sovg'asi!", parse_mode="HTML")
+    count = _parse_giveaway_count(message)
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🎁 Qatnashish", callback_data=f"protection-giveaway_{count}")
+    msg = (
+        f"🎁 <b>{EMOJI_HIMOYA} sovg'asi!</b>\n\n"
+        f"🔢 Soni: <b>{count} ta</b>\n"
+        f"<i>Qatnashish uchun tugmani bosing!</i>"
+    )
+    await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    if message.from_user:
+        await send_big_giveaway_report(bot, message.from_user, message.chat, "Himoya giveaway", count)
 
 async def protection_giveaway_callback(call: CallbackQuery, bot: Bot):
     await call.answer("🛡 Himoya yozildingiz!", show_alert=True)
 
 async def start_change_giveaway(message: Message, bot: Bot):
-    await message.answer("🔄 Almashtirish konkursi!", parse_mode="HTML")
+    count = _parse_giveaway_count(message)
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🔄 Qatnashish", callback_data=f"change_{count}")
+    msg = (
+        f"🔄 <b>Almashtirish konkursi!</b>\n\n"
+        f"🔢 Soni: <b>{count} ta</b>\n"
+        f"<i>Qatnashish uchun tugmani bosing!</i>"
+    )
+    await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    if message.from_user:
+        await send_big_giveaway_report(bot, message.from_user, message.chat, "Almashtirish konkursi", count)
 
 async def change_giveaway_callback(call: CallbackQuery, bot: Bot):
     await call.answer("Qatnashdingiz!", show_alert=True)
 
 async def start_change_giveaway_channel(message: Message, bot: Bot):
-    await message.answer("🔄 Kanal almashtirish konkursi!", parse_mode="HTML")
+    count = _parse_giveaway_count(message)
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🔄 Qatnashish", callback_data=f"channel-change_{count}")
+    msg = (
+        f"🔄 <b>Kanal almashtirish konkursi!</b>\n\n"
+        f"🔢 Soni: <b>{count} ta</b>\n"
+        f"<i>Qatnashish uchun tugmani bosing!</i>"
+    )
+    await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    if message.from_user:
+        await send_big_giveaway_report(bot, message.from_user, message.chat, "Kanal almashtirish konkursi", count)
 
 async def change_giveaway_callback_channel(call: CallbackQuery, bot: Bot):
     await call.answer("Qatnashdingiz!", show_alert=True)
 
 async def start_money_giveaway(message: Message, bot: Bot):
-    await message.answer("💵 Pul giveaway tarqatildi!", parse_mode="HTML")
+    amount = _parse_giveaway_count(message, default=100)
+    kb = InlineKeyboardBuilder()
+    kb.button(text="💵 Qatnashish", callback_data=f"mgive_{amount}")
+    msg = (
+        f"💵 <b>Pul giveaway tarqatildi!</b>\n\n"
+        f"💰 Miqdori: <b>{amount:,} $</b>\n"
+        f"<i>Qatnashish uchun tugmani bosing!</i>"
+    )
+    await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    if message.from_user:
+        await send_big_giveaway_report(bot, message.from_user, message.chat, "Pul giveaway", amount)
 
 async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
     await call.answer("💵 Pul sovg'asiga qatnashdingiz!", show_alert=True)
@@ -682,6 +1094,8 @@ async def set_lang_callback(call: CallbackQuery, bot: Bot = None):
         )
 
     if chat_type in ["group", "supergroup"]:
+        from utils.database import redis_client
+        await redis_client.set(f"chat:{chat_id}:lang", lang)
         chat = await Chat.filter(chat_id=chat_id).first()
         if chat:
             chat.lang = lang
