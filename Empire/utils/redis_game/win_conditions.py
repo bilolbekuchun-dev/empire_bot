@@ -451,6 +451,41 @@ async def announce_game_result_redis(
         disable_web_page_preview=True,
     )
 
+    # Shaxsiy lichkaga har bir o'yinchiga g'alaba/mag'lubiyat xabarini yuborish
+    win_dm_texts = {
+        "uz": "🏆 <b>Tabriklaymiz! Sizning jamoangiz g'alaba qozondi!</b>\n\nRolingiz: {role}\nO'yin yakunlandi.",
+        "ru": "🏆 <b>Поздравляем! Ваша команда одержала победу!</b>\n\nВаша роль: {role}\nИгра завершена.",
+        "en": "🏆 <b>Congratulations! Your team won the game!</b>\n\nYour role: {role}\nGame ended.",
+        "tr": "🏆 <b>Tebrikler! Takımınız oyunu kazandı!</b>\n\nRolünüz: {role}\nOyun bitti.",
+        "kk": "🏆 <b>Құттықтаймыз! Сіздің командаңыз жеңіске жетті!</b>\n\nРөліңіз: {role}\nОйын аяқталды."
+    }
+
+    lose_dm_texts = {
+        "uz": "💀 <b>Afsuski, sizning jamoangiz mag'lub bo'ldi.</b>\n\nRolingiz: {role}\nO'yin yakunlandi.",
+        "ru": "💀 <b>К сожалению, ваша команда потерпела поражение.</b>\n\nВаша роль: {role}\nИгра завершена.",
+        "en": "💀 <b>Unfortunately, your team lost the game.</b>\n\nYour role: {role}\nGame ended.",
+        "tr": "💀 <b>Maalesef takımınız kaybetti.</b>\n\nRolünüz: {role}\nOyun bitti.",
+        "kk": "💀 <b>Өкінішке орай, сіздің командаңыз жеңілді.</b>\n\nРөліңіз: {role}\nОйын аяқталды."
+    }
+
+    for p in winners:
+        try:
+            p_lang = await get_chat_lang(p.user_id)
+            tmpl = win_dm_texts.get(p_lang, win_dm_texts["uz"])
+            msg_text = tmpl.format(role=role_display(p.role, lang=p_lang))
+            await bot.send_message(p.user_id, msg_text, parse_mode="HTML")
+        except Exception:
+            pass
+
+    for p in others:
+        try:
+            p_lang = await get_chat_lang(p.user_id)
+            tmpl = lose_dm_texts.get(p_lang, lose_dm_texts["uz"])
+            msg_text = tmpl.format(role=role_display(p.role, lang=p_lang))
+            await bot.send_message(p.user_id, msg_text, parse_mode="HTML")
+        except Exception:
+            pass
+
 
 async def cleanup_game_redis(game_id: str):
     """
