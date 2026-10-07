@@ -503,62 +503,170 @@ async def giveaway_callback_redis(call: CallbackQuery, bot: Bot):
 async def giveaway_callback_channel(call: CallbackQuery, bot: Bot):
     await call.answer("📢 Qatnashish qabul qilindi!", show_alert=True)
 
+def _parse_giveaway_count(message: Message, default: int = 1) -> int:
+    parts = (message.text or "").split()
+    for p in parts[1:]:
+        clean = p.replace("$", "").replace("💎", "")
+        if clean.isdigit():
+            return max(1, int(clean))
+    return default
+
 async def start_qotil_protection_giveaway(message: Message, bot: Bot):
-    await message.answer(f"🎁 {EMOJI_QOTIL_HIMOYA} sovg'asi!", parse_mode="HTML")
+    count = _parse_giveaway_count(message)
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🎁 Qatnashish", callback_data=f"qotil-giveaway_{count}")
+    msg = (
+        f"🎁 <b>{EMOJI_QOTIL_HIMOYA} sovg'asi!</b>\n\n"
+        f"🔢 Soni: <b>{count} ta</b>\n"
+        f"<i>Qatnashish uchun tugmani bosing!</i>"
+    )
+    await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    if message.from_user:
+        await send_big_giveaway_report(bot, message.from_user, message.chat, "Qotildan himoya giveaway", count)
 
 async def qotil_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
     await call.answer("⛑️ Qotildan himoya sovg'asiga yozildingiz!", show_alert=True)
 
 async def start_ovozdan_protection_giveaway(message: Message, bot: Bot):
-    await message.answer("🎁 Ovozdan himoya sovg'asi!", parse_mode="HTML")
+    count = _parse_giveaway_count(message)
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🎁 Qatnashish", callback_data=f"ovoz-giveaway_{count}")
+    msg = (
+        f"🎁 <b>Ovozdan himoya sovg'asi!</b>\n\n"
+        f"🔢 Soni: <b>{count} ta</b>\n"
+        f"<i>Qatnashish uchun tugmani bosing!</i>"
+    )
+    await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    if message.from_user:
+        await send_big_giveaway_report(bot, message.from_user, message.chat, "Ovozdan himoya giveaway", count)
 
 async def ovoz_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
     await call.answer("🛡 Ovozdan himoya yozildingiz!", show_alert=True)
 
 async def start_doridan_protection_giveaway(message: Message, bot: Bot):
-    await message.answer("🎁 Doridan himoya sovg'asi!", parse_mode="HTML")
+    count = _parse_giveaway_count(message)
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🎁 Qatnashish", callback_data=f"dori-giveaway_{count}")
+    msg = (
+        f"🎁 <b>Doridan himoya sovg'asi!</b>\n\n"
+        f"🔢 Soni: <b>{count} ta</b>\n"
+        f"<i>Qatnashish uchun tugmani bosing!</i>"
+    )
+    await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    if message.from_user:
+        await send_big_giveaway_report(bot, message.from_user, message.chat, "Doridan himoya giveaway", count)
 
 async def doridan_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
     await call.answer("💊 Doridan himoya yozildingiz!", show_alert=True)
 
 async def start_miltiq_giveaway(message: Message, bot: Bot):
-    await message.answer("🎁 Miltiq sovg'asi!", parse_mode="HTML")
+    count = _parse_giveaway_count(message)
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🎁 Qatnashish", callback_data=f"miltiq-giveaway_{count}")
+    msg = (
+        f"🎁 <b>Miltiq sovg'asi!</b>\n\n"
+        f"🔢 Soni: <b>{count} ta</b>\n"
+        f"<i>Qatnashish uchun tugmani bosing!</i>"
+    )
+    await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    if message.from_user:
+        await send_big_giveaway_report(bot, message.from_user, message.chat, "Miltiq giveaway", count)
 
 async def miltiq_giveaway_callback(call: CallbackQuery, bot: Bot):
     await call.answer("🔫 Miltiq sovg'asiga yozildingiz!", show_alert=True)
 
 async def start_slip_protection_giveaway(message: Message, bot: Bot):
-    await message.answer(f"🎁 {EMOJI_SLIP_HIMOYA} sovg'asi!", parse_mode="HTML")
+    count = _parse_giveaway_count(message)
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🎁 Qatnashish", callback_data=f"sirpanish-giveaway_{count}")
+    msg = (
+        f"🎁 <b>{EMOJI_SLIP_HIMOYA} sovg'asi!</b>\n\n"
+        f"🔢 Soni: <b>{count} ta</b>\n"
+        f"<i>Qatnashish uchun tugmani bosing!</i>"
+    )
+    await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    if message.from_user:
+        await send_big_giveaway_report(bot, message.from_user, message.chat, "Sirpanishdan himoya giveaway", count)
 
 async def slip_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
     await call.answer("🪤 Sirpanishdan himoya yozildingiz!", show_alert=True)
 
 async def start_geroy_himoya_giveaway(message: Message, bot: Bot):
-    await message.answer(f"🎁 {EMOJI_GEROY_HIMOYA} sovg'asi!", parse_mode="HTML")
+    count = _parse_giveaway_count(message)
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🎁 Qatnashish", callback_data=f"geroy-giveaway_{count}")
+    msg = (
+        f"🎁 <b>{EMOJI_GEROY_HIMOYA} sovg'asi!</b>\n\n"
+        f"🔢 Soni: <b>{count} ta</b>\n"
+        f"<i>Qatnashish uchun tugmani bosing!</i>"
+    )
+    await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    if message.from_user:
+        await send_big_giveaway_report(bot, message.from_user, message.chat, "Geroy himoya giveaway", count)
 
 async def geroy_himoya_giveaway_callback(call: CallbackQuery, bot: Bot):
     await call.answer("🔰 Geroy himoya yozildingiz!", show_alert=True)
 
 async def start_protection_giveaway(message: Message, bot: Bot):
-    await message.answer(f"🎁 {EMOJI_HIMOYA} sovg'asi!", parse_mode="HTML")
+    count = _parse_giveaway_count(message)
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🎁 Qatnashish", callback_data=f"protection-giveaway_{count}")
+    msg = (
+        f"🎁 <b>{EMOJI_HIMOYA} sovg'asi!</b>\n\n"
+        f"🔢 Soni: <b>{count} ta</b>\n"
+        f"<i>Qatnashish uchun tugmani bosing!</i>"
+    )
+    await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    if message.from_user:
+        await send_big_giveaway_report(bot, message.from_user, message.chat, "Himoya giveaway", count)
 
 async def protection_giveaway_callback(call: CallbackQuery, bot: Bot):
     await call.answer("🛡 Himoya yozildingiz!", show_alert=True)
 
 async def start_change_giveaway(message: Message, bot: Bot):
-    await message.answer("🔄 Almashtirish konkursi!", parse_mode="HTML")
+    count = _parse_giveaway_count(message)
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🔄 Qatnashish", callback_data=f"change_{count}")
+    msg = (
+        f"🔄 <b>Almashtirish konkursi!</b>\n\n"
+        f"🔢 Soni: <b>{count} ta</b>\n"
+        f"<i>Qatnashish uchun tugmani bosing!</i>"
+    )
+    await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    if message.from_user:
+        await send_big_giveaway_report(bot, message.from_user, message.chat, "Almashtirish konkursi", count)
 
 async def change_giveaway_callback(call: CallbackQuery, bot: Bot):
     await call.answer("Qatnashdingiz!", show_alert=True)
 
 async def start_change_giveaway_channel(message: Message, bot: Bot):
-    await message.answer("🔄 Kanal almashtirish konkursi!", parse_mode="HTML")
+    count = _parse_giveaway_count(message)
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🔄 Qatnashish", callback_data=f"channel-change_{count}")
+    msg = (
+        f"🔄 <b>Kanal almashtirish konkursi!</b>\n\n"
+        f"🔢 Soni: <b>{count} ta</b>\n"
+        f"<i>Qatnashish uchun tugmani bosing!</i>"
+    )
+    await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    if message.from_user:
+        await send_big_giveaway_report(bot, message.from_user, message.chat, "Kanal almashtirish konkursi", count)
 
 async def change_giveaway_callback_channel(call: CallbackQuery, bot: Bot):
     await call.answer("Qatnashdingiz!", show_alert=True)
 
 async def start_money_giveaway(message: Message, bot: Bot):
-    await message.answer("💵 Pul giveaway tarqatildi!", parse_mode="HTML")
+    amount = _parse_giveaway_count(message, default=100)
+    kb = InlineKeyboardBuilder()
+    kb.button(text="💵 Qatnashish", callback_data=f"mgive_{amount}")
+    msg = (
+        f"💵 <b>Pul giveaway tarqatildi!</b>\n\n"
+        f"💰 Miqdori: <b>{amount:,} $</b>\n"
+        f"<i>Qatnashish uchun tugmani bosing!</i>"
+    )
+    await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    if message.from_user:
+        await send_big_giveaway_report(bot, message.from_user, message.chat, "Pul giveaway", amount)
 
 async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
     await call.answer("💵 Pul sovg'asiga qatnashdingiz!", show_alert=True)
