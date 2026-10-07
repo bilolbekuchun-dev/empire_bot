@@ -248,3 +248,14 @@ class BotAdmin(Model):
     added_by = fields.BigIntField(null=True)
     created_at = fields.DatetimeField(auto_now_add=True)
 
+
+class RequiredChannel(Model):
+    """Majburiy obuna kanallari (Required Channels)"""
+    id = fields.BigIntField(pk=True)
+    title = fields.CharField(max_length=128, default="Kanal")
+    channel_id = fields.BigIntField(null=True)
+    username = fields.CharField(max_length=64, null=True)
+    invite_link = fields.CharField(max_length=256, null=True)
+    is_active = fields.BooleanField(default=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
+

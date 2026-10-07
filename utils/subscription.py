@@ -14,7 +14,12 @@ async def get_unsubscribed_channels(bot: Bot, user_id: int):
     """
     Foydalanuvchi obuna bo'lmagan majburiy kanallar ro'yxatini qaytaradi.
     """
-    active_channels = await RequiredChannel.filter(is_active=True).all()
+    try:
+        active_channels = await RequiredChannel.filter(is_active=True).all()
+    except Exception as e:
+        logger.warning(f"RequiredChannel db error: {e}")
+        return []
+
     if not active_channels:
         return []
 
