@@ -350,8 +350,8 @@ async def lang_cmd_handler(message: Message):
     await others.lang_command_handler(message)
 
 @router.callback_query(F.data.startswith("setlang_"))
-async def set_lang_cb(call: CallbackQuery):
-    await others.set_lang_callback(call)
+async def set_lang_cb(call: CallbackQuery, bot: Bot):
+    await others.set_lang_callback(call, bot)
 
 @router.callback_query(F.data.startswith("onboard_lang_"))
 async def onboard_lang_cb(call: CallbackQuery, bot: Bot, state: FSMContext):
