@@ -1445,12 +1445,22 @@ async def _join_game_handler_core(message: Message, bot: Bot, state: FSMContext)
         await message.answer("SIz bu o'yinga qo'shilgansiz!", reply_markup=go_group_button(chat.invite_link))
         return
 
-    player = await GamePlayer.filter(user=user, is_alive=True).first()
-    if player:
-        try:
-            await leave_game(message, bot, force=True)
-        except:
-            return
+    # Avvalgi o'yinlarni tekshirish - bir xil guruh yoki tugagan o'yindan osib qo'ydi chiqiqlari bermaymiz
+    old_alive_players = await GamePlayer.filter(user=user, is_alive=True).prefetch_related("game", "game__chat").all()
+    for op in old_alive_players:
+        if not op.game or not op.game.is_active or op.game.phase in ("end", "ended", "finished", "stopped"):
+            op.is_alive = False
+            await op.save()
+        elif op.game.chat and int(op.game.chat.chat_id) == int(chat.chat_id):
+            # Bir xil guruhdagi eski o'yin -> osib qo'ydi xabarisiz statusni o'chirish
+            op.is_alive = False
+            await op.save()
+        elif op.game.is_active and int(op.game.chat.chat_id) != int(chat.chat_id):
+            # Boshqa (A guruh) faol o'yindan chiqib B guruhga o'tganda A guruhga o'zini osdi e'loni boradi
+            try:
+                await leave_game(message, bot, force=True)
+            except Exception:
+                pass
     if len(game.mode.split(":")) == 2:
         color_name = message.text.split("_")[-1]
         teams_count = int(game.mode.split(">")[0][-1])
@@ -4055,8 +4065,9 @@ async def leave_game(message: Message, bot: Bot, force = False):
             "mention": message.from_user.mention_html()
         }
     )
-    player = await GamePlayer.filter(user=user, is_alive=True).first().prefetch_related("game", "user")
-    if not player: return
+    player = await GamePlayer.filter(user=user, is_alive=True, game__is_active=True).first().prefetch_related("game", "user", "game__chat")
+    if not player or not player.game or not player.game.is_active or player.game.phase in ("end", "ended", "finished", "stopped"):
+        return
     await player.game.fetch_related("chat")
     game_set, _ = await GameSetPermissions.get_or_create(chat_id=player.game.chat.chat_id)
     if not game_set.leave_qilish and not force: return
@@ -4068,7 +4079,7 @@ async def leave_game(message: Message, bot: Bot, force = False):
         await player.delete()
         try:
             await update_players_list(player.game, bot)
-        except:
+        except Exception:
             pass
         players = await GamePlayer.filter(game=player.game).all()
         more_set, _ = await GroupMoreSet.get_or_create(chat_id=player.game.chat.chat_id)
@@ -4080,12 +4091,14 @@ async def leave_game(message: Message, bot: Bot, force = False):
             "💀 <b>Siz o'zingizni osib o'ldirdingiz!</b>\n💬 Guruhingizga <b>oxirgi so'z</b>ingizni yuborish uchun shu yerga (bot shaxsiyiga) matningizni yuboring!",
             parse_mode="HTML"
         )
-        try: await safe_send_message(bot, 
-            player.game.chat.chat_id,
-            f"{user.mention} bu shaharning yovuzliklariga chiday olmadi va o'zini osib qo'ydi.\n\nU edi {role_display(player.role)}",
-            parse_mode="HTML"
-        )
-        except: pass
+        try:
+            await safe_send_message(bot, 
+                player.game.chat.chat_id,
+                f"{user.mention} bu shaharning yovuzliklariga chiday olmadi va o'zini osib qo'ydi.\n\nU edi {role_display(player.role)}",
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
         await player.save()
 
 
