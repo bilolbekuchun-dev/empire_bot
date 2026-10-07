@@ -147,14 +147,24 @@ async def _join_game_handler_redis_core(message: Message, bot: Bot, state: FSMCo
         other_game_id, other_player = other_game_result
         if other_game_id != game_id:
             other_game_state = await game_repo.load_game(other_game_id)
-            if not other_game_state or not other_game_state.is_active or other_game_state.phase in ("waiting", "end", "ended", "finished", "stopped") or other_game_state.chat_id == game_state.chat_id:
+            is_same_chat = False
+            if other_game_state and getattr(other_game_state, 'chat_id', None) and getattr(game_state, 'chat_id', None):
+                is_same_chat = (int(other_game_state.chat_id) == int(game_state.chat_id))
+
+            if (
+                not other_game_state or 
+                not other_game_state.is_active or 
+                other_game_state.phase in ("waiting", "end", "ended", "finished", "stopped") or 
+                is_same_chat or
+                not getattr(other_player, 'is_alive', True)
+            ):
                 # Bir xil guruhdagi eski o'yin yoki tugagan/kutayotgan o'yin -> osib qo'ydi xabarisiz o'chirish
                 await player_repo.delete_player(other_game_id, message.from_user.id)
                 try:
                     await update_players_list_redis(other_game_id, bot)
                 except Exception:
                     pass
-            elif other_game_state.is_active and other_game_state.chat_id != game_state.chat_id:
+            elif other_game_state.is_active and not is_same_chat and getattr(other_player, 'is_alive', True):
                 # Boshqa (A guruh) o'yindan tiriklayin chiqib, B guruh o'yiniga kirganda A guruhga o'zini osdi boradi
                 other_player.is_alive = False
                 other_player.death_reason = "suicide"
