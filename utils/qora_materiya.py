@@ -65,3 +65,24 @@ async def qm_xazina_pick(call: CallbackQuery, bot: Bot):
     rewards = ["1000 $ dollar", "50 💎 olmos", "🔪 Qotildan himoya", "🔰 Geroy himoya"]
     won = random.choice(rewards)
     await call.answer(f"🎉 Tabriklaymiz! Sandiqdan chiqdi: {won}", show_alert=True)
+
+async def decrement_void_swap_days(game: Game):
+    """
+    Void Swap ta'siri ostidagi o'yinchilarning swap kunlarini 1 ga kamaytiradi.
+    Agar kunlar tugasa (qm_void_swap_days <= 0), rolni asliga qaytaradi.
+    """
+    try:
+        players = await GamePlayer.filter(game=game, qm_active=True).all()
+        for p in players:
+            if p.qm_void_swap_days and p.qm_void_swap_days > 0:
+                p.qm_void_swap_days -= 1
+                if p.qm_void_swap_days <= 0:
+                    p.qm_active = False
+                    if p.qm_original_role:
+                        p.role = p.qm_original_role
+                        p.qm_original_role = None
+                    p.qm_void_swap_role = None
+                await p.save()
+    except Exception:
+        pass
+
