@@ -299,6 +299,75 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
         except Exception:
             pass
 
+        from config import INFO_GROUP
+        if INFO_GROUP:
+            try:
+                chat_title = (message.chat.title or message.chat.username or "Private") if message.chat else "Private"
+                chat_id_val = message.chat.id if message.chat else 0
+                if message.chat and message.chat.type in ("group", "supergroup"):
+                    chat_str = f"🏠 Guruh: {chat_title} ({chat_id_val})"
+                elif message.chat and message.chat.type == "channel":
+                    chat_str = f"📢 Kanal: {chat_title} ({chat_id_val})"
+                else:
+                    chat_str = f"🏠 Chat: Private ({chat_id_val})"
+
+                if is_diamond:
+                    header_str = f"💎 {amount} olmos o'tkazma aniqlandi."
+                else:
+                    header_str = f"💸 {amount} dollar o'tkazma aniqlandi."
+
+                log_msg = (
+                    f"{header_str}\n"
+                    f"💸 O'tkazuvchi: #{sender_db.full_name} {sender_db.user_id}\n"
+                    f"🎯 Qabul qiluvchi: {target_user.full_name} {target_user.user_id}\n"
+                    f"{chat_str}"
+                )
+                from keyboards.user_keyboards import blocking_users
+                await bot.send_message(
+                    chat_id=INFO_GROUP,
+                    text=log_msg,
+                    parse_mode="HTML",
+                    reply_markup=blocking_users(sender_db.user_id, target_user.user_id)
+                )
+            except Exception as e:
+                import logging
+                logging.warning(f"O'tkazma hisobotini INFO_GROUP ga yuborishda xatolik: {e}")
+
+async def blocking_users_answer(call: CallbackQuery):
+    if call.from_user.id not in ADMINS:
+        await call.answer("❌ Bu tugma faqat adminlar uchun!", show_alert=True)
+        return
+
+    parts = call.data.split("_")
+    if len(parts) >= 3:
+        try:
+            u1_id = int(parts[1])
+            u2_id = int(parts[2])
+
+            u1 = await User.get_or_none(user_id=u1_id)
+            u2 = await User.get_or_none(user_id=u2_id)
+
+            from models.user import Blocked_user
+            if u1:
+                await Blocked_user.get_or_create(user=u1)
+            if u2:
+                await Blocked_user.get_or_create(user=u2)
+
+            names = f"{u1.full_name if u1 else u1_id} va {u2.full_name if u2 else u2_id}"
+            await call.answer(f"✅ {names} bloklandi!", show_alert=True)
+            if call.message:
+                try:
+                    await call.message.edit_text(
+                        (call.message.html_text or call.message.text or "") + "\n\n🚫 <b>Har ikkala foydalanuvchi ham admin tomonidan bloklandi!</b>",
+                        parse_mode="HTML"
+                    )
+                except Exception:
+                    pass
+        except Exception as e:
+            await call.answer(f"❌ Xatolik: {e}", show_alert=True)
+    else:
+        await call.answer("❌ Xatolik yuz berdi.", show_alert=True)
+
 
 
 
