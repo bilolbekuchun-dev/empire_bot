@@ -161,8 +161,30 @@ async def execute_night_phase_redis(
     except Exception as e:
         print(f"Tungi harakatlarni yuborishda xato: {e}")
     
-    await asyncio.sleep(game_times.night_time)
-    
+    # Dynamic early-finish night timer loop: hamma faol rol harakatini bajarsa darhol tong otadi
+    exp_key = f"game:{game_id}:night:{night_number}:expected_users"
+    comp_key = f"game:{game_id}:night:{night_number}:completed_users"
+    total_seconds = int(getattr(game_times, "night_time", 45))
+
+    for elapsed in range(total_seconds):
+        await asyncio.sleep(1)
+        g_check = await game_repo.load_game(game_id)
+        if not g_check or not g_check.is_active:
+            return
+        try:
+            exp_raw = await r.smembers(exp_key)
+            if exp_raw is not None:
+                exp_set = {x.decode() if isinstance(x, bytes) else str(x) for x in exp_raw}
+                if not exp_set and elapsed >= 3:
+                    break
+                comp_raw = await r.smembers(comp_key)
+                comp_set = {x.decode() if isinstance(x, bytes) else str(x) for x in comp_raw} if comp_raw else set()
+                if exp_set and exp_set.issubset(comp_set):
+                    await asyncio.sleep(1)
+                    break
+        except Exception:
+            pass
+
     game_state = await game_repo.load_game(game_id)
     if not game_state or not game_state.is_active:
         return

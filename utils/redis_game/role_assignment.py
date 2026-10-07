@@ -282,6 +282,76 @@ async def _finalize_role_assignment(
         p.is_alive = False
         await player_repo.save_player(p)
 
+    # Send Team Teammate Announcement to multi-player teams
+    try:
+        import html
+        from config import mafia_rollar
+        from utils.premium_emojis import role_display
+        from utils.role_names import RoleNames
+        from utils.i18n import clean_lang, get_chat_lang
+
+        chat_lang = clean_lang(await get_chat_lang(chat_id))
+        active_valid_players = [p for p in players_shuffled if p not in err_players]
+
+        # 1. Mafia Team
+        mafia_team = [p for p in active_valid_players if p.role in mafia_rollar]
+        if len(mafia_team) >= 1:
+            uids = [p.user_id for p in mafia_team]
+            users_db = {u.user_id: u for u in await User.filter(user_id__in=uids)}
+            
+            lines_by_lang = {
+                "uz": "👥 <b>Mafialar jamoasi! Sheriklaringizni eslab qoling:</b>\n",
+                "ru": "👥 <b>Команда Мафии! Запомните своих напарников:</b>\n",
+                "en": "👥 <b>Mafia Team! Remember your teammates:</b>\n",
+                "tr": "👥 <b>Mafya Takımı! Takım arkadaşlarınızı unutmayın:</b>\n",
+                "kk": "👥 <b>Мафия тобы! Серіктестеріңізді есте сақтаңыз:</b>\n"
+            }
+            team_header = lines_by_lang.get(chat_lang, lines_by_lang["uz"])
+            
+            member_lines = []
+            for idx, mp in enumerate(mafia_team, 1):
+                u = users_db.get(mp.user_id)
+                name = html.escape((u.full_name if u else str(mp.user_id)) or str(mp.user_id))
+                member_lines.append(f"{idx}. {name} — {role_display(mp.role, lang=chat_lang)}")
+
+            full_team_msg = team_header + "\n".join(member_lines)
+
+            for mp in mafia_team:
+                try:
+                    await bot.send_message(mp.user_id, full_team_msg, parse_mode="HTML")
+                except Exception:
+                    pass
+
+        # 2. Police Team (Komissar & Serjant)
+        police_team = [p for p in active_valid_players if p.role in (RoleNames.KOMISSAR, RoleNames.SERJANT)]
+        if len(police_team) >= 2:
+            uids = [p.user_id for p in police_team]
+            users_db = {u.user_id: u for u in await User.filter(user_id__in=uids)}
+            
+            team_header = {
+                "uz": "🕵🏼 <b>Politsiya jamoasi! Sheriklaringizni eslab qoling:</b>\n",
+                "ru": "🕵🏼 <b>Команда Полиции! Запомните своих напарников:</b>\n",
+                "en": "🕵🏼 <b>Police Team! Remember your teammates:</b>\n",
+                "tr": "🕵🏼 <b>Polis Takımı! Takım arkadaşlarınızı unutmayın:</b>\n",
+                "kk": "🕵🏼 <b>Полиция тобы! Серіктестеріңізді есте сақтаңыз:</b>\n"
+            }.get(chat_lang, "🕵🏼 <b>Politsiya jamoasi! Sheriklaringizni eslab qoling:</b>\n")
+
+            member_lines = []
+            for idx, pp in enumerate(police_team, 1):
+                u = users_db.get(pp.user_id)
+                name = html.escape((u.full_name if u else str(pp.user_id)) or str(pp.user_id))
+                member_lines.append(f"{idx}. {name} — {role_display(pp.role, lang=chat_lang)}")
+
+            full_team_msg = team_header + "\n".join(member_lines)
+
+            for pp in police_team:
+                try:
+                    await bot.send_message(pp.user_id, full_team_msg, parse_mode="HTML")
+                except Exception:
+                    pass
+    except Exception as e:
+        print(f"Team assignment announcement error: {e}")
+
 
 async def get_role_config_text(mode: str = None) -> list:
     """

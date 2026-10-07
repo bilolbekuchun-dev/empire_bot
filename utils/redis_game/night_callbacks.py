@@ -258,6 +258,15 @@ async def _set_last_visited(gid, uid, target):
         pass
 
 
+async def _mark_action_completed(gid: int, ph: int, uid: int):
+    try:
+        key = f"game:{gid}:night:{ph}:completed_users"
+        await r.sadd(key, str(uid))
+        await r.expire(key, 3600)
+    except Exception:
+        pass
+
+
 async def _ensure_night_phase(call: CallbackQuery, gid: int, ph: int) -> bool:
     """Tungi tugmalar faqat joriy tun davomida ishlasin."""
     game_state = await game_repo.load_game(gid)
@@ -315,6 +324,7 @@ async def night_action_cb(call: CallbackQuery, bot=None):
     if kind == "s":
         await _announce_night_action(call, gid, ph, uid, role, skipped=True)
         await _confirm_choice(call, role, skip_text, lang=chat_lang)
+        await _mark_action_completed(gid, ph, uid)
         return
 
     # Komissar: Ortga qaytish (rejim tanlash menyusi)
@@ -363,6 +373,7 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         action_name = "Tekshirish" if kind == "c" else "O'ldirish"
         target_name = await _player_name(int(target))
         await _confirm_choice(call, role, f"{action_name} ➔ {target_name}", lang=chat_lang)
+        await _mark_action_completed(gid, ph, uid)
         return
 
     # Zanjir / Sehrgar / Reverser: 1-nishon -> 2-nishon
@@ -400,6 +411,7 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         n2 = await _player_name(int(target))
         await _announce_night_action(call, gid, ph, uid, role)
         await _confirm_choice(call, role, f"{n1}, {n2}", lang=chat_lang)
+        await _mark_action_completed(gid, ph, uid)
         return
 
     # Jin: Ortga qaytish / Asosiy menyu
@@ -437,6 +449,7 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         await ActionService.save_action(gid, ph, uid, uid, "jin_hayot")
         await _announce_night_action(call, gid, ph, uid, role)
         await _confirm_choice(call, role, "✨ Hayot ➔ O'zimga", lang=chat_lang)
+        await _mark_action_completed(gid, ph, uid)
         return
 
     # Jin: ✨ Hayot ➔ Boshqaga (o'yinchilar ro'yxati)
@@ -461,6 +474,7 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         target_name = await _player_name(int(target))
         await _announce_night_action(call, gid, ph, uid, role)
         await _confirm_choice(call, role, f"✨ Hayot ➔ {target_name}", lang=chat_lang)
+        await _mark_action_completed(gid, ph, uid)
         return
 
     # Jin: 💰 Pul menyusi (o'yinchilar ro'yxati)
@@ -487,6 +501,7 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         target_name = await _player_name(int(target))
         await _announce_night_action(call, gid, ph, uid, role)
         await _confirm_choice(call, role, f"💰 Pul ➔ {target_name}", lang=chat_lang)
+        await _mark_action_completed(gid, ph, uid)
         return
 
     # Jin: 💀 Qotillik menyusi (o'yinchilar ro'yxati)
@@ -511,6 +526,7 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         target_name = await _player_name(int(target))
         await _announce_night_action(call, gid, ph, uid, role)
         await _confirm_choice(call, role, f"💀 Qotillik ➔ {target_name}", lang=chat_lang)
+        await _mark_action_completed(gid, ph, uid)
         return
 
     # Oddiy nishonli harakat
@@ -524,6 +540,7 @@ async def night_action_cb(call: CallbackQuery, bot=None):
             choice = await _player_name(int(target))
         await _announce_night_action(call, gid, ph, uid, role)
         await _confirm_choice(call, role, choice, lang=chat_lang)
+        await _mark_action_completed(gid, ph, uid)
         return
 
     await call.answer()
