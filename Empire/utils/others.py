@@ -104,7 +104,7 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
     # Valyuta turini aniqlash (dollar yoki olmos)
     is_diamond = False
     lower_text = text.lower()
-    if any(k in lower_text for k in ["olmos", "diamond", "💎", " ta", "d"]):
+    if any(k in lower_text for k in ["olmos", "diamond", "💎", "almaz"]):
         is_diamond = True
 
     target_user = None
@@ -203,6 +203,32 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
             )
         except Exception:
             pass
+
+        from config import INFO_GROUP
+        if INFO_GROUP:
+            try:
+                import logging
+                from datetime import datetime
+                chat_type_str = "💬 Private"
+                if message.chat:
+                    if message.chat.type in ("group", "supergroup"):
+                        chat_type_str = f"👥 Guruh: <b>{message.chat.title or message.chat.username or message.chat.id}</b>"
+                    elif message.chat.type == "channel":
+                        chat_type_str = f"📢 Kanal: <b>{message.chat.title or message.chat.username or message.chat.id}</b>"
+
+                log_msg = (
+                    f"💸 <b>O'TKAZMA HISOBOTI</b>\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"👤 <b>Yuboruvchi:</b> {sender_db.mention} (<code>{sender_db.user_id}</code>)\n"
+                    f"👤 <b>Qabul qiluvchi:</b> {target_user.mention} (<code>{target_user.user_id}</code>)\n"
+                    f"💰 <b>Miqdor:</b> <b>{amount:,} {unit_name}</b>\n"
+                    f"📍 <b>Joylashuv:</b> {chat_type_str}\n"
+                    f"⏰ <b>Vaqt:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                )
+                await bot.send_message(chat_id=INFO_GROUP, text=log_msg, parse_mode="HTML")
+            except Exception as e:
+                import logging
+                logging.warning(f"O'tkazma hisobotini INFO_GROUP ga yuborishda xatolik: {e}")
 
 async def transfer_money(message: Message, bot: Bot = None):
     await transfer_funds_handler(message, bot)

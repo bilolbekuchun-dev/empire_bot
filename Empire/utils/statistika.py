@@ -762,9 +762,6 @@ async def give_stat(message: Message, bot: Bot):
     await message.answer(top_text, parse_mode="HTML")
 
 async def show_richest_users(message: Message):
-    if message.from_user.id not in ADMINS:
-        return
-
     dollar_tops = await Profile.all().prefetch_related("user").order_by("-dollar").limit(10)
     diamond_tops = await Profile.all().prefetch_related("user").order_by("-diamond").limit(10)
 
