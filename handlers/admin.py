@@ -483,11 +483,11 @@ async def f_gboylar(message: Message):
         return
     await statistika.show_richest_users_in_this_chat(message=message)
 
-@router.message(F.text.startswith("/block"))
+@router.message(F.text.startswith("/block") | F.text.startswith("/ban"))
 async def f_block(message: Message):
     await admins.block_user_answer(message=message)
 
-@router.message(F.text.startswith("/unblock"))
+@router.message(F.text.startswith("/unblock") | F.text.startswith("/unban"))
 async def f_unblock(message: Message):
     await admins.unblock_user_answer(message=message)
 
