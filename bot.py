@@ -81,6 +81,7 @@ async def main():
         BotCommand(command="roles", description="O'yin rollarini ko'rish"),
         BotCommand(command="leave", description="O'yindan chiqish"),
         BotCommand(command="sozlamalar", description="O'yin sozlamalarini shaxsiyda ochish"),
+        BotCommand(command="lang", description="Guruh tilini o'zgartirish"),
         BotCommand(command="stop", description="O'yinni to'xtatish"),
         BotCommand(command="extend", description="O'yin vaqtini uzaytirish"),
     ]
@@ -89,6 +90,7 @@ async def main():
         BotCommand(command="start", description="O'yinni boshlash"),
         BotCommand(command="profile", description="Profilingizni ko'rish (Shaxsiy chatda)"),
         BotCommand(command="roles", description="O'yin rollarini ko'rish"),
+        BotCommand(command="lang", description="Tilni o'zgartirish"),
     ]
     admin_commands = [
         BotCommand(command="start", description="O'yinni boshlash"),
