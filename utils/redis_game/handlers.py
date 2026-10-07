@@ -266,8 +266,22 @@ async def update_players_list_redis(game_id: str, bot: Bot, new_msg: bool = Fals
     # Get all alive players
     players = await player_repo.get_alive_players(game_id)
     
-    # Build message text
-    message_text = f"<b>Ro'yxatdan o'tish davom etmoqda!</b>\nRo'yhatdan o'tganlar:\n\n"
+    chat_lang = await get_chat_lang(game_state.chat_id)
+    reg_head = {
+        "uz": "<b>Ro'yxatdan o'tish davom etmoqda!</b>\nRo'yhatdan o'tganlar:\n\n",
+        "ru": "<b>Регистрация продолжается!</b>\nЗарегистрировались:\n\n",
+        "en": "<b>Registration in progress!</b>\nRegistered players:\n\n",
+        "tr": "<b>Kayıtlar devam ediyor!</b>\nKayıt olanlar:\n\n"
+    }
+
+    reg_total = {
+        "uz": "\n\nJami: <b>{count}</b> ta",
+        "ru": "\n\nВсего: <b>{count}</b> чел.",
+        "en": "\n\nTotal: <b>{count}</b> players",
+        "tr": "\n\nToptan: <b>{count}</b> oyuncu"
+    }
+
+    message_text = reg_head.get(chat_lang, reg_head["uz"])
     
     # VS game: group by teams
     if ":vsgame" in game_state.mode:
@@ -299,18 +313,9 @@ async def update_players_list_redis(game_id: str, bot: Bot, new_msg: bool = Fals
         
         random.shuffle(player_mentions)
         message_text += ", ".join(player_mentions)
-        join_markup = await join_game_button(game_id)
+        join_markup = await join_game_button(game_id, lang=chat_lang)
     
-    message_text += f"\n\nJami: <b>{len(players)}</b> ta"
-
-    try:
-        from utils.i18n import get_chat_lang, translate_text, translate_keyboard
-        chat_lang = await get_chat_lang(game_state.chat_id)
-        if chat_lang != "uz":
-            message_text = translate_text(message_text, chat_lang)
-            join_markup = translate_keyboard(join_markup, chat_lang)
-    except Exception:
-        pass
+    message_text += reg_total.get(chat_lang, reg_total["uz"]).format(count=len(players))
     
     if new_msg:
         # Create new message

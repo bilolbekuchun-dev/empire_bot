@@ -1793,7 +1793,24 @@ async def stop_game_handler(message: Message, bot: Bot):
 
 async def update_players_list(game: Game, bot: Bot, new_msg=False, refresh_msg=None):
     players = await GamePlayer.filter(game=game, is_alive=True)
-    message_text = f"<b>Ro'yxatdan o'tish davom etmoqda!</b>\nRo'yhatdan o'tganlar:\n\n"
+    await game.fetch_related("chat")
+    chat_lang = clean_lang(game.chat.lang) if (game.chat and hasattr(game.chat, "lang") and game.chat.lang) else "uz"
+
+    reg_head = {
+        "uz": "<b>Ro'yxatdan o'tish davom etmoqda!</b>\nRo'yhatdan o'tganlar:\n\n",
+        "ru": "<b>Регистрация продолжается!</b>\nЗарегистрировались:\n\n",
+        "en": "<b>Registration in progress!</b>\nRegistered players:\n\n",
+        "tr": "<b>Kayıtlar devam ediyor!</b>\nKayıt olanlar:\n\n"
+    }
+
+    reg_total = {
+        "uz": "\n\nJami: <b>{count}</b> ta",
+        "ru": "\n\nВсего: <b>{count}</b> чел.",
+        "en": "\n\nTotal: <b>{count}</b> players",
+        "tr": "\n\nToptan: <b>{count}</b> oyuncu"
+    }
+
+    message_text = reg_head.get(chat_lang, reg_head["uz"])
     if len(game.mode.split(":")) == 2:
         colors_dict = TeamCOlors.all_colors_dict()
         teams = {}
@@ -1801,7 +1818,6 @@ async def update_players_list(game: Game, bot: Bot, new_msg=False, refresh_msg=N
             if player.team not in teams:
                 teams[player.team] = []
             await player.fetch_related("user")
-            print(player.team)
             teams[player.team].append(player.user.mention)
         for team, team_players in teams.items():
             for i, player in enumerate(team_players):
@@ -1827,8 +1843,8 @@ async def update_players_list(game: Game, bot: Bot, new_msg=False, refresh_msg=N
             prefix = build_vip_prefix(*vip_map[player.user_id]) if player.user_id in vip_map else ""
             lst.append(f"{prefix}{player.user.mention}")
         message_text += ", ".join(lst)
-        join_markup = await join_game_button(game.id)
-    message_text += f"\n\nJami: <b>{len(players)}</b> ta"
+        join_markup = await join_game_button(game.id, lang=chat_lang)
+    message_text += reg_total.get(chat_lang, reg_total["uz"]).format(count=len(players))
     if refresh_msg:
         message_text += f"\n\n🔄 {refresh_msg}"
     await game.fetch_related("chat")    
