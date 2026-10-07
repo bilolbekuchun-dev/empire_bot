@@ -211,7 +211,19 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
 
     # --------------- Asosiy chaqiruv ---------------
 
-    async def __call__(self, handler, event: types.Message, data: dict) -> Any:
+    async def __call__(self, handler, event: types.TelegramObject, data: dict) -> Any:
+        # CallbackQuery uchun ban tekshiruvi
+        if isinstance(event, types.CallbackQuery):
+            if event.from_user:
+                try:
+                    is_blocked = bool(await Blocked_user.filter(user__user_id=event.from_user.id).first())
+                    if is_blocked:
+                        await event.answer("🚫 Sizga botdan foydalanish taqiqlangan! (Siz bloklangansiz)", show_alert=True)
+                        return
+                except Exception:
+                    pass
+            return await handler(event, data)
+
         if not isinstance(event, types.Message):
             return await handler(event, data)
 
@@ -221,8 +233,20 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
         if getattr(message, "new_chat_members", None) or getattr(message, "left_chat_member", None) or getattr(message, "new_chat_title", None):
             return await handler(event, data)
 
-        # Private chat — bu middleware cheklamaydi
+        # Private chat — bloklangan foydalanuvchilar uchun taqiq ko'rsatish
         if message.chat.type == ChatType.PRIVATE:
+            if message.from_user:
+                try:
+                    is_blocked = bool(await Blocked_user.filter(user__user_id=message.from_user.id).first())
+                    if is_blocked:
+                        await message.answer(
+                            "<b>🚫 Sizga botdan foydalanish taqiqlangan!</b>\n"
+                            "<i>Siz bot adminlari tomonidan bloklangansiz.</i>",
+                            parse_mode="HTML"
+                        )
+                        return
+                except Exception:
+                    pass
             return await handler(event, data)
 
         if not self._is_group(message):
