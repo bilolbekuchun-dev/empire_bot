@@ -314,15 +314,7 @@ async def _finalize_role_assignment(
                 name = html.escape((u.full_name if u else str(mp.user_id)) or str(mp.user_id))
                 member_lines.append(f"{idx}. {name} — {role_display(mp.role, lang=chat_lang)}")
 
-            chat_info = {
-                "uz": "\n\n💬 <i>Botga matnli xabar yozsangiz, u faqat jamoadoshlaringizga yetkaziladi!</i>",
-                "ru": "\n\n💬 <i>Если вы напишете текстовое сообщение боту, оно будет отправлено только вашим напарникам!</i>",
-                "en": "\n\n💬 <i>If you send a text message to the bot, it will be relayed only to your teammates!</i>",
-                "tr": "\n\n💬 <i>Bota bir metin mesajı yazarsanız, sadece takım arkadaşlarınıza iletilecektir!</i>",
-                "kk": "\n\n💬 <i>Ботқа мәтіндік хабарлама жазсаңыз, ол тек серіктестеріңізге жеткізіледі!</i>"
-            }
-
-            full_team_msg = team_header + "\n".join(member_lines) + chat_info.get(chat_lang, chat_info["uz"])
+            full_team_msg = team_header + "\n".join(member_lines)
 
             for mp in mafia_team:
                 try:
@@ -350,7 +342,7 @@ async def _finalize_role_assignment(
                 name = html.escape((u.full_name if u else str(pp.user_id)) or str(pp.user_id))
                 member_lines.append(f"{idx}. {name} — {role_display(pp.role, lang=chat_lang)}")
 
-            full_team_msg = team_header + "\n".join(member_lines) + chat_info.get(chat_lang, chat_info["uz"])
+            full_team_msg = team_header + "\n".join(member_lines)
 
             for pp in police_team:
                 try:
