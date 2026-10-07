@@ -140,9 +140,9 @@ async def auto_start_timer(chat_id: int, game_id: int, bot: Bot):
             await asyncio.sleep(2)
             continue
 
-        if remaining <= 15 and not tdata.get('warned', False):
+        if remaining <= 30 and not tdata.get('warned', False):
             tdata['warned'] = True
-            await safe_send_message(bot, chat_id, "⚠️ Ro'yxatdan o'tish tugashiga 15 soniya qoldi!", parse_mode="HTML")
+            await safe_send_message(bot, chat_id, "⚠️ Ro'yxatdan o'tish tugashiga 30 soniya qoldi!", parse_mode="HTML")
 
         if remaining <= 0:
             del game_timers[chat_id]
