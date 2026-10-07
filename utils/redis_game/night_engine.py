@@ -115,6 +115,21 @@ NIGHT_STRINGS = {
         "mimic_win": "🎭 <b>Taqlidchi</b>: Siz halok bo'lgan o'yinchining rolini egalladingiz!\nYangi rolingiz: <b>{role}</b>",
         "mimic_wait": "🎭 <b>Taqlidchi</b>: Hali hech kim halok bo'lmadi — birinchi o'lik o'yinchining rolini kuting.",
         "passive_msg": "🌙 <b>Tun bo'ldi.</b>\nRolingiz: {role}\n\nBu tunda maxsus harakatingiz yo'q — tonggacha kuting.",
+        "target_prompt": "🌙 {role} — nishonni tanlang:",
+        "skip_btn": "🚷 O'tkazib yuborish",
+        "back_btn": "🔙 Ortga",
+        "komissar_prompt": "🕵🏼 <b>Komissar</b>, nima qilasiz?",
+        "komissar_check_btn": "🔍 Tekshirish",
+        "komissar_shoot_btn": "🔫 O'ldirish",
+        "konchi_prompt": "👷🏻‍♂️ <b>Konchi</b>, qaysi kondan qazasiz? (ba'zilarida tuzoq bor!)",
+        "jin_prompt": "🧞 <b>Jin</b> keldi, tilagingizni tanlang:",
+        "jin_life_btn": "✨ Hayot",
+        "jin_money_btn": "💰 Pul",
+        "jin_kill_btn": "💀 Qotillik",
+        "zanjir_prompt": "⛓ <b>Zanjir</b>: bog'lash uchun <b>1-nishon</b>ni tanlang.",
+        "sehrgar_prompt": "🧙 <b>Sehrgar</b>: almashtirish uchun <b>1-nishon</b>ni tanlang.",
+        "reverser_prompt": "🔄 <b>Reverser</b>: harakatini burmoqchi bo'lgan <b>1-o'yinchi (Manba)</b>ni tanlang:",
+        "death_pm_msg": "💀 <b>Siz o'yingdan chiqdingiz!</b>\n\n💬 Guruhingizga <b>oxirgi so'z</b>ingizni yuborish uchun shu yerga (bot shaxsiyiga) matningizni yuboring!",
     },
     "ru": {
         "slept": "💤 Вас усыпили снотворным — этой ночью вы спите.",
@@ -134,6 +149,21 @@ NIGHT_STRINGS = {
         "mimic_win": "🎭 <b>Мимик</b>: Вы приняли роль погибшего игрока!\nВаша новая роль: <b>{role}</b>",
         "mimic_wait": "🎭 <b>Мимик</b>: Еще никто не погиб — ждете первого погибшего игрока.",
         "passive_msg": "🌙 <b>Наступила ночь.</b>\nВаша роль: {role}\n\nУ вас нет ночных действий — ждите утра.",
+        "target_prompt": "🌙 {role} — выберите цель:",
+        "skip_btn": "🚷 Пропустить",
+        "back_btn": "🔙 Назад",
+        "komissar_prompt": "🕵🏼 <b>Комиссар</b>, что делаем?",
+        "komissar_check_btn": "🔍 Проверить",
+        "komissar_shoot_btn": "🔫 Убить",
+        "konchi_prompt": "👷🏻‍♂️ <b>Шахтер</b>, какую шахту копаем? (в некоторых есть ловушки!)",
+        "jin_prompt": "🧞 <b>Джинн</b> пришел, выберите желание:",
+        "jin_life_btn": "✨ Жизнь",
+        "jin_money_btn": "💰 Деньги",
+        "jin_kill_btn": "💀 Убийство",
+        "zanjir_prompt": "⛓ <b>Связной</b>: выберите <b>1-ю цель</b> для связывания.",
+        "sehrgar_prompt": "🧙 <b>Волшебник</b>: выберите <b>1-ю цель</b> для обмена.",
+        "reverser_prompt": "🔄 <b>Реверсер</b>: выберите <b>1-го игрока (Источник)</b>:",
+        "death_pm_msg": "💀 <b>Вы выбыли из игры!</b>\n\n💬 Чтобы отправить <b>последнее слово</b> в группу, отправьте текст сюда (в личку бота)!",
     },
     "en": {
         "slept": "💤 You were put to sleep — you sleep through this night.",
@@ -153,6 +183,21 @@ NIGHT_STRINGS = {
         "mimic_win": "🎭 <b>Mimic</b>: You inherited the dead player's role!\nNew role: <b>{role}</b>",
         "mimic_wait": "🎭 <b>Mimic</b>: No one has died yet — waiting for the first casualty.",
         "passive_msg": "🌙 <b>Night has fallen.</b>\nYour role: {role}\n\nYou have no night action — wait until morning.",
+        "target_prompt": "🌙 {role} — choose a target:",
+        "skip_btn": "🚷 Skip",
+        "back_btn": "🔙 Back",
+        "komissar_prompt": "🕵🏼 <b>Detective</b>, what is your move?",
+        "komissar_check_btn": "🔍 Investigate",
+        "komissar_shoot_btn": "🔫 Shoot",
+        "konchi_prompt": "👷🏻‍♂️ <b>Miner</b>, which mine to dig? (some contain deadly traps!)",
+        "jin_prompt": "🧞 <b>Genie</b> has arrived, make a wish:",
+        "jin_life_btn": "✨ Life",
+        "jin_money_btn": "💰 Money",
+        "jin_kill_btn": "💀 Murder",
+        "zanjir_prompt": "⛓ <b>Linker</b>: select <b>target 1</b> to link.",
+        "sehrgar_prompt": "🧙 <b>Sorcerer</b>: select <b>target 1</b> to swap.",
+        "reverser_prompt": "🔄 <b>Reverser</b>: select <b>Player 1 (Source)</b>:",
+        "death_pm_msg": "💀 <b>You are out of the game!</b>\n\n💬 To send your <b>last words</b> to the group, type your message here!",
     },
     "tr": {
         "slept": "💤 Uyku hapı verildi — bu gece uyuyorsunuz.",
@@ -172,6 +217,55 @@ NIGHT_STRINGS = {
         "mimic_win": "🎭 <b>Taklitçi</b>: Ölen oyuncunun rolünü aldınız!\nYangi rolünüz: <b>{role}</b>",
         "mimic_wait": "🎭 <b>Taklitçi</b>: Henüz kimse ölmedi — ilk ölen oyuncuyu bekliyorsunuz.",
         "passive_msg": "🌙 <b>Gece oldu.</b>\nRolünüz: {role}\n\nGece eyleminiz yok — sabaha kadar bekleyin.",
+        "target_prompt": "🌙 {role} — hedef seçin:",
+        "skip_btn": "🚷 Pas geç",
+        "back_btn": "🔙 Geri",
+        "komissar_prompt": "🕵🏼 <b>Komiser</b>, ne yapacaksınız?",
+        "komissar_check_btn": "🔍 Kontrol",
+        "komissar_shoot_btn": "🔫 Öldür",
+        "konchi_prompt": "👷🏻‍♂️ <b>Madenci</b>, hangi madenden kazacaksınız?",
+        "jin_prompt": "🧞 <b>Cin</b> geldi, dileğinizi seçin:",
+        "jin_life_btn": "✨ Yaşam",
+        "jin_money_btn": "💰 Para",
+        "jin_kill_btn": "💀 Cinayet",
+        "zanjir_prompt": "⛓ <b>Zincir</b>: bağlamak için <b>1. hedefi</b> seçin.",
+        "sehrgar_prompt": "🧙 <b>Büyücü</b>: değiştirmek için <b>1. hedefi</b> seçin.",
+        "reverser_prompt": "🔄 <b>Reverser</b>: <b>1. oyuncuyu (Kaynak)</b> seçin:",
+        "death_pm_msg": "💀 <b>Oyundan elendiniz!</b>\n\n💬 Gruba <b>son sözünüzü</b> göndermek için buraya yazın!",
+    },
+    "kk": {
+        "slept": "💤 Ұйқы дәрісі берілді — бұл түнде ұйықтайсыз.",
+        "xoyin_win": "👺 Сіз мафияны таптыңыз және мафияға айналдыңыз!",
+        "xoyin_miss": "👺 Таба алмадыңыз ({miss}/3).",
+        "investigate_res": "🔍 Нәтиже: {name} → <b>{role}</b>",
+        "jurnalist_res": "📰 Ақпарат: {name} → <b>{role}</b>",
+        "aygoqchi_res": "🦇 Тыңшы: {name} → <b>{role}</b>",
+        "konchi_kill_reason": "Шахта тұзағына түсті.",
+        "konchi_win": "⛏ Шахта {no}: {count} 💎 қазып алдыңыз!",
+        "day_vote_prompt": "Кімге дауыс бересіз?",
+        "day_no_vote": "Бүгін ешкім асылған жоқ.",
+        "day_tie_vote": "Дауыстар тең түсті — бүгін ешкім асылған жоқ.",
+        "advokat_protect": "⚖️ Адвокат {name} қорғады — ол асылған жоқ!",
+        "lynched_msg": "🪢 {name} халық тарапынан асылды!\nОның ролі — <b>{role}</b>",
+        "actor_msg": "🎭 <b>Актер</b>: Бұл түнде сіз <b>{role}</b> роліне кірдіңіз!",
+        "mimic_win": "🎭 <b>Еліктеуші</b>: Сіз қаза тапқан ойыншының ролін алдыңыз!\nЖаңа роліңіз: <b>{role}</b>",
+        "mimic_wait": "🎭 <b>Еліктеуші</b>: Әлі ешкім қаза тапқан жоқ — бірінші өлі ойыншыны күтіңіз.",
+        "passive_msg": "🌙 <b>Түн басталды.</b>\nРоліңіз: {role}\n\nБұл түнде арнайы әрекетіңіз жоқ — таңға дейін күтіңіз.",
+        "target_prompt": "🌙 {role} — нысананы таңдаңыз:",
+        "skip_btn": "🚷 Өткізіп жіберу",
+        "back_btn": "🔙 Артқа",
+        "komissar_prompt": "🕵🏼 <b>Комиссар</b>, не істейсіз?",
+        "komissar_check_btn": "🔍 Тексеру",
+        "komissar_shoot_btn": "🔫 Өлтіру",
+        "konchi_prompt": "👷🏻‍♂️ <b>Шахтер</b>, қай шахтадан қазасыз? (кейбірінде тұзақ бар!)",
+        "jin_prompt": "🧞 <b>Жын</b> келді, тілегіңізді таңдаңыз:",
+        "jin_life_btn": "✨ Өмір",
+        "jin_money_btn": "💰 Ақша",
+        "jin_kill_btn": "💀 Өлтіру",
+        "zanjir_prompt": "⛓ <b>Шынжыр</b>: байлау үшін <b>1-нысананы</b> таңдаңыз.",
+        "sehrgar_prompt": "🧙 <b>Сиқыршы</b>: ауыстыру үшін <b>1-нысананы</b> таңдаңыз.",
+        "reverser_prompt": "🔄 <b>Реверсер</b>: әрекетін бұрғыңыз келетін <b>1-ойыншыны (Дереккөз)</b> таңдаңыз:",
+        "death_pm_msg": "💀 <b>Сіз ойыннан шықтыңыз!</b>\n\n💬 Тобыңызға <b>соңғы сөзіңізді</b> жіберу үшін осы жерге (бот жекесіне) мәтініңізді жіберіңіз!",
     }
 }
 # ------------------------------------------------------------------
@@ -221,6 +315,11 @@ async def send_night_actions(
     chat: Chat,
 ) -> None:
     """Tunda har bir tirik o'yinchiga rol bo'yicha harakat tugmasini yuboradi."""
+    from utils.i18n import get_chat_lang
+    chat_lang = await get_chat_lang(chat.chat_id)
+    ns = NIGHT_STRINGS.get(chat_lang, NIGHT_STRINGS["uz"])
+    skip_label = ns.get("skip_btn", "🚷 O'tkazib yuborish")
+
     # Yangi tun boshlanishida uxlab yotganlarni uyg'otamiz
     for p in players:
         if getattr(p, "is_sleep", False):
@@ -240,9 +339,10 @@ async def send_night_actions(
             actor_night_role = random.choice(possible_actor_roles)
             await r.set(f"game:{game_id}:night:{night_num}:actor_role:{uid}", actor_night_role, ex=3600)
             await r.set(f"game:{game_id}:player:{uid}:actor_role", actor_night_role, ex=3600)
+            actor_fmt = ns.get("actor_msg", "🎭 <b>Aktyor</b>: Siz bu tun <b>{role}</b> roliga kirdingiz!")
             await _send_private(
                 bot, uid,
-                f"🎭 <b>Aktyor</b>: Siz bu tun <b>{role_display(actor_night_role)}</b> roliga kirdingiz!"
+                actor_fmt.format(role=role_display(actor_night_role))
             )
             role = actor_night_role
 
@@ -259,16 +359,16 @@ async def send_night_actions(
                     await r.set(f"game:{game_id}:player:{uid}:copied_role", new_role)
                     p.role = new_role
                     await player_repo.save_player(p)
+                    mimic_fmt = ns.get("mimic_win", "🎭 <b>Taqlidchi</b>: Siz halok bo'lgan o'yinchining rolini egalladingiz!\nYangi rolingiz: <b>{role}</b>")
                     await _send_private(
                         bot, uid,
-                        f"🎭 <b>Taqlidchi</b>: Siz halok bo'lgan o'yinchining rolini egalladingiz!\n"
-                        f"Yangi rolingiz: <b>{role_display(new_role)}</b>"
+                        mimic_fmt.format(role=role_display(new_role))
                     )
                     role = new_role
                 else:
                     await _send_private(
                         bot, uid,
-                        "🎭 <b>Taqlidchi</b>: Hali hech kim halok bo'lmadi — birinchi o'lik o'yinchining rolini kuting."
+                        ns.get("mimic_wait", "🎭 <b>Taqlidchi</b>: Hali hech kim halok bo'lmadi — birinchi o'lik o'yinchining rolini kuting.")
                     )
                     continue
 
@@ -276,10 +376,10 @@ async def send_night_actions(
 
         # Passiv rollar uchun oddiy xabar
         if code is None:
+            passive_fmt = ns.get("passive_msg", "🌙 <b>Tun bo'ldi.</b>\nRolingiz: {role}\n\nBu tunda maxsus harakatingiz yo'q — tonggacha kuting.")
             await _send_private(
                 bot, uid,
-                f"🌙 <b>Tun bo'ldi.</b>\nRolingiz: {role_display(role)}\n\n"
-                f"Bu tunda maxsus harakatingiz yo'q — tonggacha kuting."
+                passive_fmt.format(role=role_display(role))
             )
             continue
 
@@ -301,13 +401,13 @@ async def send_night_actions(
         # --- Komissar: avval rejim tanlash (tekshirish / o'ldirish / skip) ---
         if role == RoleNames.KOMISSAR:
             kb = InlineKeyboardBuilder()
-            kb.button(text="🔍 Tekshirish", callback_data=_cb("ko", game_id, night_num, "c", 0))
-            kb.button(text="🔫 O'ldirish", callback_data=_cb("ko", game_id, night_num, "k", 0))
-            kb.button(text="🚷 O'tkazib yuborish", callback_data=_cb("ko", game_id, night_num, "s", 0))
+            kb.button(text=ns.get("komissar_check_btn", "🔍 Tekshirish"), callback_data=_cb("ko", game_id, night_num, "c", 0))
+            kb.button(text=ns.get("komissar_shoot_btn", "🔫 O'ldirish"), callback_data=_cb("ko", game_id, night_num, "k", 0))
+            kb.button(text=skip_label, callback_data=_cb("ko", game_id, night_num, "s", 0))
             kb.adjust(2, 1)
             await _send_private(
                 bot, uid,
-                "🕵🏼 <b>Komissar</b>, nima qilasiz?",
+                ns.get("komissar_prompt", "🕵🏼 <b>Komissar</b>, nima qilasiz?"),
                 kb.as_markup()
             )
             continue
@@ -317,32 +417,32 @@ async def send_night_actions(
             kb = InlineKeyboardBuilder()
             for i in range(1, 6):
                 kb.button(text=f"⛏ Kon {i}", callback_data=_cb("kn", game_id, night_num, "t", i))
-            kb.button(text="🚷 O'tkazib yuborish", callback_data=_cb("kn", game_id, night_num, "s", 0))
+            kb.button(text=skip_label, callback_data=_cb("kn", game_id, night_num, "s", 0))
             kb.adjust(5, 1)
             await _send_private(
                 bot, uid,
-                "👷🏻‍♂️ <b>Konchi</b>, qaysi kondan qazasiz? (ba'zilarida tuzoq bor!)",
+                ns.get("konchi_prompt", "👷🏻‍♂️ <b>Konchi</b>, qaysi kondan qazasiz? (ba'zilarida tuzoq bor!)"),
                 kb.as_markup()
             )
             continue
 
         # --- Qaroqchi: nishon tanlash ---
         if role == RoleNames.QAROQCHI:
-            await _send_private(bot, uid, "⚔️ <b>Qaroqchi</b>, kimni nishonga olasiz?",
-                                _target_kb("qa", game_id, night_num, mk_targets))
+            await _send_private(bot, uid, f"⚔️ {role_display(role)}",
+                                _target_kb("qa", game_id, night_num, mk_targets, skip_label=skip_label))
             continue
 
         # --- Jin: tilak tanlash menyusi ---
         if role == RoleNames.JIN:
             kb = InlineKeyboardBuilder()
-            kb.button(text="✨ Hayot", callback_data=_cb("ji", game_id, night_num, "jh_menu", 0))
-            kb.button(text="💰 Pul", callback_data=_cb("ji", game_id, night_num, "jp_menu", 0))
-            kb.button(text="💀 Qotillik", callback_data=_cb("ji", game_id, night_num, "jq_menu", 0))
-            kb.button(text="🚷 O'tkazib yuborish", callback_data=_cb("ji", game_id, night_num, "s", 0))
+            kb.button(text=ns.get("jin_life_btn", "✨ Hayot"), callback_data=_cb("ji", game_id, night_num, "jh_menu", 0))
+            kb.button(text=ns.get("jin_money_btn", "💰 Pul"), callback_data=_cb("ji", game_id, night_num, "jp_menu", 0))
+            kb.button(text=ns.get("jin_kill_btn", "💀 Qotillik"), callback_data=_cb("ji", game_id, night_num, "jq_menu", 0))
+            kb.button(text=skip_label, callback_data=_cb("ji", game_id, night_num, "s", 0))
             kb.adjust(1)
             await _send_private(
                 bot, uid,
-                "🧞 <b>Jin</b> keldi, tilagingizni tanlang:",
+                ns.get("jin_prompt", "🧞 <b>Jin</b> keldi, tilagingizni tanlang:"),
                 kb.as_markup()
             )
             continue
@@ -350,17 +450,18 @@ async def send_night_actions(
         # --- Zanjir / Sehrgar / Reverser: 2 nishonli (1-qadam) ---
         if role in (RoleNames.ZANJIR, RoleNames.SEHRGAR, RoleNames.REVERSER):
             if role == RoleNames.ZANJIR:
-                tcode, label = "zj", "⛓ <b>Zanjir</b>: bog'lash uchun <b>1-nishon</b>ni tanlang."
+                tcode, label = "zj", ns.get("zanjir_prompt", "⛓ <b>Zanjir</b>: bog'lash uchun <b>1-nishon</b>ni tanlang.")
             elif role == RoleNames.SEHRGAR:
-                tcode, label = "se", "🧙 <b>Sehrgar</b>: almashtirish uchun <b>1-nishon</b>ni tanlang."
+                tcode, label = "se", ns.get("sehrgar_prompt", "🧙 <b>Sehrgar</b>: almashtirish uchun <b>1-nishon</b>ni tanlang.")
             else:
-                tcode, label = "rv", "🔄 <b>Reverser</b>: harakatini burmoqchi bo'lgan <b>1-o'yinchi (Manba)</b>ni tanlang:"
-            await _send_private(bot, uid, label, _target_kb(tcode, game_id, night_num, mk_targets))
+                tcode, label = "rv", ns.get("reverser_prompt", "🔄 <b>Reverser</b>: harakatini burmoqchi bo'lgan <b>1-o'yinchi (Manba)</b>ni tanlang:")
+            await _send_private(bot, uid, label, _target_kb(tcode, game_id, night_num, mk_targets, skip_label=skip_label))
             continue
 
         # --- Oddiy bitta nishonli harakatlar ---
-        label = f"🌙 {role_display(role)} — nishonni tanlang:"
-        await _send_private(bot, uid, label, _target_kb(code, game_id, night_num, mk_targets))
+        target_fmt = ns.get("target_prompt", "🌙 {role} — nishonni tanlang:")
+        label = target_fmt.format(role=role_display(role))
+        await _send_private(bot, uid, label, _target_kb(code, game_id, night_num, mk_targets, skip_label=skip_label))
 
 
 # ==================================================================
@@ -385,10 +486,12 @@ async def _kill(game_id: int, uid: int, by_uid: Dict, bot: Bot, chat: Chat, name
         # Xabar darhol emas, TONGDAN KEYIN yuboriladi (navbatga qo'yiladi).
         await queue_death_message(game_id, text)
         try:
+            from utils.i18n import get_chat_lang
+            c_lang = await get_chat_lang(chat.chat_id)
+            d_msg = NIGHT_STRINGS.get(c_lang, NIGHT_STRINGS["uz"]).get("death_pm_msg", NIGHT_STRINGS["uz"]["death_pm_msg"])
             await bot.send_message(
                 int(uid),
-                "💀 <b>Siz o'yingdan chiqdingiz!</b>\n\n"
-                "💬 Guruhingizga <b>oxirgi so'z</b>ingizni yuborish uchun shu yerga (bot shaxsiyiga) matningizni yuboring!",
+                d_msg,
                 parse_mode="HTML"
             )
         except Exception:
@@ -431,8 +534,12 @@ async def flush_pending_deaths(game_id: int, bot: Bot, chat: Chat) -> None:
             pass
 
 
-async def _user_lang_map(uids: List[int]) -> Dict[int, str]:
+async def _user_lang_map(uids: List[int], chat_id: int = 0) -> Dict[int, str]:
     try:
+        if chat_id:
+            from utils.i18n import get_chat_lang
+            chat_lang = await get_chat_lang(chat_id)
+            return {uid: chat_lang for uid in uids}
         users = await User.filter(user_id__in=uids).all()
         return {u.user_id: (u.lang or "uz").lower() for u in users}
     except Exception:
@@ -443,7 +550,7 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
     """Tungi harakatlarni qo'llash: o'ldirish, davolash, himoya, tekshiruv va h.k."""
     all_uids = [p.user_id for p in players]
     names = await _name_map(all_uids)
-    lang_map = await _user_lang_map(all_uids)
+    lang_map = await _user_lang_map(all_uids, chat_id=chat.chat_id)
     by_uid = {p.user_id: p for p in players}
     actions = await ActionService.get_phase_actions(game_id, night_num)
 

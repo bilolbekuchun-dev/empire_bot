@@ -85,7 +85,6 @@
     let geroyMarketPage = 1;
     let geroyMarketHasMore = false;
     let isAdminUser = false;
-    let isPrimaryAdmin = false;
     let UI = {};
 
     function t(key, fallback) {
@@ -426,16 +425,21 @@
         document.getElementById("sidebar-user-username").textContent = u.username ? "@" + u.username : "";
 
         if (u.user_id) {
-            const avatarFallback = "https://img.icons8.com/clouds/100/username.png";
+            const svgFallback = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100%" height="100%" fill="%231e1e2d"/><text x="50%" y="55%" font-size="42" fill="%23f0c419" text-anchor="middle" dominant-baseline="middle">👤</text></svg>`;
             const proxyUrl = `/webapp/avatar/${u.user_id}`;
+            const photoUrl = u.photo_url || (tgUser && tgUser.photo_url) || null;
+
             [document.getElementById("user-avatar"), document.getElementById("sidebar-user-avatar")].forEach((img) => {
                 if (!img) return;
                 img.onerror = () => {
-                    if (img.src.includes(proxyUrl)) img.src = avatarFallback;
-                    else if (u.photo_url && !img.src.includes(u.photo_url)) img.src = u.photo_url;
-                    img.onerror = () => { img.src = avatarFallback; img.onerror = null; };
+                    if (photoUrl && img.src !== photoUrl) {
+                        img.src = photoUrl;
+                    } else if (img.src !== svgFallback) {
+                        img.src = svgFallback;
+                    }
+                    img.onerror = null;
                 };
-                img.src = proxyUrl;
+                img.src = photoUrl || proxyUrl;
             });
         }
 
@@ -469,9 +473,6 @@
             document.getElementById("nft-tab-storeedit-btn").style.display = "";
             isAdminUser = true;
         }
-        if (data.is_primary_admin) {
-            isPrimaryAdmin = true;
-        }
         if (data.is_tournament_manager) {
             document.getElementById("nav-tm-tournament").style.display = "";
         }
@@ -484,46 +485,86 @@
     const DAILY_REWARD_TABLE = { 1: 100, 2: 150, 3: 200, 4: 250, 5: 300, 6: 400, 7: 500 };
 
     function renderDailyClaim(data) {
-        const dc = data.daily_claim || { streak: 0, claimed_today: false, next_streak: 1, next_reward: 100 };
+        const dc = data.daily_claim || data.daily || {};
+        const streak = dc.streak || 0;
+        const claimedToday = dc.claimed_today !== undefined ? dc.claimed_today : (dc.can_claim === false);
+        const nextStreak = dc.next_streak || (claimedToday ? (streak || 1) : (streak >= 7 ? 1 : (streak === 0 ? 1 : streak + 1)));
+        const nextReward = dc.next_reward || DAILY_REWARD_TABLE[nextStreak] || 100;
+
         const box = document.getElementById("daily-claim-days");
-        const completedDays = dc.claimed_today ? dc.streak : dc.streak;
-        let html = "";
-        for (let day = 1; day <= 7; day++) {
-            const isDone = dc.claimed_today && day <= dc.streak;
-            const isCurrent = !dc.claimed_today && day === dc.next_streak;
-            html += `
-                <div class="dc-day${isDone ? " done" : ""}${isCurrent ? " current" : ""}">
-                    <span class="dc-check">${isDone ? '<i class="fa-solid fa-check"></i>' : day}</span>
-                    <span class="dc-amt">${DAILY_REWARD_TABLE[day]}$</span>
-                </div>
-            `;
+        if (box) {
+            let html = "";
+            for (let day = 1; day <= 7; day++) {
+                const isDone = claimedToday ? day <= streak : day < nextStreak;
+                const isCurrent = !claimedToday && day === nextStreak;
+                html += `
+                    <div class="dc-day${isDone ? " done" : ""}${isCurrent ? " current" : ""}">
+                        <span class="dc-check">${isDone ? '<i class="fa-solid fa-check"></i>' : day}</span>
+                        <span class="dc-amt">${DAILY_REWARD_TABLE[day]}$</span>
+                    </div>
+                `;
+            }
+            box.innerHTML = html;
         }
-        box.innerHTML = html;
 
         const btn = document.getElementById("daily-claim-btn");
-        if (dc.claimed_today) {
-            btn.textContent = t("daily_claim_done_btn");
-            btn.disabled = true;
-        } else {
-            btn.textContent = `${t("daily_claim_btn")} (+${dc.next_reward}$)`;
-            btn.disabled = false;
+        if (btn) {
+            if (claimedToday) {
+                btn.textContent = t("daily_claim_done_btn") || "Bugun olingan ✅";
+                btn.disabled = true;
+                btn.classList.add("disabled");
+                btn.style.opacity = "0.6";
+                btn.style.pointerEvents = "none";
+                btn.style.cursor = "not-allowed";
+            } else {
+                btn.textContent = `${t("daily_claim_btn") || "Kunlik bonus olish"} (+${nextReward}$)`;
+                btn.disabled = false;
+                btn.classList.remove("disabled");
+                btn.style.opacity = "1";
+                btn.style.pointerEvents = "auto";
+                btn.style.cursor = "pointer";
+            }
         }
     }
 
     async function claimDaily() {
         const btn = document.getElementById("daily-claim-btn");
-        if (btn.disabled) return;
+        if (!btn || btn.disabled) return;
         btn.disabled = true;
         try {
             const res = await api("/webapp/api/claim_daily");
-            profileCache.profile.dollar = res.dollar;
-            profileCache.daily_claim = { streak: res.streak, claimed_today: true, next_streak: res.streak, next_reward: DAILY_REWARD_TABLE[res.streak] };
-            renderUser(profileCache);
+            if (!res.ok) {
+                if (res.error === "already_claimed_today") {
+                    if (profileCache) {
+                        profileCache.daily_claim = profileCache.daily_claim || {};
+                        profileCache.daily_claim.claimed_today = true;
+                        renderUser(profileCache);
+                    }
+                    toast(t("daily_claim_done_btn") || "Bugun bonusni olib bo'lgansiz!", "info");
+                    return;
+                }
+                throw new Error(res.error || "failed");
+            }
+            if (profileCache && profileCache.profile) {
+                profileCache.profile.dollar = res.dollar;
+                profileCache.daily_claim = {
+                    streak: res.streak,
+                    claimed_today: true,
+                    next_streak: res.streak,
+                    next_reward: DAILY_REWARD_TABLE[res.streak] || 100
+                };
+                profileCache.daily = profileCache.daily_claim;
+                renderUser(profileCache);
+            }
             toast(tf("daily_claim_success", { reward: res.reward, streak: res.streak }), "success");
             if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
         } catch (e) {
             toast(t("toast_generic_error"), "error");
-            btn.disabled = false;
+            if (profileCache && profileCache.daily_claim && profileCache.daily_claim.claimed_today) {
+                btn.disabled = true;
+            } else {
+                btn.disabled = false;
+            }
         }
     }
 
@@ -824,7 +865,7 @@
             }
 
         } catch (e) {
-            toast(t("toast_generic_error"), "error");
+            console.warn("[Empire WebApp] loadTournament failed:", e);
         }
     }
 
@@ -1570,7 +1611,7 @@
             `).join("");
             document.getElementById("holiday-upcoming-title").style.display = upcoming.length ? "" : "none";
         } catch (e) {
-            toast(t("toast_generic_error"), "error");
+            console.warn("[Empire WebApp] loadHoliday failed:", e);
         }
     }
 
@@ -1915,13 +1956,12 @@
             return;
         }
         box.innerHTML = groups.map((g) => `
-            <div class="admin-group-card${g.blocked ? " is-blocked-group" : ""}"${g.invite_link ? ` data-link="${escapeHtml(g.invite_link)}" style="cursor:pointer;"` : ""}>
+            <div class="admin-group-card"${g.invite_link ? ` data-link="${escapeHtml(g.invite_link)}" style="cursor:pointer;"` : ""}>
                 <div class="agc-avatar"><img src="/webapp/avatar_chat/${g.chat_id}" alt="" onerror="this.remove();"></div>
                 <div class="agc-info">
-                    <div class="agc-title">${escapeHtml(g.title)}${g.blocked ? ` <span class="agc-blocked-tag">🚫 Bloklangan</span>` : ""}</div>
+                    <div class="agc-title">${escapeHtml(g.title)}</div>
                     <div class="agc-meta">👥 ${fmt(g.member_count)} · ${g.games_count} ${t("admin_group_games")}</div>
                 </div>
-                ${isPrimaryAdmin ? `<button class="agc-block-btn${g.blocked ? " unblock" : ""}" onclick="event.stopPropagation(); window.adminToggleGroupBlock(${g.chat_id}, ${g.blocked ? "true" : "false"})">${g.blocked ? "🔓" : "🚫"}</button>` : ""}
                 ${g.invite_link ? `<i class="fa-solid fa-arrow-up-right-from-square" style="color:var(--text-2); font-size:12px;"></i>` : ""}
                 <span class="agc-dot${g.active ? " active" : ""}"></span>
             </div>
@@ -1934,19 +1974,6 @@
             });
         });
     }
-
-    window.adminToggleGroupBlock = async function(chatId, currentlyBlocked) {
-        try {
-            await api(currentlyBlocked ? "/webapp/api/admin_unblock_group" : "/webapp/api/admin_block_group", { chat_id: chatId });
-            toast(t("admin_action_success"), "success");
-            const g = adminGroupsCache.find((x) => x.chat_id === chatId);
-            if (g) g.blocked = !currentlyBlocked;
-            const searchVal = (document.getElementById("admin-groups-search")?.value || "").trim().toLowerCase();
-            renderAdminGroupsList(searchVal ? adminGroupsCache.filter((x) => x.title.toLowerCase().includes(searchVal)) : adminGroupsCache);
-        } catch (e) {
-            toast(t("toast_generic_error"), "error");
-        }
-    };
 
     const ADMIN_GIVE_FIELD_LABELS = {
         dollar: ["💵", "dollar"], diamond: ["💎", "olmos"],
@@ -2909,7 +2936,9 @@
                 item.className = "role-card-modern team-" + g.key + (r.elite ? " shop-card-elite" : "");
                 const { text } = splitIconLabel(r.name);
                 const titleText = text || r.name;
-                const imgHtml = "";  // rol rasmlari web app'da ko'rsatilmaydi
+                const imgHtml = r.image 
+                    ? `<div class="role-card-avatar-wrap"><img class="role-card-avatar" src="${r.image}" alt="${escapeHtml(titleText)}" loading="lazy" onerror="this.parentElement.style.display='none'"></div>` 
+                    : "";
                 item.innerHTML = `
                     ${r.elite ? `<div class="shop-elite-badge">${t("label_elite")}</div>` : ""}
                     ${imgHtml}
@@ -4620,11 +4649,11 @@
 
     function renderCurrencyPacks() {
         const diaStarsBox = document.getElementById("diamond-stars-container");
+        const diaDollarBox = document.getElementById("diamond-dollar-container");
         const dolBox = document.getElementById("dollar-packs-container");
-        const dolDiaBox = document.getElementById("dollar-diamond-container");
         diaStarsBox.innerHTML = "";
+        diaDollarBox.innerHTML = "";
         dolBox.innerHTML = "";
-        if (dolDiaBox) dolDiaBox.innerHTML = "";
 
         const starDiamondPrices = { 10: 70, 30: 200, 70: 450, 250: 1300 };
         Object.keys(starDiamondPrices).forEach((countStr) => {
@@ -4637,6 +4666,24 @@
         });
         diaStarsBox.appendChild(buildCustomAmountCard("diamond", "💎", 7, 1));
 
+        [1, 5, 10, 30].forEach((count) => {
+            const card = document.createElement("div");
+            card.className = "pack-card";
+            card.innerHTML = `<div class="pack-amount">💎 ${fmt(count)}</div><div class="pack-price">💵 ${fmt(count * 1000)}</div><button class="sub-cta">${t("btn_buy_with_dollar")}</button>`;
+            card.querySelector("button").addEventListener("click", (e) => buyDiamondWithDollar(count, e.target));
+            diaDollarBox.appendChild(card);
+        });
+
+        document.querySelectorAll("#diamond-method-tabs .seg").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                document.querySelectorAll("#diamond-method-tabs .seg").forEach((b) => b.classList.remove("active"));
+                btn.classList.add("active");
+                const method = btn.dataset.method;
+                diaStarsBox.style.display = method === "stars" ? "" : "none";
+                diaDollarBox.style.display = method === "dollar" ? "" : "none";
+            });
+        });
+
         const starDollarPacks = { 1000: 7, 10000: 70, 30000: 200 };
         Object.keys(starDollarPacks).forEach((countStr) => {
             const count = Number(countStr);
@@ -4648,18 +4695,17 @@
         });
         dolBox.appendChild(buildCustomAmountCard("dollar", "💵", 7 / 1000, 100));
 
-        if (dolDiaBox) {
-            dolDiaBox.innerHTML = "";
-            const diamondToDollar = { 1: 1000, 2: 2000, 4: 4000, 5: 5000, 10: 10000, 20: 20000 };
-            Object.keys(diamondToDollar).forEach((diaStr) => {
-                const diaCount = Number(diaStr);
-                const card = document.createElement("div");
-                card.className = "pack-card";
-                card.innerHTML = `<div class="pack-amount">💵 ${fmt(diamondToDollar[diaCount])}</div><div class="pack-price">💎 ${diaCount}</div><button class="sub-cta">${t("btn_buy_with_diamond")}</button>`;
-                card.querySelector("button").addEventListener("click", (e) => sellDiamondForDollar(diaCount, e.target));
-                dolDiaBox.appendChild(card);
-            });
-        }
+        const dolDiaBox = document.getElementById("dollar-diamond-container");
+        dolDiaBox.innerHTML = "";
+        const diamondToDollar = { 1: 1000, 2: 2000, 4: 4000, 5: 5000, 10: 10000, 20: 20000 };
+        Object.keys(diamondToDollar).forEach((diaStr) => {
+            const diaCount = Number(diaStr);
+            const card = document.createElement("div");
+            card.className = "pack-card";
+            card.innerHTML = `<div class="pack-amount">💵 ${fmt(diamondToDollar[diaCount])}</div><div class="pack-price">💎 ${diaCount}</div><button class="sub-cta">${t("btn_buy_with_diamond")}</button>`;
+            card.querySelector("button").addEventListener("click", (e) => sellDiamondForDollar(diaCount, e.target));
+            dolDiaBox.appendChild(card);
+        });
 
         document.querySelectorAll("#dollar-method-tabs .seg").forEach((btn) => {
             btn.addEventListener("click", () => {
@@ -4712,7 +4758,24 @@
         }
     }
 
-
+    async function buyDiamondWithDollar(count, btn) {
+        if (btn.disabled) return;
+        btn.disabled = true;
+        const oldText = btn.textContent;
+        btn.textContent = "...";
+        try {
+            const res = await api("/webapp/api/buy_diamond_with_dollar", { count });
+            Object.assign(profileCache.profile, res.profile);
+            renderUser(profileCache);
+            toast(t("toast_purchase_success"), "success");
+        } catch (e) {
+            const msg = e.message === "not_enough_balance" ? t("toast_not_enough_balance") : t("toast_generic_error");
+            toast(msg, "error");
+        } finally {
+            btn.disabled = false;
+            btn.textContent = oldText;
+        }
+    }
 
     /* ---------------- gift vip ---------------- */
     function setupGiftVip() {
