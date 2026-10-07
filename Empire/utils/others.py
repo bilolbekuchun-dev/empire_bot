@@ -57,15 +57,25 @@ async def get_profile(bot: Bot, message: Message):
         message.from_user.full_name,
         message.from_user.mention_html()
     )
+    vip_obj = await VipUser.get_or_none(user=user)
+    is_vip = bool(vip_obj)
+    vip_status = f" ({vip_obj.emoji_char})" if (vip_obj and vip_obj.emoji_char) else ""
+    vip_text = f"⭐ VIP: <b>Mavjud{vip_status}</b>\n" if is_vip else ""
+
     text = (
         f"👤 <b>Sizning profilingiz:</b>\n\n"
         f"🆔 ID: <code>{user.user_id}</code>\n"
+        f"{vip_text}"
         f"💵 Dollar: <b>{profile.dollar:,}$</b>\n"
         f"💎 Olmos: <b>{profile.diamond:,} ta</b>\n"
         f"🎮 O'yinlar soni: <b>{profile.games_count} ta</b>\n"
         f"🏆 G'alabalar: <b>{profile.wins:,} ta</b>\n"
     )
-    await message.answer(text, parse_mode="HTML")
+    from keyboards.user_keyboards import profile_keyboards_on_private, profile_keyboards
+    if message.chat.type == "private":
+        await message.answer(text, reply_markup=profile_keyboards_on_private(profile, is_vip=is_vip), parse_mode="HTML")
+    else:
+        await message.answer(text, reply_markup=profile_keyboards(), parse_mode="HTML")
 
 async def transfer_funds_handler(message: Message, bot: Bot = None):
     """

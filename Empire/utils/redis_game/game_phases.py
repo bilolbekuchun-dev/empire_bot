@@ -34,9 +34,13 @@ async def _alive_players_text(players: list, *, dawn: bool = False) -> str:
     lines = ["<b>Tirik o'yinchilar:</b>"]
     user_ids = [p.user_id for p in players if getattr(p, "user_id", None)]
     users = {}
+    vips = {}
     if user_ids:
+        from models.user import VipUser
         for user in await User.filter(user_id__in=list(set(user_ids))):
             users[user.user_id] = user
+        for vip in await VipUser.filter(user__user_id__in=list(set(user_ids))):
+            vips[vip.user_id] = vip
 
     numbered = []
     for idx, player in enumerate(players, 1):
@@ -46,7 +50,9 @@ async def _alive_players_text(players: list, *, dawn: bool = False) -> str:
 
     for num, player in numbered:
         uid = getattr(player, "user_id", None)
-        lines.append(f"{num}. {_player_mention_label(uid, users.get(uid), player)}")
+        vip = vips.get(uid)
+        vip_prefix = f"{vip.emoji_char} " if (vip and vip.emoji_char) else ""
+        lines.append(f"{num}. {vip_prefix}{_player_mention_label(uid, users.get(uid), player)}")
 
     if not dawn:
         return "\n".join(lines)
