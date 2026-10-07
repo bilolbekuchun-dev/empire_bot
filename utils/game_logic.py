@@ -1596,6 +1596,9 @@ async def tungi_harakat(message: Message, phase: GamePhase, bot: Bot, vsgame=Fal
             konlar = get_konchi_konlari()
             kb = await konchi_button(role=role, phase_id=phase.id, konlar=konlar)
             await safe_send_message(bot, user_id, f"👷🏻‍♂️ <b>{role_display(role)}</b>: Qaysi konni qazasiz?", reply_markup=kb, parse_mode="HTML")
+        elif role == RoleNames.JIN:
+            kb = await action_buttons(user_id=user_id, role=role, players=players, phase_id=phase.id, vsgame=vsgame, nik=nik)
+            await safe_send_message(bot, user_id, f"🧞 <b>{role_display(role)}</b>: O'yinchilardan birini tanlang — unga tilagingizni berasiz:", reply_markup=kb, parse_mode="HTML")
         elif role == RoleNames.QORIQCHI:
             kb = await action_buttons(user_id=user_id, role=role, players=players, phase_id=phase.id, vsgame=vsgame, nik=nik)
             await safe_send_message(bot, user_id, f"🛡 <b>{role_display(role)}</b>: Kimni qo'riqlamoqchisiz?", reply_markup=kb, parse_mode="HTML")
