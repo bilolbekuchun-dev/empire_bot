@@ -483,6 +483,55 @@ async def f_gboylar(message: Message):
         return
     await statistika.show_richest_users_in_this_chat(message=message)
 
+@router.message(Command("admins"))
+@router.message(Command("admin_list"))
+async def f_admins_cmd(message: Message):
+    await admins.show_admins_list(message, page=0)
+
+@router.message(Command("ban_list"))
+@router.message(Command("banlar"))
+@router.message(Command("banned"))
+async def f_ban_list_cmd(message: Message):
+    await admins.show_blocked_list(message, page=0)
+
+@router.message(Command("addadmin"))
+@router.message(Command("add_admin"))
+async def f_add_admin_cmd(message: Message):
+    await admins.add_admin_answer(message)
+
+@router.callback_query(F.data.startswith("adm_admins_list_"))
+async def f_adm_admins_list_cb(call: CallbackQuery):
+    page = int(call.data.replace("adm_admins_list_", ""))
+    await admins.show_admins_list(call, page=page)
+
+@router.callback_query(F.data.startswith("adm_manage_"))
+async def f_adm_manage_cb(call: CallbackQuery):
+    target_id = int(call.data.replace("adm_manage_", ""))
+    await admins.show_admin_detail(call, target_id=target_id)
+
+@router.callback_query(F.data.startswith("adm_action_remove_"))
+async def f_adm_action_remove_cb(call: CallbackQuery):
+    target_id = int(call.data.replace("adm_action_remove_", ""))
+    await admins.remove_bot_admin_handler(call, target_id=target_id)
+
+@router.callback_query(F.data.startswith("adm_action_ban_"))
+async def f_adm_action_ban_cb(call: CallbackQuery):
+    target_id = int(call.data.replace("adm_action_ban_", ""))
+    await admins.ban_bot_admin_handler(call, target_id=target_id)
+
+@router.callback_query(F.data.startswith("adm_blocked_list_"))
+async def f_adm_blocked_list_cb(call: CallbackQuery):
+    page = int(call.data.replace("adm_blocked_list_", ""))
+    await admins.show_blocked_list(call, page=page)
+
+@router.callback_query(F.data == "adm_close")
+async def f_adm_close_cb(call: CallbackQuery):
+    try:
+        await call.message.delete()
+    except Exception:
+        pass
+    await call.answer()
+
 @router.message(F.text.startswith("/block") | F.text.startswith("/ban"))
 async def f_block(message: Message):
     await admins.block_user_answer(message=message)

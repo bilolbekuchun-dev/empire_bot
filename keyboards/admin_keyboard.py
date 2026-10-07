@@ -25,6 +25,10 @@ def admin_emoji_main_menu() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="📢 Majburiy obuna", callback_data="adm_sub_menu")
     )
     builder.row(
+        InlineKeyboardButton(text="👑 Adminlar ro'yxati", callback_data="adm_admins_list_0"),
+        InlineKeyboardButton(text="🚫 Banlanganlar", callback_data="adm_blocked_list_0")
+    )
+    builder.row(
         InlineKeyboardButton(text="🗑 Barcha emojilarni tozalash", callback_data="adm_emj_reset_confirm")
     )
     return builder.as_markup()
@@ -212,4 +216,52 @@ def admin_vip_menu_kb() -> InlineKeyboardMarkup:
 def admin_logs_menu_kb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="🔙 Orqaga", callback_data="adm_main")
+    return builder.as_markup()
+
+def admin_list_keyboard(admins: list, page: int = 0, total_pages: int = 1) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for u in admins:
+        name = u.full_name or f"User_{u.user_id}"
+        builder.row(
+            InlineKeyboardButton(
+                text=f"👑 {name} ({u.user_id})",
+                callback_data=f"adm_manage_{u.user_id}"
+            )
+        )
+    nav_buttons = []
+    if page > 0:
+        nav_buttons.append(InlineKeyboardButton(text="⬅️ Orqaga", callback_data=f"adm_admins_list_{page-1}"))
+    if page < total_pages - 1:
+        nav_buttons.append(InlineKeyboardButton(text="➡️ Keyingisi", callback_data=f"adm_admins_list_{page+1}"))
+    if nav_buttons:
+        builder.row(*nav_buttons)
+    builder.row(
+        InlineKeyboardButton(text="🔙 Admin panel", callback_data="adm_emj_main")
+    )
+    return builder.as_markup()
+
+def admin_single_manage_kb(target_id: int) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="🗑 Adminlikdan olish", callback_data=f"adm_action_remove_{target_id}"),
+        InlineKeyboardButton(text="🚫 Ban qilish", callback_data=f"adm_action_ban_{target_id}")
+    )
+    builder.row(
+        InlineKeyboardButton(text="🔙 Orqaga", callback_data="adm_admins_list_0")
+    )
+    return builder.as_markup()
+
+def blocked_list_keyboard(page: int = 0, total_pages: int = 1) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    nav_buttons = []
+    if page > 0:
+        nav_buttons.append(InlineKeyboardButton(text="⬅️ Orqaga", callback_data=f"adm_blocked_list_{page-1}"))
+    if page < total_pages - 1:
+        nav_buttons.append(InlineKeyboardButton(text="➡️ Keyingisi", callback_data=f"adm_blocked_list_{page+1}"))
+    if nav_buttons:
+        builder.row(*nav_buttons)
+    builder.row(
+        InlineKeyboardButton(text="❌ Yopish", callback_data="adm_close"),
+        InlineKeyboardButton(text="🔙 Admin panel", callback_data="adm_emj_main")
+    )
     return builder.as_markup()
