@@ -82,32 +82,31 @@ class PlayerService:
         return await player_repository.load_player(game_id, user_id)
     
     @staticmethod
-    async def find_player_active_game(user_id: int) -> Optional[tuple[str, PlayerState]]:
+    async def find_player_active_game(user_id: int) -> Optional[tuple[int, PlayerState]]:
         """
-        User ning faol o'yinini topish.
-        
-        Returns:
-            (game_id, player_state) - agar topilsa
-            None - agar topilmasa yoki player tirik emas
+        User ning faol o'yinini topish (faqat amaldagi va tugamagan o'yinlar).
         """
         from utils.database import redis_client
+        from utils.redis_game.repositories.game_repository import game_repository
         
-        # Get all active game IDs
-        # Optimizatsiya: Kelajakda user:*:active_game key ishlatish mumkin
-        active_games = []
-        cursor = 0
-        while True:
-            cursor, keys = await redis_client.scan(cursor, match="game:*:state", count=100)
-            active_games.extend(keys)
-            if cursor == 0:
-                break
+        active_game_ids = await redis_client.smembers("global:active_games")
         
-        # Har bir o'yinda player ni topishga harakat qilish
-        for game_key in active_games:
-            # game_key bytes yoki string bo'lishi mumkin
-            if isinstance(game_key, bytes):
-                game_key = game_key.decode()
-            game_id = game_key.split(":")[1]
+        if not active_game_ids:
+            return None
+        
+        for game_id_str in active_game_ids:
+            if isinstance(game_id_str, bytes):
+                game_id_str = game_id_str.decode()
+            try:
+                game_id = int(game_id_str)
+            except (TypeError, ValueError):
+                continue
+            
+            game_state = await game_repository.load_game(game_id)
+            if not game_state or not game_state.is_active or game_state.phase in ("end", "ended", "finished"):
+                await redis_client.srem("global:active_games", game_id_str)
+                continue
+
             player = await player_repository.load_player(game_id, user_id)
             if player and player.is_alive:
                 return (game_id, player)
