@@ -306,59 +306,87 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
             logger.warning("User sync failed: %r", e)
             # xatoga qaramay davom etamiz
 
-        # 4) Slash komandalar — o‘chiramiz va to‘g‘ridan-to‘g‘ri handlerlarga uzatamiz
-        if message.text and message.text.startswith("/"):
-            if bot_can_delete:
-                await self._delete_quietly(message)
-            return await handler(message, data)
+        # 4) Redis va DB o'yini hamda fazasini aniqlash
+        chat_id = message.chat.id
+        msg_text = (message.text or message.caption or "").strip()
+        phase_key = None
+        is_game_active = False
 
-        # 5) Superadmin aniqlash
-        is_superadmin = message.from_user and (message.from_user.id in set(ADMINS))
+        try:
+            from utils.redis_game.repositories.game_repository import game_repository
+            redis_game_id = await game_repository.get_active_game(chat_id)
+            if redis_game_id:
+                rg = await game_repository.load_game(redis_game_id)
+                if rg and rg.is_active:
+                    phase_key = rg.phase
+                    is_game_active = (rg.phase != "waiting")
+        except Exception:
+            pass
 
-        # 6) Guruh yozish sozlamalari va aktiv o‘yin
         group_perm: Optional[WriteGroupPermis] = await WriteGroupPermis.filter(
-            chat_id=message.chat.id
+            chat_id=chat_id
         ).first()
 
-        game: Optional[Game] = await Game.filter(
-            chat__chat_id=message.chat.id, is_active=True
-        ).first()
+        game: Optional[Game] = None
+        if not is_game_active:
+            game = await Game.filter(chat__chat_id=chat_id, is_active=True).first()
+            if game:
+                p_key, is_waiting = await self._phase_info(game)
+                if not is_waiting:
+                    phase_key = p_key
+                    is_game_active = True
 
-        # O‘yin bo‘lmasa — hech qanday cheklov yo‘q
-        if not game:
-            return await handler(message, data)
-        if is_superadmin:
-            # Superadminlarga cheklanmagan ruxsat (loyihangiz siyosatiga mos)
-            return await handler(message, data)
-        # 7) Joriy fazani olish
-        phase_key, is_waiting = await self._phase_info(game)  # phase_key: 'night' / 'day' / 'afternoon' / ...
-        # group_perm.night == "all" bo‘lsa — tunda hamma yozishi mumkin (eng keng ruxsat)
-        if phase_key == "night" and group_perm and getattr(group_perm, "night", None) == "all":
-            return await handler(message, data)
-
-        # 8) Adminlar uchun "!" komandasi — faza va sozlamaga qarab shartli ruxsat
-        if message.text and message.text.startswith("!"):
-            is_admin = False
+        # 5) TUN FAZASI UCHUN MAXSUS CHEKLOV:
+        # Adminlar faqat boshiga '!' qo'yib, yoki VIP obunasi borlar yozishi mumkin.
+        # Qolgan barcha xabarlar (shu jumladan owner'ning oddiy xabarlari ham) o'chiriladi!
+        if is_game_active and phase_key == "night":
+            is_vip = False
             if message.from_user:
                 try:
-                    m = await message.bot.get_chat_member(message.chat.id, message.from_user.id)
-                    is_admin = self._is_admin_status(getattr(m, "status", ""))
+                    from models.user import VipUser
+                    is_vip = bool(await VipUser.filter(user__user_id=message.from_user.id).first())
                 except Exception:
-                    is_admin = False
-            
-            if is_admin and self._admin_command_allowed(phase_key, group_perm):
+                    is_vip = False
+
+            if is_vip:
                 return await handler(message, data)
-            # Ruxsat berilmagan "!" — o‘chirib tashlaymiz
+
+            is_admin = False
+            if message.from_user:
+                if message.from_user.id in set(ADMINS):
+                    is_admin = True
+                else:
+                    try:
+                        m = await message.bot.get_chat_member(message.chat.id, message.from_user.id)
+                        is_admin = self._is_admin_status(getattr(m, "status", ""))
+                    except Exception:
+                        is_admin = False
+
+            if is_admin and msg_text.startswith("!"):
+                return await handler(message, data)
+
             if bot_can_delete:
                 await self._delete_quietly(message)
-            elif self.warn_user_if_cant_delete:
-                pass
             return
-        
 
-        # 9) O‘yinchi ma’lumotlari (rol/holat tekshiruvi uchun)
+        # 6) Slash komandalar — o‘chiramiz va to‘g‘ridan-to‘g‘ri handlerlarga uzatamiz
+        if msg_text and (msg_text.startswith("/") or msg_text.startswith("!")):
+            if bot_can_delete:
+                await self._delete_quietly(message)
+            return await handler(message, data)
+
+        # 7) Superadmin aniqlash
+        is_superadmin = message.from_user and (message.from_user.id in set(ADMINS))
+        if is_superadmin:
+            return await handler(message, data)
+
+        # O‘yin bo‘lmasa — hech qanday cheklov yo‘q
+        if not is_game_active and not game:
+            return await handler(message, data)
+
+        # 8) O‘yinchi ma’lumotlari (rol/holat tekshiruvi uchun)
         player = None
-        if message.from_user:
+        if message.from_user and game:
             player = await GamePlayer.filter(
                 game=game, user__user_id=message.from_user.id
             ).first()
@@ -367,31 +395,18 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
         is_alive = bool(player and player.is_alive)
         is_sleep = bool(player and getattr(player, "is_sleep", False))
 
-        # 10) Fazaga qarab yozish ruxsati
-        if phase_key == "night" and group_perm:
-            allowed = self._who_can_write(group_perm.night, is_player=is_player, is_alive=is_alive)
-            if not allowed:
-                if bot_can_delete:
-                    await self._delete_quietly(message)
-                elif self.warn_user_if_cant_delete:
-                    pass
-                return
-
-        elif phase_key in ("day", "afternoon") and group_perm:
+        # 9) Fazaga qarab yozish ruxsati (kun va boshqa fazalar)
+        if phase_key in ("day", "afternoon") and group_perm:
             allowed = self._who_can_write(group_perm.day, is_player=is_player, is_alive=is_alive)
             if not allowed:
                 if bot_can_delete:
                     await self._delete_quietly(message)
-                elif self.warn_user_if_cant_delete:
-                    pass
                 return
 
-        # 11) Kutishdan boshqa fazalarda: o‘lik yoki uxlayotgan o‘yinchi yozsa — taqiqlash
-        if not is_waiting and (not is_player or not is_alive or is_sleep):
+        # 10) O'lik yoki uxlayotgan o'yinchi yozsa — taqiqlash
+        if game and (not is_player or not is_alive or is_sleep):
             if bot_can_delete:
                 await self._delete_quietly(message)
-            elif self.warn_user_if_cant_delete:
-                pass
             return
 
         # Hammasi joyida: handlerlarga uzatamiz
