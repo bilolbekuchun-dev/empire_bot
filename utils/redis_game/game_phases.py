@@ -29,9 +29,18 @@ def _player_mention_label(uid, user, player) -> str:
     return f'<a href="tg://user?id={uid}">{name}</a>' if uid else name
 
 
-async def _alive_players_text(players: list, *, dawn: bool = False) -> str:
+async def _alive_players_text(players: list, *, dawn: bool = False, lang: str = "uz") -> str:
     """Tirik o'yinchilar ro'yxati. Tongda rollar guruhi ham chiqadi."""
-    lines = ["<b>Tirik o'yinchilar:</b>"]
+    from utils.i18n import clean_lang
+    lang = clean_lang(lang)
+
+    headers = {
+        "uz": "<b>Tirik o'yinchilar:</b>",
+        "ru": "<b>Живые игроки:</b>",
+        "en": "<b>Surviving players:</b>",
+        "tr": "<b>Hayatta kalan oyuncular:</b>"
+    }
+    lines = [headers.get(lang, headers["uz"])]
     user_ids = [p.user_id for p in players if getattr(p, "user_id", None)]
     users = {}
     vips = {}
@@ -64,6 +73,14 @@ async def _alive_players_text(players: list, *, dawn: bool = False) -> str:
     leftover = [p for p in players if p.role not in tinch_set | mafia_set | yakka_set]
     yakka.extend(leftover)
 
+    faction_labels = {
+        "uz": {"tinch": "Tinchlar", "mafia": "Mafiyalar", "yakka": "Yakkalar", "total": "Jami", "total_unit": "ta", "footer": "\nEndi kechaning natijalarini muhokama qilamiz..."},
+        "ru": {"tinch": "Мирные", "mafia": "Мафия", "yakka": "Одиночки", "total": "Всего", "total_unit": "чел.", "footer": "\nОбсуждаем результаты ночи..."},
+        "en": {"tinch": "Townsfolk", "mafia": "Mafia", "yakka": "Neutrals", "total": "Total", "total_unit": "players", "footer": "\nDiscussing night results..."},
+        "tr": {"tinch": "Siviller", "mafia": "Mafya", "yakka": "Tarafsızlar", "total": "Toplam", "total_unit": "oyuncu", "footer": "\nGecenin sonuçlarını tartışıyoruz..."}
+    }
+    lbls = faction_labels.get(lang, faction_labels["uz"])
+
     def faction_block(title: str, group: list) -> list:
         if not group:
             return []
@@ -73,11 +90,11 @@ async def _alive_players_text(players: list, *, dawn: bool = False) -> str:
         return block
 
     lines.append("")
-    lines.extend(faction_block("Tinchlar", tinch))
-    lines.extend(faction_block("Mafiyalar", mafia))
-    lines.extend(faction_block("Yakkalar", yakka))
-    lines.append(f"\n<b>Jami:</b> {len(players)} ta")
-    lines.append("\nEndi kechaning natijalarini muhokama qilamiz...")
+    lines.extend(faction_block(lbls["tinch"], tinch))
+    lines.extend(faction_block(lbls["mafia"], mafia))
+    lines.extend(faction_block(lbls["yakka"], yakka))
+    lines.append(f"\n<b>{lbls['total']}:</b> {len(players)} {lbls['total_unit']}")
+    lines.append(lbls["footer"])
     return "\n".join(lines)
 
 
@@ -93,20 +110,9 @@ async def execute_night_phase_redis(
 ):
     """
     Tun fazasini amalga oshirish.
-    
-    Args:
-        game_id: O'yin ID
-        night_number: Tun raqami
-        players: Tirik o'yinchilar ro'yxati
-        bot: Bot instance
-        chat: Chat object
-        message: Message object
-        game_times: O'yin vaqt sozlamalari
-        paralar: Para rejimi uchun
     """
     from utils.redis_game.game_models_schema import GamePhaseState
     
-    # Create night phase
     night_phase = GamePhaseState(
         game_id=game_id,
         phase_num=night_number,
@@ -115,16 +121,9 @@ async def execute_night_phase_redis(
         created_at=datetime.now(timezone.utc)
     )
     
-    # TODO: Save phase to Redis
-    # await phase_repo.save_phase(night_phase)
-    
-    # Check paralar (agar para mode bo'lsa)
     if paralar and "para" in (await game_repo.load_game(game_id)).mode:
-        # TODO: check_paralar_lst_redis
         pass
     
-    # Night presentation (state transitioned + persisted by the caller first).
-    # Idempotent + failure-isolated: never raises into the game loop.
     try:
         from utils.redis_game.presentation import send_night_presentation
         await send_night_presentation(
@@ -141,41 +140,40 @@ async def execute_night_phase_redis(
 
     # Show players list
     try:
-        players_text = await _alive_players_text(players)
-        players_text += f"\n\nTonggacha ⏳ {game_times.night_time} sekund qoldi"
+        from utils.i18n import get_chat_lang
+        chat_lang = await get_chat_lang(chat.chat_id)
+        players_text = await _alive_players_text(players, lang=chat_lang)
+
+        timer_texts = {
+            "uz": f"\n\nTonggacha ⏳ {game_times.night_time} sekund qoldi",
+            "ru": f"\n\nДо рассвета осталось ⏳ {game_times.night_time} сек.",
+            "en": f"\n\n⏳ {game_times.night_time} seconds until dawn",
+            "tr": f"\n\nŞafağa ⏳ {game_times.night_time} saniye kaldı"
+        }
+        players_text += timer_texts.get(chat_lang, timer_texts["uz"])
         await bot.send_message(chat.chat_id, players_text, parse_mode="HTML", reply_markup=bot_link_markup)
     except Exception as e:
         print(f"O'yinchilar ro'yxatini ko'rsatishda xato: {e}")
     
-    # Night actions - har bir o'yinchiga rol bo'yicha tugma yuborish
     try:
         from utils.redis_game.night_engine import send_night_actions
         await send_night_actions(int(game_id), night_number, players, bot, chat)
     except Exception as e:
         print(f"Tungi harakatlarni yuborishda xato: {e}")
     
-    # Wait for night time
     await asyncio.sleep(game_times.night_time)
     
-    # Check if game is still active
     game_state = await game_repo.load_game(game_id)
     if not game_state or not game_state.is_active:
         return
     
-    # Apply night results (o'ldirish/davolash/himoya/tekshiruv)
     try:
         from utils.redis_game.night_engine import process_night_results
         await process_night_results(int(game_id), night_number, players, bot, chat)
     except Exception as e:
         print(f"Tungi natijalarni qo'llashda xato: {e}")
     
-    # Day dawn presentation is emitted when the game actually enters the "day"
-    # phase (execute_day_phase_redis), i.e. AFTER the state transition is
-    # persisted -- not here. See utils/redis_game/presentation.py.
-    
-    # Mark phase as ended
     night_phase.is_end = True
-    # TODO: await phase_repo.save_phase(night_phase)
 
 
 async def execute_day_phase_redis(
@@ -190,20 +188,9 @@ async def execute_day_phase_redis(
 ):
     """
     Kun fazasini amalga oshirish.
-    
-    Args:
-        game_id: O'yin ID
-        day_number: Kun raqami
-        players: Tirik o'yinchilar ro'yxati
-        bot: Bot instance
-        chat: Chat object
-        message: Message object
-        game_times: O'yin vaqt sozlamalari
-        paralar: Para rejimi uchun
     """
     from utils.redis_game.game_models_schema import GamePhaseState
     
-    # Create morning phase
     morning_phase = GamePhaseState(
         game_id=game_id,
         phase_num=day_number,
@@ -212,69 +199,66 @@ async def execute_day_phase_redis(
         created_at=datetime.now(timezone.utc)
     )
 
-    # Day presentation (state transitioned + persisted by the caller first).
-    # Idempotent + failure-isolated: never raises into the game loop.
     try:
         from utils.redis_game.presentation import send_day_presentation
         await send_day_presentation(bot, chat.chat_id, int(game_id), day_number)
     except Exception as e:
         print(f"Kunni taqdim etishda xato: {e}")
 
-    # TO'G'RI NAVBAT: 1) tong habari (yuborildi) → 2) tunda o'lganlar → 3) tirik o'yinchilar
     try:
         from utils.redis_game.night_engine import flush_pending_deaths
         await flush_pending_deaths(int(game_id), bot, chat)
     except Exception as e:
         print(f"Tunda o'lganlar xabarini yuborishda xato: {e}")
 
-    # Check paralar
     if paralar and "para" in (await game_repo.load_game(game_id)).mode:
-        # TODO: check_paralar_lst_redis
         pass
     
-    # Get settings
     more_set, _ = await GroupMoreSet.get_or_create(chat_id=chat.chat_id)
     weapons_set, _ = await GameSetWeapons.get_or_create(chat_id=chat.chat_id)
     
     # Show players list
     try:
-        players_text = await _alive_players_text(players, dawn=True)
+        from utils.i18n import get_chat_lang
+        chat_lang = await get_chat_lang(chat.chat_id)
+        players_text = await _alive_players_text(players, dawn=True, lang=chat_lang)
         await bot.send_message(chat.chat_id, players_text, parse_mode="HTML", disable_web_page_preview=True)
     except Exception as e:
         print(f"O'yinchilar ro'yxatini ko'rsatishda xato: {e}")
     
-    # Geroy actions (if enabled)
     if weapons_set.geroy:
         try:
-            # TODO: send_geroys_action_message_redis
             pass
         except Exception as e:
             print(f"Geroy xabarini yuborishda xato: {e}")
     
-    # Wait for day discussion
     await asyncio.sleep(game_times.day_time)
     
-    # Check if game is still active
     game_state = await game_repo.load_game(game_id)
     if not game_state or not game_state.is_active:
         return
     
-    # Mark morning phase as ended
     morning_phase.is_end = True
     
-    # Geroy action results
     if "para" not in (await game_repo.load_game(game_id)).mode:
         try:
-            # TODO: geroys_action_result_redis
             pass
         except Exception as e:
             print(f"Geroy natijalarini ko'rsatishda xato: {e}")
     
     # Voting message
     vote_url = BOT_URL if BOT_URL and BOT_URL.startswith("http") else "https://t.me/Empire_testbot"
+    from utils.i18n import get_chat_lang
+    chat_lang = await get_chat_lang(chat.chat_id)
+    vote_texts = {
+        "uz": f"<b>Aybdorlarni aniqlash va jazolash vaqti keldi.</b>\nOvoz berish uchun {game_times.vote_time} sekund\n<a href='{vote_url}'>Ovoz berish</a>",
+        "ru": f"<b>Время найти и наказать виновных.</b>\nНа голосование даётся {game_times.vote_time} сек.\n<a href='{vote_url}'>Голосовать</a>",
+        "en": f"<b>It is time to find and punish the guilty.</b>\nVoting time: {game_times.vote_time} seconds\n<a href='{vote_url}'>Vote</a>",
+        "tr": f"<b>Suçluları bulma ve cezalandırma zamanı.</b>\nOy verme süresi: {game_times.vote_time} saniye\n<a href='{vote_url}'>Oy Ver</a>"
+    }
     await bot.send_message(
         chat.chat_id,
-        f"<b>Aybdorlarni aniqlash va jazolash vaqti keldi.</b>\nOvoz berish uchun {game_times.vote_time} sekund\n<a href='{vote_url}'>Ovoz berish</a>",
+        vote_texts.get(chat_lang, vote_texts["uz"]),
         parse_mode="HTML",
         reply_markup=bot_link_markup,
         disable_web_page_preview=True

@@ -305,9 +305,44 @@ def check_mafialar_list(mafiyalar: list) -> bool:
     return False
 
 
-def _duration_text(started_at) -> Optional[str]:
+WIN_RESULT_STRINGS = {
+    "uz": {
+        "title": "<b>🎉 O'yin tugadi!</b>",
+        "winners": "<b>G'oliblar:</b>",
+        "others": "<b>Qolgan o'yinchilar:</b>",
+        "duration": "<b>O'yin davomiyligi:</b>",
+        "units": {"hours": "soat", "mins": "daqiqa", "secs": "soniya"}
+    },
+    "ru": {
+        "title": "<b>🎉 Игра окончена!</b>",
+        "winners": "<b>Победители:</b>",
+        "others": "<b>Остальные игроки:</b>",
+        "duration": "<b>Длительность игры:</b>",
+        "units": {"hours": "ч.", "mins": "мин.", "secs": "сек."}
+    },
+    "en": {
+        "title": "<b>🎉 Game over!</b>",
+        "winners": "<b>Winners:</b>",
+        "others": "<b>Other players:</b>",
+        "duration": "<b>Game duration:</b>",
+        "units": {"hours": "hours", "mins": "mins", "secs": "secs"}
+    },
+    "tr": {
+        "title": "<b>🎉 Oyun bitti!</b>",
+        "winners": "<b>Kazananlar:</b>",
+        "others": "<b>Diğer oyuncular:</b>",
+        "duration": "<b>Oyun süresi:</b>",
+        "units": {"hours": "saat", "mins": "dakika", "secs": "saniye"}
+    }
+}
+
+def _duration_text(started_at, lang: str = "uz") -> Optional[str]:
     if not started_at:
         return None
+    from utils.i18n import clean_lang
+    lang = clean_lang(lang)
+    units = WIN_RESULT_STRINGS.get(lang, WIN_RESULT_STRINGS["uz"])["units"]
+
     start = started_at
     if getattr(start, "tzinfo", None) is None:
         start = start.replace(tzinfo=timezone.utc)
@@ -316,10 +351,10 @@ def _duration_text(started_at) -> Optional[str]:
     mins, secs = divmod(rem, 60)
     parts = []
     if hours:
-        parts.append(f"{hours} soat")
+        parts.append(f"{hours} {units['hours']}")
     if mins or hours:
-        parts.append(f"{mins} daqiqa")
-    parts.append(f"{secs} soniya")
+        parts.append(f"{mins} {units['mins']}")
+    parts.append(f"{secs} {units['secs']}")
     return " ".join(parts)
 
 
@@ -350,8 +385,6 @@ async def announce_game_result_redis(
     real_mode=False
 ):
     """O'yin natijalarini e'lon qilish: g'oliblar + qolganlar + davomiylik."""
-    # Agar o'yin TUNDA tugagan bo'lsa — tong kelmaydi, shuning uchun navbatdagi
-    # o'lim xabarlarini o'yin natijasidan OLDIN yuboramiz (yo'qolib ketmasligi uchun).
     try:
         from utils.redis_game.night_engine import flush_pending_deaths
         await flush_pending_deaths(game_id, bot, chat)
@@ -380,7 +413,11 @@ async def announce_game_result_redis(
     others = [p for p in all_players if p.user_id not in winner_id_set]
     mentions = await _player_mentions([p.user_id for p in all_players])
 
-    lines = ["<b>🎉 O'yin tugadi!</b>", "<b>G'oliblar:</b>"]
+    from utils.i18n import get_chat_lang
+    chat_lang = await get_chat_lang(getattr(chat, "chat_id", 0))
+    strs = WIN_RESULT_STRINGS.get(chat_lang, WIN_RESULT_STRINGS["uz"])
+
+    lines = [strs["title"], strs["winners"]]
     n = 1
     if winners:
         for p in winners:
@@ -396,16 +433,16 @@ async def announce_game_result_redis(
 
     if others:
         lines.append("")
-        lines.append("<b>Qolgan o'yinchilar:</b>")
+        lines.append(strs["others"])
         for p in others:
             lines.append(f"{n}. {mentions.get(p.user_id, p.user_id)} - {role_display(p.role)}")
             n += 1
 
     started = getattr(game_state, "started_at", None) or getattr(game_state, "created_at", None) if game_state else None
-    duration = _duration_text(started)
+    duration = _duration_text(started, lang=chat_lang)
     if duration:
         lines.append("")
-        lines.append(f"<b>O'yin davomiyligi:</b> {duration}")
+        lines.append(f"{strs['duration']} {duration}")
 
     await bot.send_message(
         chat.chat_id,
