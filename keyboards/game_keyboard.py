@@ -32,7 +32,8 @@ async def join_game_button(game_id, lang: str = "uz"):
         "uz": "🤵 Qo'shilish",
         "ru": "🤵 Присоединиться",
         "en": "🤵 Join game",
-        "tr": "🤵 Katıl"
+        "tr": "🤵 Katıl",
+        "kk": "🤵 Қосылу"
     }
     btn = btn_text.get(lang, btn_text["uz"])
     markup.button(text=btn, url=f"{bot_url}?start=game_{game_id}")
