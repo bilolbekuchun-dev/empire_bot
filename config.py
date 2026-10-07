@@ -30,8 +30,9 @@ ADMINS = os.getenv("ADMINS")
 ADMINS = [int(x.strip()) for x in ADMINS.split(",") if x.strip()] if ADMINS else []
 mini_admins = os.getenv("MINI_ADMINS_GROUP_IDS")
 MINI_ADMINS_GROUP_IDS = int(mini_admins.strip()) if mini_admins and mini_admins.strip() else 0
-PRIMARY_ADMIN_ID = int(os.getenv("PRIMARY_ADMIN_ID") or 8765051736)
-PRIMARY_ADMIN_IDS = {PRIMARY_ADMIN_ID, 2099616410, 8765051736}
+env_primary_id = os.getenv("PRIMARY_ADMIN_ID")
+PRIMARY_ADMIN_ID = int(env_primary_id) if env_primary_id else (ADMINS[0] if ADMINS else 0)
+PRIMARY_ADMIN_IDS = ({PRIMARY_ADMIN_ID} | set(ADMINS)) - {0}
 
 # CHANNEL_ID=-1003211567265
 # CHANNEL_USERNAME=@xonmafiabotnews

@@ -25,7 +25,7 @@ from config import ADMINS, PRIMARY_ADMIN_ID, PRIMARY_ADMIN_IDS
 
 router = Router()
 
-HARDCODED_ADMINS = {8765051736, 2099616410}
+HARDCODED_ADMINS = set()
 
 async def is_primary_admin(user_id: int) -> bool:
     """Bosh adminlar, ADMINS hamda bazada shakllangan (BotAdmin) barcha adminlar admin paneldan foydalana oladi"""
