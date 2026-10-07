@@ -1871,15 +1871,34 @@ def maxsus_raqamni_tartiblash(player: GamePlayer) -> int:
 
 async def view_players_list(
     players: List[GamePlayer],
-    title: str = "<b>Tirik o'yinchilar:</b>",
+    title: str = None,
     caption: str = "",
     guruhlash: bool = False,
     add_roles_text=False, 
     view_life=False,
-    gmode: str = ""
+    gmode: str = "",
+    lang: str = "uz"
 ) -> str:
+    from utils.i18n import clean_lang, get_game_text, get_chat_lang
+    lang = clean_lang(lang)
+
+    try:
+        if players and lang == "uz":
+            first_p = players[0]
+            if hasattr(first_p, "game") and first_p.game and hasattr(first_p.game, "chat") and first_p.game.chat:
+                lang = clean_lang(first_p.game.chat.lang)
+            elif hasattr(first_p, "game_id"):
+                from utils.redis_game.services.game_service import GameRepository
+                gs = await GameRepository.load_game(first_p.game_id)
+                if gs:
+                    lang = await get_chat_lang(gs.chat_id)
+    except Exception:
+        pass
+
+    if not title:
+        title = get_game_text("title_alive", lang)
     if not players:
-        return "<b>Tirik o'yinchi qolmadi!</b>\n"
+        return get_game_text("title_dead_none", lang)
 
     players_text = f"{title}\n"
 
