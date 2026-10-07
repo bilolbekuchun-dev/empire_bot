@@ -28,6 +28,7 @@ from utils.role_names import RoleNames
 from keyboards.main_keyboard import bot_link_markup
 import random
 from utils.vsgame import TeamCOlors as TeamColors
+from utils.i18n import get_chat_lang
 
 async def create_vs_game_handler_redis(message: Message, bot: Bot):
     """
