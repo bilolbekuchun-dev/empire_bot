@@ -43,10 +43,35 @@ async def f(message: Message, bot: Bot):
 @router.message(Command("start"), F.chat.type == "private")
 async def f(message: Message, bot: Bot, state: FSMContext, command: CommandObject):
     args = command.args  # "buy_star_10" yoki None
+    if args:
+        await state.update_data(pending_start_args=args)
 
-    if await start.ensure_onboarded_or_defer(message, state, args):
+    user, _created = await User.get_or_create(
+        user_id=message.from_user.id,
+        defaults={"full_name": message.from_user.full_name, "mention": message.from_user.mention_html()}
+    )
+
+    data = await state.get_data()
+
+    # 1-bosqich: Til tanlash
+    if not user.gender and not data.get("onboard_lang_selected"):
+        from keyboards.main_keyboard import get_onboard_lang_keyboard
+        text = "🌐 <b>Bot tilini tanlang / Choose bot language / Выберите язык бота / Bot dilini seçin:</b>"
+        await message.answer(text, reply_markup=get_onboard_lang_keyboard(), parse_mode="HTML")
         return
 
+    # 2-bosqich: Majburiy obuna
+    if await ensure_subscribed_or_prompt(message, bot):
+        return
+
+    # 3-bosqich: Jins tanlash
+    if not user.gender:
+        lang = clean_lang(user.lang)
+        prompt = GENDER_PROMPT.get(lang, GENDER_PROMPT["uz"])
+        await message.answer(prompt, reply_markup=gender_keyboard(lang), parse_mode="HTML")
+        return
+
+    # 4-bosqich: Bosh menyu
     if args and "buy_star_" in args:
         await others.process_buy_star_main_bot(message=message, args=args)
     elif args and len(args.split("_")) > 1:
