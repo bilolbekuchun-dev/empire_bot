@@ -592,7 +592,11 @@ async def block_user_answer(message: Message):
     
     user = await User.get_or_none(user_id=user_id)
     if not user:
-        await message.answer("⚠️ Foydalanuvchi bazada topilmadi!", parse_mode="HTML")
+        clean_name = f"User_{user_id}"
+        mention = f"<code>{user_id}</code>"
+        user = await User.create(user_id=user_id, full_name=clean_name, mention=mention)
+        await Blocked_user.create(user=user)
+        await message.answer("<b>⚠️ Foydalanuvchi bazada topilmadi! Oldindan ban qilindi!</b>", parse_mode="HTML")
         return
 
     user_is_blocked = await Blocked_user.filter(user=user).first()

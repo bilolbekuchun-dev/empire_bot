@@ -273,12 +273,15 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
         except Exception as e:
             logger.warning("Chat sync failed: %r", e)
 
-        # 3) Userni DB bilan sinxronlash; bloklangan bo‘lsa — to‘xtaymiz
+        # 3) Userni DB bilan sinxronlash va bloklanganligini tekshirish
         try:
             if await self._sync_user_db_or_blocked(message):
-                if bot_can_delete:
-                    await self._delete_quietly(message)
-                return
+                msg_text = (message.text or message.caption or "").strip()
+                # Guruhda oddiy suhbatlashishi mumkin, lekin bot buyruqlari (/give, /money, /para va hk) taqiqlanadi!
+                if msg_text and (msg_text.startswith("/") or msg_text.startswith("!")):
+                    if bot_can_delete:
+                        await self._delete_quietly(message)
+                    return
         except Exception as e:
             logger.warning("User sync failed: %r", e)
 
