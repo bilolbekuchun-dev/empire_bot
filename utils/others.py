@@ -122,13 +122,6 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
     text = (message.text or "").strip()
     parts = text.split()
     if len(parts) < 2:
-        await message.answer(
-            "ℹ️ <b>O'tkazma formati:</b>\n"
-            "• Reply qilib: <code>/give 100</code> yoki <code>/give 5 olmos</code>\n"
-            "• ID orqali: <code>/give 123456789 100</code>\n"
-            "• Username orqali: <code>/give @username 50</code>",
-            parse_mode="HTML"
-        )
         return
 
     # Valyuta turini aniqlash (olmos ko'rsatilgan bo'lsa olmos, aks holda dollar)
