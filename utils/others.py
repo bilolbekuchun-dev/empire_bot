@@ -7,6 +7,7 @@ from models.game_data import Giveaway, Chat, GamePlayer, Game
 from config import ADMINS, DIAMOND_SHOP_USERNAME, SUPPORT_ADMIN
 from keyboards.main_keyboard import get_start_markup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from utils.premium_emojis import get_diamond_display, get_dollar_display, role_display
 
 # Emojilar va tg-emoji teglari
 EMOJI_QOTIL_HIMOYA = "<tg-emoji emoji-id='5411452114838761907'>🔪</tg-emoji> Qotildan himoya"
@@ -83,10 +84,13 @@ async def get_profile(bot: Bot, message: Message):
     else:
         roles_text = "<i>Yo'q</i>"
 
+    d_disp = get_diamond_display()
+    m_disp = get_dollar_display()
+
     text = (
         f"👤 <b>{html.escape(user.full_name)}</b>{vip_text}\n\n"
-        f"💵 Dollar: <b>{profile.dollar:,}</b>\n"
-        f"💎 Olmos: <b>{profile.diamond:,}</b>\n\n"
+        f"{m_disp} Dollar: <b>{profile.dollar:,}</b>\n"
+        f"{d_disp} Olmos: <b>{profile.diamond:,}</b>\n\n"
         f"🛡 Himoya: <b>{profile.himoya}</b>\n"
         f"📜 Hujjat: <b>{profile.hujjat}</b>\n"
         f"🔒 Osishdan himoya qilish: <b>{profile.osishdan_himoya}</b>\n"
@@ -214,11 +218,14 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
     )
     target_profile, _ = await Profile.get_or_create(user=target_user)
 
+    d_disp = get_diamond_display()
+    m_disp = get_dollar_display()
+
     if is_diamond:
         if sender_profile.diamond < amount:
             await message.answer(
                 f"❌ Balansingizda yetarli olmos mavjud emas!\n"
-                f"<i>Sizda: <b>{sender_profile.diamond:,} 💎</b> bor.</i>",
+                f"<i>Sizda: <b>{sender_profile.diamond:,} {d_disp}</b> bor.</i>",
                 parse_mode="HTML"
             )
             return
@@ -228,12 +235,12 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
         await sender_profile.save()
         await target_profile.save()
 
-        unit_name = "💎"
+        unit_name = d_disp
     else:
         if sender_profile.dollar < amount:
             await message.answer(
                 f"❌ Balansingizda yetarli dollar mavjud emas!\n"
-                f"<i>Sizda: <b>{sender_profile.dollar:,}$</b> bor.</i>",
+                f"<i>Sizda: <b>{sender_profile.dollar:,} {m_disp}</b> bor.</i>",
                 parse_mode="HTML"
             )
             return
@@ -243,7 +250,7 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
         await sender_profile.save()
         await target_profile.save()
 
-        unit_name = "💵"
+        unit_name = m_disp
 
     s_name = html.escape(sender_db.full_name or "Foydalanuvchi")
     t_name = html.escape(target_user.full_name or "Foydalanuvchi")
