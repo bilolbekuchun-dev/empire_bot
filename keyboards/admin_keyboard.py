@@ -21,6 +21,12 @@ def admin_emoji_main_menu() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text=f"💵 Dollar ({m_display})", callback_data="adm_emj_currency_dollar")
     )
     builder.row(
+        InlineKeyboardButton(text="💾 BARCHA EMOJILARNI BAZAGA SAQLASH", callback_data="adm_emj_save_to_db")
+    )
+    builder.row(
+        InlineKeyboardButton(text="🔄 BAZADAN QAYTA TIKLASH", callback_data="adm_emj_load_from_db")
+    )
+    builder.row(
         InlineKeyboardButton(text="👑 Adminlar ro'yxati", callback_data="adm_admins_list_0"),
         InlineKeyboardButton(text="🚫 Banlanganlar", callback_data="adm_blocked_list_0")
     )
