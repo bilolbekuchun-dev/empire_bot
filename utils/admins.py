@@ -18,10 +18,10 @@ GROUPS_PER_PAGE = 15
 _vip_giveaways: dict = {}
 
 async def is_bot_admin(user_id: int) -> bool:
-    """Foydalanuvchi static (env/config) admin (ADMINS yoki PRIMARY_ADMIN_IDS) ekanligini tekshiradi."""
+    """Faqatgina ruxsat berilgan SUPER ADMINLAR (PRIMARY_ADMIN_IDS) boshqara oladi."""
     if not user_id:
         return False
-    return (user_id in ADMINS or user_id in PRIMARY_ADMIN_IDS)
+    return (user_id in PRIMARY_ADMIN_IDS or user_id == PRIMARY_ADMIN_ID)
 
 def _vip_giveaway_text(remaining: int, total: int) -> str:
     return (
@@ -39,8 +39,8 @@ async def distribute_vip_handler(message: Message, bot: Bot):
     is_channel = message.chat.type == "channel"
     if is_channel and (not CHANNEL_ID or message.chat.id != CHANNEL_ID):
         return
-    sender_id = ADMINS[0] if is_channel else (message.from_user.id if message.from_user else None)
-    if sender_id not in ADMINS:
+    sender_id = list(PRIMARY_ADMIN_IDS)[0] if is_channel else (message.from_user.id if message.from_user else None)
+    if sender_id not in PRIMARY_ADMIN_IDS:
         return
     parts = message.text.split()
     if len(parts) < 2 or not parts[1].isdigit():

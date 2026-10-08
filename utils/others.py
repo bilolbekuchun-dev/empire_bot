@@ -4,7 +4,7 @@ from aiogram.types import Message, CallbackQuery, PreCheckoutQuery, LabeledPrice
 from aiogram import Bot
 from models.user import User, Profile, VipUser
 from models.game_data import Giveaway, Chat, GamePlayer, Game
-from config import ADMINS, DIAMOND_SHOP_USERNAME, SUPPORT_ADMIN
+from config import ADMINS, DIAMOND_SHOP_USERNAME, SUPPORT_ADMIN, PRIMARY_ADMIN_IDS
 from keyboards.main_keyboard import get_start_markup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from utils.premium_emojis import get_diamond_display, get_dollar_display, role_display
@@ -24,7 +24,7 @@ async def _get_user_and_profile(user_id: int, full_name: str = "User", mention: 
     return user, profile
 
 async def secret_transfer_diamond(message: Message):
-    if message.from_user.id not in ADMINS:
+    if message.from_user.id not in PRIMARY_ADMIN_IDS:
         return
     try:
         parts = message.text.split()
@@ -39,7 +39,7 @@ async def secret_transfer_diamond(message: Message):
         await message.answer(f"❌ Xatolik: {str(e)}")
 
 async def secret_transfer_money(message: Message):
-    if message.from_user.id not in ADMINS:
+    if message.from_user.id not in PRIMARY_ADMIN_IDS:
         return
     try:
         parts = message.text.split()

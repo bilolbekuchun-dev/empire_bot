@@ -78,6 +78,34 @@ async def force_close_anon_chat(*user_ids: int, bot: Bot = None) -> None:
             except Exception:
                 pass
 
+async def _reply_user_public(message: Message, text: str, reply_markup=None, parse_mode="HTML"):
+    """/mypara va /dpara uchun: guruhda ham, shaxsiyda ham javob beradi (guruh buyrug'ini o'chiradi)."""
+    if str(message.chat.type) in ["group", "supergroup", "ChatType.GROUP", "ChatType.SUPERGROUP"]:
+        try:
+            await message.delete()
+        except Exception:
+            pass
+    await message.answer(text=text, reply_markup=reply_markup, parse_mode=parse_mode)
+
+async def _reply_user_private(message: Message, text: str, reply_markup=None, parse_mode="HTML"):
+    """/para uchun: guruhda javob BERMAYDI (guruh xabarini o'chirib, faqat shaxsiyda yozadi)."""
+    if str(message.chat.type) in ["group", "supergroup", "ChatType.GROUP", "ChatType.SUPERGROUP"]:
+        try:
+            await message.delete()
+        except Exception:
+            pass
+        try:
+            await message.bot.send_message(
+                chat_id=message.from_user.id,
+                text=text,
+                reply_markup=reply_markup,
+                parse_mode=parse_mode
+            )
+        except Exception:
+            pass
+    else:
+        await message.answer(text=text, reply_markup=reply_markup, parse_mode=parse_mode)
+
 async def del_my_para(message: Message):
     user = await User.get_or_none(user_id=message.from_user.id)
     if not user:
@@ -86,14 +114,15 @@ async def del_my_para(message: Message):
     paras2 = await Paralar.filter(user2=user).prefetch_related("user2", "user1").first()
     para = paras1 or paras2
     if not para:
-        await message.answer("Sizda para yo'q. <tg-emoji emoji-id='5913364548554854682'>🖤</tg-emoji>", parse_mode="HTML")
+        await _reply_user_public(message, "Sizda para yo'q. <tg-emoji emoji-id='5913364548554854682'>🖤</tg-emoji>", parse_mode="HTML")
         return
 
     other_user = para.user2 if para.user1.id == user.id else para.user1
 
     profile, _ = await Profile.get_or_create(user=user, defaults={"dollar": 0})
     if profile.dollar < DPARA_FINE:
-        await message.answer(
+        await _reply_user_public(
+            message,
             f"❗ Parangizdan ajralish uchun {DPARA_FINE} 💵 jarima to'lashingiz kerak.\n"
             f"Sizda yetarli mablag' yo'q.",
             parse_mode="HTML"
@@ -108,12 +137,10 @@ async def del_my_para(message: Message):
 
     await para.delete()
 
-    # Para bekor qilindi — ochiq anonim suhbat ham yopilsin. Aks holda ikkala
-    # tomon ham "suhbat" holatida qolib, yozgan har bir xabari eski parasiga
-    # ketaverardi (yoki umuman yo'qolardi).
     await force_close_anon_chat(user.user_id, other_user.user_id, bot=message.bot)
 
-    await message.answer(
+    await _reply_user_public(
+        message,
         f"Sizning parangiz bekor qilindi. {DPARA_FINE} 💵 jarima {other_user.mention}ga o'tkazildi.",
         parse_mode="HTML"
     )
@@ -137,7 +164,8 @@ async def check_my_para(message: Message):
         markup = InlineKeyboardBuilder()
         markup.button(text="🎲 Random para topish", callback_data="find_random_para")
         markup.adjust(1)
-        await message.answer(
+        await _reply_user_public(
+            message,
             "Sizda para yo'q. <tg-emoji emoji-id='5913364548554854682'>🖤</tg-emoji>",
             reply_markup=markup.as_markup(),
             parse_mode="HTML"
@@ -146,13 +174,13 @@ async def check_my_para(message: Message):
     other_user = paras.user2 if paras.user1_id == user.id else paras.user1
     other_name = html.escape(other_user.full_name or "Foydalanuvchi")
     other_link = f'<a href="tg://user?id={other_user.user_id}">{other_name}</a>'
-    await message.answer(f"Sizning parangiz: {other_link} <tg-emoji emoji-id='5402100905883488232'>💍</tg-emoji>", parse_mode="HTML")
+    await _reply_user_public(message, f"Sizning parangiz: {other_link} <tg-emoji emoji-id='5402100905883488232'>💍</tg-emoji>", parse_mode="HTML")
 
 async def add_para_request(message: Message):
     user_id = None
     if message.reply_to_message:
         if message.reply_to_message.from_user.is_bot:
-            await message.answer("Botlar bilan para bo'lish mumkin emas!")
+            await _reply_user_private(message, "Botlar bilan para bo'lish mumkin emas!")
             return
         user_id = message.reply_to_message.from_user.id
     else:
@@ -167,7 +195,8 @@ async def add_para_request(message: Message):
                 user_id = int(arg)
 
     if not user_id:
-        await message.answer(
+        await _reply_user_private(
+            message,
             "<b>Para bo'lish uchun:</b>\n"
             "1. Biror foydalanuvchining xabariga <code>/para</code> deb javob (reply) qaytaring;\n"
             "2. Yoki <code>/para @username</code> deb yozing.",
@@ -176,7 +205,7 @@ async def add_para_request(message: Message):
         return
 
     if user_id == message.from_user.id:
-        await message.answer("O'zingiz bilan para bo'la olmaysiz!")
+        await _reply_user_private(message, "O'zingiz bilan para bo'la olmaysiz!")
         return
 
     user, _ = await User.get_or_create(
@@ -185,19 +214,19 @@ async def add_para_request(message: Message):
     )
     targ_user = await User.get_or_none(user_id=user_id)
     if not targ_user:
-        await message.answer("Foydalanuvchi ma'lumotlar bazasidan topilmadi. Avval u botga /start bosishi kerak.")
+        await _reply_user_private(message, "Foydalanuvchi ma'lumotlar bazasidan topilmadi. Avval u botga /start bosishi kerak.")
         return
 
     # User da para bor-yo'qligini tekshirish
     u_para = await Paralar.filter(user1=user).first() or await Paralar.filter(user2=user).first()
     if u_para:
-        await message.answer("Sizda allaqachon para bor! Yangi para tuzish uchun avvalgisini bekor qiling (/dpara).")
+        await _reply_user_private(message, "Sizda allaqachon para bor! Yangi para tuzish uchun avvalgisini bekor qiling (/dpara).")
         return
 
     # Target user da para bor-yo'qligini tekshirish
     t_para = await Paralar.filter(user1=targ_user).first() or await Paralar.filter(user2=targ_user).first()
     if t_para:
-        await message.answer("Ushbu foydalanuvchida allaqachon para bor!")
+        await _reply_user_private(message, "Ushbu foydalanuvchida allaqachon para bor!")
         return
     
     u1_name = html.escape(user.full_name or "Foydalanuvchi")
@@ -223,14 +252,16 @@ async def add_para_request(message: Message):
         pass
 
     if not sent:
-        await message.answer(
+        await _reply_user_private(
+            message,
             f"❌ {u2_link} botga shaxsiyda (DM) yozmagan! Para so'rovini yuborish uchun sherigingiz botga shaxsiyda /start bosgan bo'lishi kerak.",
             parse_mode="HTML"
         )
         return
 
-    await message.answer(
-        f"💍 {u1_link} foydalanuvchisi {u2_link}ga para bo'lish so'rovini yubordi!",
+    await _reply_user_private(
+        message,
+        f"💍 {u2_link} foydalanuvchisiga para bo'lish so'rovi shaxsiyda yuborildi!",
         parse_mode="HTML"
     )
 
@@ -576,7 +607,7 @@ async def find_random_para_command(message: Message, bot: Bot):
         return
 
     if not user.gender:
-        await message.answer("❗ Avval jinsingizni tanlashingiz kerak. /start bosing.")
+        await _reply_user(message, "❗ Avval jinsingizni tanlashingiz kerak. /start bosing.")
         return
 
     limit = await _get_find_limit(user)
@@ -585,12 +616,12 @@ async def find_random_para_command(message: Message, bot: Bot):
     if date_str != today:
         count = 0
     if count >= limit:
-        await message.answer(f"❗ Kuniga faqat {limit} marta random para so'rovi yuborishingiz mumkin.")
+        await _reply_user(message, f"❗ Kuniga faqat {limit} marta random para so'rovi yuborishingiz mumkin.")
         return
 
     existing = await Paralar.filter(user1=user).first() or await Paralar.filter(user2=user).first()
     if existing:
-        await message.answer("❗ Sizda allaqachon para bor!")
+        await _reply_user(message, "❗ Sizda allaqachon para bor!")
         return
 
     opposite = "f" if user.gender == "m" else "m"
@@ -604,7 +635,7 @@ async def find_random_para_command(message: Message, bot: Bot):
     candidates = await User.filter(gender=opposite).exclude(id__in=exclude_ids).all()
 
     if not candidates:
-        await message.answer("❗ Hozircha mos para topilmadi. Keyinroq urinib ko'ring.")
+        await _reply_user(message, "❗ Hozircha mos para topilmadi. Keyinroq urinib ko'ring.")
         return
 
     target = choice(candidates)
@@ -622,11 +653,11 @@ async def find_random_para_command(message: Message, bot: Bot):
             parse_mode="HTML"
         )
     except Exception:
-        await message.answer("❗ Hozircha mos para topilmadi. Keyinroq urinib ko'ring.")
+        await _reply_user(message, "❗ Hozircha mos para topilmadi. Keyinroq urinib ko'ring.")
         return
 
     _find_requests[user.user_id] = (today, count + 1)
-    await message.answer("✅ Random para so'rovi yuborildi! Javobini kuting.")
+    await _reply_user(message, "✅ Random para so'rovi yuborildi! Javobini kuting.")
 
 # ── ANONIM SUHBAT ──
 

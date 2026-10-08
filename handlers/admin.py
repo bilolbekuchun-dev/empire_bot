@@ -25,10 +25,10 @@ router = Router()
 HARDCODED_ADMINS = set()
 
 async def is_primary_admin(user_id: int) -> bool:
-    """Faqatgina variables (ADMINS, PRIMARY_ADMIN_IDS, PRIMARY_ADMIN_ID) ga qo'shilgan adminlar boshqara oladi"""
+    """Faqatgina ruxsat berilgan SUPER ADMINLAR (PRIMARY_ADMIN_IDS) boshqara oladi va admin panelni ko'radi"""
     if not user_id:
         return False
-    return (user_id in HARDCODED_ADMINS or user_id in PRIMARY_ADMIN_IDS or user_id == PRIMARY_ADMIN_ID or user_id in ADMINS)
+    return (user_id in PRIMARY_ADMIN_IDS or user_id == PRIMARY_ADMIN_ID)
 
 # ==========================================
 # 👑 ASOSIY PREMIUM EMOJI ADMIN PANEL
