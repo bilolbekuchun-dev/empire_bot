@@ -714,7 +714,7 @@ async def _start_game_handler_redis_impl(message: Message, bot: Bot, state):
     
     # Get all players
     players = await player_repo.get_alive_players(active_game_id)
-    if len(players) < 1:
+    if len(players) < 4:
         await message.answer("❗ O'yinni boshlash uchun kamida 4 ta ishtirokchi kerak.")
         return
     

@@ -21,6 +21,18 @@ def remove_giveaway_amount(giveaway_id):
     if giveaway_amounts.get(giveaway_id):
         del giveaway_amounts[giveaway_id]
 
+giveaway_winner_details = {}  # {giveaway_id: [(user_id, full_name, reward_amount), ...]}
+
+def add_winner_detail(giveaway_id, user_id, full_name, reward):
+    g_id = str(giveaway_id)
+    giveaway_winner_details.setdefault(g_id, []).append((user_id, full_name, reward))
+
+def get_winner_details(giveaway_id):
+    return list(giveaway_winner_details.get(str(giveaway_id), []))
+
+def remove_winner_details(giveaway_id):
+    giveaway_winner_details.pop(str(giveaway_id), None)
+
 def init_giveaway_collected(giveaway_id, collected_users):
     giveaway_collected[giveaway_id] = list(collected_users)
 

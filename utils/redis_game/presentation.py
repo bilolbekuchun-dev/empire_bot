@@ -324,13 +324,22 @@ def _remember_file_id(event: str, media: Media) -> None:
 # Language resolution (uses the existing ``User.lang`` field)
 # --------------------------------------------------------------------------
 async def resolve_game_lang(game_id) -> str:
-    """Resolve the announcement language from the group chat's language."""
+    """Resolve the announcement language from the group chat's language or creator's language."""
     try:
         from utils.redis_game.repositories.game_repository import game_repository as game_repo
         from utils.i18n import get_chat_lang
+        from models.user import User
+        from models.game_data import Chat
 
         gs = await game_repo.load_game(game_id)
         if gs:
+            chat = await Chat.filter(chat_id=gs.chat_id).first()
+            if chat and getattr(chat, "lang", None):
+                return _pick_lang(chat.lang)
+            if getattr(gs, "creator_id", None):
+                creator = await User.filter(user_id=gs.creator_id).first()
+                if creator and getattr(creator, "lang", None):
+                    return _pick_lang(creator.lang)
             lang = await get_chat_lang(gs.chat_id)
             return _pick_lang(lang)
     except Exception as exc:
