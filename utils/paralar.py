@@ -17,6 +17,7 @@ from config import ADMINS, CHANNEL_USERNAME, CHANNEL_ID, DIAMOND_SHOP_USERNAME
 from utils.role_names import RoleNames
 from aiogram.enums import ChatMemberStatus
 from config import INFO_GROUP, ADMINS
+from utils.premium_emojis import get_diamond_display, get_dollar_display
 from random import choice
 from datetime import datetime, timedelta
 from tortoise.functions import Count
@@ -350,8 +351,8 @@ async def start_para_gift(call: CallbackQuery, state):
     await state.update_data(gift_type=gift_type, item_key=item_key)
     
     names = {
-        "dollar": "💵",
-        "diamond": "💎",
+        "dollar": get_dollar_display(),
+        "diamond": get_diamond_display(),
         "himoya": "<tg-emoji emoji-id='5334560212986632624'>🔰</tg-emoji>",
         "hujjat": "<tg-emoji emoji-id='5357315181649076022'>📁</tg-emoji>",
         "qotildan_himoya": "⛑️",
