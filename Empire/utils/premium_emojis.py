@@ -191,13 +191,9 @@ def get_custom_emoji_id(category: str, key: str) -> str | None:
     if not val:
         return None
     val = str(val).strip()
-    if "emoji-id=" in val:
-        try:
-            part = val.split("emoji-id=")[1]
-            quote = part[0]
-            return part[1:].split(quote)[0]
-        except Exception:
-            pass
+    m = _re.search(r"emoji-id=['\"]?(\d{10,})", val)
+    if m:
+        return m.group(1)
     if val.isdigit() and len(val) >= 10:
         return val
     return None
@@ -515,15 +511,26 @@ def get_vip_prefix(vip_user) -> str:
 def parse_emoji_from_message(message) -> str | None:
     """Xabardan premium emoji (custom_emoji_id) yoki matnli emoji tegi/belgisini ajratib oladi"""
     text = (message.text or message.caption or "").strip()
-    if message.entities:
-        for ent in message.entities:
-            if ent.type == "custom_emoji" and getattr(ent, "custom_emoji_id", None):
-                char = text[ent.offset : ent.offset + ent.length] if text else "✨"
-                return f'<tg-emoji emoji-id="{ent.custom_emoji_id}">{char}</tg-emoji>'
+
+    entities = message.entities or message.caption_entities or []
+    for ent in entities:
+        if ent.type == "custom_emoji" and getattr(ent, "custom_emoji_id", None):
+            char = text[ent.offset : ent.offset + ent.length] if (text and ent.offset < len(text)) else "✨"
+            return f'<tg-emoji emoji-id="{ent.custom_emoji_id}">{char}</tg-emoji>'
+
+    if message.sticker:
+        c_id = getattr(message.sticker, "custom_emoji_id", None)
+        s_emoji = getattr(message.sticker, "emoji", None) or "✨"
+        if c_id:
+            return f'<tg-emoji emoji-id="{c_id}">{s_emoji}</tg-emoji>'
+
     if "<tg-emoji" in text and "</tg-emoji>" in text:
         return text
+
     if text.isdigit() and len(text) >= 10:
         return f'<tg-emoji emoji-id="{text}">✨</tg-emoji>'
+
     if text:
         return text
+
     return None
