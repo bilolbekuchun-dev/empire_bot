@@ -33,8 +33,8 @@ class GameService:
         # Bot va guruh tekshirish
         me = await bot.get_me()
         gaming_set, _ = await GamingOnChat.get_or_create(
-            bot_id=me.id,
-            chat_id=message.chat.id
+            chat_id=message.chat.id,
+            defaults={"bot_id": me.id}
         )
         
         if not gaming_set.can_gaming:
@@ -189,7 +189,8 @@ class GameService:
                 "uz": "<b>Ro'yxatdan o'tish boshlandi!</b>",
                 "ru": "<b>Регистрация началась!</b>",
                 "en": "<b>Registration started!</b>",
-                "tr": "<b>Kayıt başladı!</b>"
+                "tr": "<b>Kayıt başladı!</b>",
+                "kk": "<b>Тіркелу басталды!</b>"
             }
             start_title = reg_start_titles.get(chat_lang, reg_start_titles["uz"])
 

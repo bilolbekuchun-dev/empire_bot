@@ -32,7 +32,8 @@ async def join_game_button(game_id, lang: str = "uz"):
         "uz": "🤵 Qo'shilish",
         "ru": "🤵 Присоединиться",
         "en": "🤵 Join game",
-        "tr": "🤵 Katıl"
+        "tr": "🤵 Katıl",
+        "kk": "🤵 Қосылу"
     }
     btn = btn_text.get(lang, btn_text["uz"])
     markup.button(text=btn, url=f"{bot_url}?start=game_{game_id}")
@@ -270,11 +271,20 @@ async def sehr_action_button(game_id, target_id):
     markup.adjust(2)
     return markup.as_markup()
 
-def go_group_button(url):
+def go_group_button(url, lang: str = "uz"):
     if not url:
         return None
+    from utils.i18n import clean_lang
+    c = clean_lang(lang)
+    texts = {
+        "uz": "Guruhga o'tish",
+        "ru": "Перейти в группу",
+        "en": "Go to group",
+        "tr": "Gruba git",
+        "kk": "Топқа өту"
+    }
     markup = InlineKeyboardBuilder()
-    markup.button(text="Guruhga o'tish", url=url)
+    markup.button(text=texts.get(c, texts["uz"]), url=url)
     return markup.as_markup()
 
 def joker_buttons(phase_id, death_number):

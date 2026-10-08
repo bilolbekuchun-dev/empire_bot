@@ -18,14 +18,10 @@ GROUPS_PER_PAGE = 15
 _vip_giveaways: dict = {}
 
 async def is_bot_admin(user_id: int) -> bool:
-    """Foydalanuvchi static (env/config) yoki dinamik (BotAdmin DB) admin ekanligini tekshiradi."""
+    """Foydalanuvchi static (env/config) admin (ADMINS yoki PRIMARY_ADMIN_IDS) ekanligini tekshiradi."""
     if not user_id:
         return False
-    hardcoded = set()
-    if user_id in hardcoded or user_id in ADMINS or user_id in PRIMARY_ADMIN_IDS:
-        return True
-    from models.user import BotAdmin
-    return await BotAdmin.filter(user_id=user_id).exists()
+    return (user_id in ADMINS or user_id in PRIMARY_ADMIN_IDS)
 
 def _vip_giveaway_text(remaining: int, total: int) -> str:
     return (
@@ -249,22 +245,54 @@ async def block_users_lst_answer(message: Message):
     await message.answer(text, parse_mode="HTML")
 
 async def zapravka_olmosh_handler(message: Message):
-    if message.from_user.id not in ADMINS:
+    if not await is_bot_admin(message.from_user.id):
         return
-    user = await User.get_or_none(user_id=message.from_user.id)
-    profile = await Profile.get_or_none(user=user)
+    import html
+    from utils.premium_emojis import get_diamond_display
+    
+    target_user = message.from_user
+    if message.reply_to_message and message.reply_to_message.from_user:
+        target_user = message.reply_to_message.from_user
+
+    user, _ = await User.get_or_create(
+        user_id=target_user.id,
+        defaults={"full_name": target_user.full_name, "username": target_user.username}
+    )
+    profile, _ = await Profile.get_or_create(user=user)
     profile.diamond += 100
     await profile.save()
-    await message.answer("✅ Sizga 100 <tg-emoji emoji-id='5210941235912552228'>💎</tg-emoji> berildi!", parse_mode="HTML")
+
+    d_disp = get_diamond_display()
+    if target_user.id == message.from_user.id:
+        await message.answer(f"✅ Sizga 100 {d_disp} berildi!", parse_mode="HTML")
+    else:
+        name = html.escape(target_user.full_name or target_user.username or str(target_user.id))
+        await message.answer(f"✅ <b>{name}</b> ga 100 {d_disp} berildi!", parse_mode="HTML")
 
 async def zapravka_dollar_handler(message: Message):
-    if message.from_user.id not in ADMINS:
+    if not await is_bot_admin(message.from_user.id):
         return
-    user = await User.get_or_none(user_id=message.from_user.id)
-    profile = await Profile.get_or_none(user=user)
+    import html
+    from utils.premium_emojis import get_dollar_display
+
+    target_user = message.from_user
+    if message.reply_to_message and message.reply_to_message.from_user:
+        target_user = message.reply_to_message.from_user
+
+    user, _ = await User.get_or_create(
+        user_id=target_user.id,
+        defaults={"full_name": target_user.full_name, "username": target_user.username}
+    )
+    profile, _ = await Profile.get_or_create(user=user)
     profile.dollar += 10000
     await profile.save()
-    await message.answer("✅ Sizga 10 000 💵 berildi!", parse_mode="HTML")
+
+    m_disp = get_dollar_display()
+    if target_user.id == message.from_user.id:
+        await message.answer(f"✅ Sizga 10 000 {m_disp} berildi!", parse_mode="HTML")
+    else:
+        name = html.escape(target_user.full_name or target_user.username or str(target_user.id))
+        await message.answer(f"✅ <b>{name}</b> ga 10 000 {m_disp} berildi!", parse_mode="HTML")
 
 async def get_vip_users(message: Message):
     if message.from_user.id not in ADMINS:
@@ -629,8 +657,8 @@ async def unblock_user_answer(message: Message):
     await message.answer(f"<b>✅ {user_id} foydalanuvchisidan blok (ban) olib tashlandi!</b>", parse_mode="HTML")
 
 async def get_all_bot_admins():
-    """Barcha static va dynamic adminlar ro'yxatini User ob'yektlari shaklida qaytaradi."""
-    from models.user import BotAdmin, User
+    """Barcha static adminlar ro'yxatini User ob'yektlari shaklida qaytaradi."""
+    from models.user import User
     from config import ADMINS, PRIMARY_ADMIN_IDS, PRIMARY_ADMIN_ID
     
     admin_ids = set()
@@ -643,10 +671,6 @@ async def get_all_bot_admins():
         if aid:
             admin_ids.add(int(aid))
             
-    dynamic_admins = await BotAdmin.all()
-    for da in dynamic_admins:
-        admin_ids.add(da.user_id)
-        
     users = []
     for uid in admin_ids:
         user = await User.get_or_none(user_id=uid)
@@ -656,28 +680,8 @@ async def get_all_bot_admins():
     return users
 
 async def add_admin_answer(message: Message):
-    """/addadmin <user_id> - yangi admin qo'shadi"""
-    if not await is_bot_admin(message.from_user.id):
-        return
-    parts = (message.text or "").strip().split()
-    target_id = None
-    if len(parts) >= 2 and parts[1].lstrip("-").isdigit():
-        target_id = int(parts[1])
-    elif message.reply_to_message and message.reply_to_message.from_user:
-        target_id = message.reply_to_message.from_user.id
-        
-    if not target_id:
-        await message.answer("ℹ️ <b>Foydalanish:</b> <code>/addadmin 123456789</code> yoki xabarga reply qilib <code>/addadmin</code>", parse_mode="HTML")
-        return
-        
-    from models.user import BotAdmin
-    exists = await BotAdmin.filter(user_id=target_id).first()
-    if exists:
-        await message.answer("<b>❗️ Bu foydalanuvchi allaqachon bot admini!</b>", parse_mode="HTML")
-        return
-        
-    await BotAdmin.create(user_id=target_id, added_by=message.from_user.id)
-    await message.answer(f"<b>✅ {target_id} foydalanuvchisi botga admin qilib tayinlandi!</b>", parse_mode="HTML")
+    """/addadmin - notification that admins are set via config variables"""
+    await message.answer("⚠️ Adminlar faqat konfiguratsiya (variables) orqali boshqariladi.", parse_mode="HTML")
 
 async def show_admins_list(event, page: int = 0):
     """/admins buyrug'i va tugmasi uchun adminlar ro'yxati"""
@@ -1220,84 +1224,21 @@ async def give_vip_handler(message: Message, bot: Bot):
 
 
 async def add_bot_admin_handler(message: Message):
-    """
-    Koddasiz dinamik ravishda bot adminini qo'shish.
-    Format: /addadmin 123456789 yoki foydalanuvchi xabariga reply qilib: /addadmin
-    """
-    target_uid = None
-    if message.reply_to_message and message.reply_to_message.from_user:
-        target_uid = message.reply_to_message.from_user.id
-    else:
-        parts = message.text.strip().split()
-        if len(parts) >= 2 and parts[1].lstrip("-").isdigit():
-            target_uid = int(parts[1])
-    
-    if not target_uid:
-        await message.answer(
-            "ℹ️ <b>Admin qo'shish formati:</b>\n"
-            "• Foydalanuvchi xabariga reply qilib: <code>/addadmin</code>\n"
-            "• Telegram ID orqali: <code>/addadmin 123456789</code>",
-            parse_mode="HTML"
-        )
-        return
-
-    from models.user import BotAdmin
-    admin_record, created = await BotAdmin.get_or_create(
-        user_id=target_uid,
-        defaults={"added_by": message.from_user.id if message.from_user else None}
-    )
-    if created:
-        await message.answer(f"✅ <b>{target_uid}</b> foydalanuvchisi bot adminlari ro'yxatiga muvaffaqiyatli qo'shildi!", parse_mode="HTML")
-    else:
-        await message.answer(f"⚠️ <b>{target_uid}</b> allaqachon bot admini!", parse_mode="HTML")
+    """Adminlar faqat variables orqali boshqarilishi haqida xabar berish."""
+    await message.answer("⚠️ Adminlar faqat konfiguratsiya (variables) orqali boshqariladi.", parse_mode="HTML")
 
 
 async def del_bot_admin_handler(message: Message):
-    """
-    Dinamik bot adminini ro'yxatdan o'chirish.
-    Format: /deladmin 123456789 yoki reply: /deladmin
-    """
-    target_uid = None
-    if message.reply_to_message and message.reply_to_message.from_user:
-        target_uid = message.reply_to_message.from_user.id
-    else:
-        parts = message.text.strip().split()
-        if len(parts) >= 2 and parts[1].lstrip("-").isdigit():
-            target_uid = int(parts[1])
-    
-    if not target_uid:
-        await message.answer(
-            "ℹ️ <b>Adminni o'chirish formati:</b>\n"
-            "• Foydalanuvchi xabariga reply qilib: <code>/deladmin</code>\n"
-            "• Telegram ID orqali: <code>/deladmin 123456789</code>",
-            parse_mode="HTML"
-        )
-        return
-
-    from models.user import BotAdmin
-    deleted = await BotAdmin.filter(user_id=target_uid).delete()
-    if deleted:
-        await message.answer(f"🗑 <b>{target_uid}</b> bot adminlari ro'yxatidan o'chirildi.", parse_mode="HTML")
-    else:
-        await message.answer(f"⚠️ <b>{target_uid}</b> dinamik adminlar ro'yxatida topilmadi.", parse_mode="HTML")
+    """Adminlar faqat variables orqali boshqarilishi haqida xabar berish."""
+    await message.answer("⚠️ Adminlar faqat konfiguratsiya (variables) orqali boshqariladi.", parse_mode="HTML")
 
 
 async def list_bot_admins_handler(message: Message):
-    """Barcha bot adminlari ro'yxatini ko'rsatish."""
-    from models.user import BotAdmin
-    dynamic_admins = await BotAdmin.all()
+    """Barcha bot adminlari ro'yxatini ko'rsatish (faqat variables static adminlar)."""
     lines = ["👑 <b>BOT ADMINLARI RO'YXATI:</b>\n"]
-    lines.append("<b>📌 Asosiy adminlar (env/kod):</b>")
+    lines.append("<b>📌 Asosiy adminlar (variables):</b>")
     for a_id in set(ADMINS + list(PRIMARY_ADMIN_IDS)):
         lines.append(f"• <code>{a_id}</code>")
-
-    lines.append("\n<b>⚡️ Dinamik qo'shilgan adminlar:</b>")
-    if dynamic_admins:
-        for da in dynamic_admins:
-            date_str = da.created_at.strftime('%Y-%m-%d') if da.created_at else "---"
-            lines.append(f"• <code>{da.user_id}</code> (qo'shilgan: {date_str})")
-    else:
-        lines.append("• <i>Hozircha yo'q</i>")
 
     await message.answer("\n".join(lines), parse_mode="HTML")
 

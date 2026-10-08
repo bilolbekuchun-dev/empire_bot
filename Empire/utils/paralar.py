@@ -1,3 +1,4 @@
+import html
 from aiogram.types import Message
 from models.user import Profile, User, ActiveRole, ChangeDiamondGiveAway, VipUser, Blocked_user, Paralar
 from models.game_data import Chat, Geroys
@@ -141,23 +142,46 @@ async def check_my_para(message: Message):
             parse_mode="HTML"
         )
         return
-    other_user = paras.user2 if paras.user1.id == user.id else paras.user1
-    await message.answer(f"Sizning parangiz: {other_user.mention} <tg-emoji emoji-id='5402100905883488232'>💍</tg-emoji>", parse_mode="HTML")
+    other_user = paras.user2 if paras.user1_id == user.id else paras.user1
+    other_name = html.escape(other_user.full_name or "Foydalanuvchi")
+    other_link = f'<a href="tg://user?id={other_user.user_id}">{other_name}</a>'
+    await message.answer(f"Sizning parangiz: {other_link} <tg-emoji emoji-id='5402100905883488232'>💍</tg-emoji>", parse_mode="HTML")
 
 async def add_para_request(message: Message):
-    user_id = message.reply_to_message.from_user.id if message.reply_to_message else None
+    user_id = None
+    if message.reply_to_message:
+        if message.reply_to_message.from_user.is_bot:
+            await message.answer("Botlar bilan para bo'lish mumkin emas!")
+            return
+        user_id = message.reply_to_message.from_user.id
+    else:
+        parts = message.text.split() if message.text else []
+        if len(parts) > 1:
+            arg = parts[1].strip()
+            if arg.startswith("@"):
+                u_obj = await User.get_or_none(username__iexact=arg[1:])
+                if u_obj:
+                    user_id = u_obj.user_id
+            elif arg.isdigit():
+                user_id = int(arg)
+
     if not user_id:
+        await message.answer(
+            "<b>Para bo'lish uchun:</b>\n"
+            "1. Biror foydalanuvchining xabariga <code>/para</code> deb javob (reply) qaytaring;\n"
+            "2. Yoki <code>/para @username</code> deb yozing.",
+            parse_mode="HTML"
+        )
         return
+
     if user_id == message.from_user.id:
         await message.answer("O'zingiz bilan para bo'la olmaysiz!")
         return
-    if message.reply_to_message.from_user.is_bot:
-        await message.answer("Botlar bilan para bo'lish mumkin emas!")
-        return
 
-    user = await User.get_or_none(user_id=message.from_user.id)
-    if not user:
-        return
+    user, _ = await User.get_or_create(
+        user_id=message.from_user.id,
+        defaults={"full_name": (message.from_user.full_name or "Foydalanuvchi")[:100]}
+    )
     targ_user = await User.get_or_none(user_id=user_id)
     if not targ_user:
         await message.answer("Foydalanuvchi ma'lumotlar bazasidan topilmadi. Avval u botga /start bosishi kerak.")
@@ -175,19 +199,37 @@ async def add_para_request(message: Message):
         await message.answer("Ushbu foydalanuvchida allaqachon para bor!")
         return
     
+    u1_name = html.escape(user.full_name or "Foydalanuvchi")
+    u2_name = html.escape(targ_user.full_name or "Foydalanuvchi")
+    u1_link = f'<a href="tg://user?id={user.user_id}">{u1_name}</a>'
+    u2_link = f'<a href="tg://user?id={targ_user.user_id}">{u2_name}</a>'
+
     markup = InlineKeyboardBuilder()
     markup.button(text="Qabul qilish", callback_data=f"para_accept_{user.user_id}_{targ_user.user_id}")
     markup.button(text="Rad etish", callback_data=f"para_decline_{user.user_id}_{targ_user.user_id}")
     markup.adjust(1)
-    await message.bot.send_message(
-        chat_id=targ_user.user_id,
-        text=f"Sizga {user.mention}dan para so'rov yuborildi.",
-        reply_markup=markup.as_markup(),
-        parse_mode="HTML"
-    )
-    await message.bot.send_message(
-        chat_id=user.user_id,
-        text=f"Siz {targ_user.mention}ga para so'rov yubordingiz.",
+
+    sent = False
+    try:
+        await message.bot.send_message(
+            chat_id=targ_user.user_id,
+            text=f"Sizga {u1_link}dan para so'rov yuborildi.",
+            reply_markup=markup.as_markup(),
+            parse_mode="HTML"
+        )
+        sent = True
+    except Exception:
+        pass
+
+    if not sent:
+        await message.answer(
+            f"❌ {u2_link} botga shaxsiyda (DM) yozmagan! Para so'rovini yuborish uchun sherigingiz botga shaxsiyda /start bosgan bo'lishi kerak.",
+            parse_mode="HTML"
+        )
+        return
+
+    await message.answer(
+        f"💍 {u1_link} foydalanuvchisi {u2_link}ga para bo'lish so'rovini yubordi!",
         parse_mode="HTML"
     )
 
@@ -230,27 +272,37 @@ async def accept_para(callback: CallbackQuery):
 
             await Paralar.create(user1=user1, user2=user2)
 
+            u1_name = html.escape(user1.full_name or "Foydalanuvchi")
+            u2_name = html.escape(user2.full_name or "Foydalanuvchi")
+            u1_link = f'<a href="tg://user?id={user1.user_id}">{u1_name}</a>'
+            u2_link = f'<a href="tg://user?id={user2.user_id}">{u2_name}</a>'
+
             await callback.answer("Para so'rovi qabul qilindi.")
             await callback.message.edit_text(
-                f"Siz {user1.mention} bilan para bo'ldingiz!",
+                f"Siz {u1_link} bilan para bo'ldingiz! 💍",
                 parse_mode="HTML"
             )
             await safe_send_message(
                 callback.bot,
                 user1.user_id,
-                f"Siz {user2.mention} bilan para bo'ldingiz!",
+                f"Siz {u2_link} bilan para bo'ldingiz! 💍",
                 parse_mode="HTML"
             )
         case "decline":
+            u1_name = html.escape(user1.full_name or "Foydalanuvchi")
+            u2_name = html.escape(user2.full_name or "Foydalanuvchi")
+            u1_link = f'<a href="tg://user?id={user1.user_id}">{u1_name}</a>'
+            u2_link = f'<a href="tg://user?id={user2.user_id}">{u2_name}</a>'
+
             await callback.answer("Para so'rovi rad etildi.")
             await callback.message.edit_text(
-                f"Siz {user1.mention}ning para so'rovini rad etdingiz.",
+                f"Siz {u1_link}ning para so'rovini rad etdingiz.",
                 parse_mode="HTML"
             )
             await safe_send_message(
                 callback.bot,
                 user1.user_id,
-                f"Sizning {user2.mention}ga yuborgan para so'rovingiz rad etildi.",
+                f"Sizning {u2_link}ga yuborgan para so'rovingiz rad etildi.",
                 parse_mode="HTML"
             )
 

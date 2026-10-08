@@ -11,9 +11,6 @@ router = Router()
 class VipEmojiState(StatesGroup):
     waiting_for_emoji = State()
 
-@router.message(DelCommands())
-async def f(message: Message):
-    pass
 
 @router.message(profile_actions.TransferProfileState.waiting_for_transfer_profile)
 async def f(message: Message, state: FSMContext):
@@ -79,8 +76,8 @@ async def f(call: CallbackQuery, bot: Bot, state: FSMContext):
 async def f(message: Message, bot: Bot):
     await others.get_profile(bot, message)
 
-@router.message(Command("money"))
-@router.message(F.text.startswith("/money "))
+@router.message(Command("money", ignore_case=True))
+@router.message(F.text.func(lambda text: bool(text and (text.lower().startswith("/money ") or text.lower().startswith("/money@") or text.lower() == "/money"))))
 async def f(message: Message, bot: Bot):
     await others.transfer_funds_handler(message=message, bot=bot)
 
@@ -88,8 +85,8 @@ async def f(message: Message, bot: Bot):
 async def f(message: Message, bot: Bot):
     await others.role_names_handler(message=message)
 
-@router.message(Command("give"))
-@router.message(F.text.startswith("/give "))
+@router.message(Command("give", ignore_case=True))
+@router.message(F.text.func(lambda text: bool(text and (text.lower().startswith("/give ") or text.lower().startswith("/give@") or text.lower() == "/give"))))
 async def f(message: Message, bot: Bot):
     await others.transfer_funds_handler(message=message, bot=bot)
 
@@ -413,24 +410,62 @@ async def onboard_lang_cb(call: CallbackQuery, bot: Bot, state: FSMContext):
     await start.start_call_handler(call)
 
 
-@router.message(F.chat.type == "private", F.text)
+from aiogram.filters import Filter
+
+class IsTeamPlayerFilter(Filter):
+    async def __call__(self, message: Message) -> bool:
+        if not message.text or message.text.startswith("/"):
+            return False
+
+        menu_buttons = {
+            "profil", "do'kon", "do'konni ochish", "mening param", "mening geroyim",
+            "himoyalar", "xarid qilish", "premium guruhlar", "yangiliklar",
+            "o'tkazib yuborish", "ortga", "профиль", "магазин", "моя пара", "мои герои"
+        }
+        if message.text.strip().lower() in menu_buttons:
+            return False
+
+        user_id = message.from_user.id if message.from_user else 0
+        if not user_id:
+            return False
+
+        from utils.redis_game.repositories.player_repository import player_repository as player_repo
+        from utils.redis_game.repositories.game_repository import game_repository as game_repo
+        from config import mafia_rollar
+        from utils.role_names import RoleNames
+
+        try:
+            game_id = await player_repo.find_player_active_game(user_id)
+            if not game_id:
+                return False
+
+            game_state = await game_repo.load_game(game_id)
+            if not game_state or not game_state.is_active or game_state.phase not in ("night", "day"):
+                return False
+
+            player = await player_repo.load_player(game_id, user_id)
+            if not player or not player.is_alive:
+                return False
+
+            alive_players = await player_repo.get_alive_players(game_id)
+            if player.role in mafia_rollar:
+                teammates = [p for p in alive_players if p.role in mafia_rollar and p.user_id != user_id]
+            elif player.role in (RoleNames.KOMISSAR, RoleNames.SERJANT):
+                teammates = [p for p in alive_players if p.role in (RoleNames.KOMISSAR, RoleNames.SERJANT) and p.user_id != user_id]
+            else:
+                teammates = [p for p in alive_players if p.role == player.role and p.user_id != user_id]
+
+            return len(teammates) > 0
+        except Exception:
+            return False
+
+
+@router.message(F.chat.type == "private", IsTeamPlayerFilter())
 async def team_chat_handler(message: Message, bot: Bot):
-    text = (message.text or "").strip()
-    if not text or text.startswith("/"):
-        return
-
-    menu_buttons = {
-        "profil", "do'kon", "do'konni ochish", "mening param", "mening geroyim",
-        "himoyalar", "xarid qilish", "premium guruhlar", "yangiliklar",
-        "o'tkazib yuborish", "ortga", "профиль", "магазин", "моя пара", "мои герои"
-    }
-    if text.lower() in menu_buttons:
-        return
-
+    text = message.text.strip()
     user_id = message.from_user.id
 
     from utils.redis_game.repositories.player_repository import player_repository as player_repo
-    from utils.redis_game.repositories.game_repository import game_repository as game_repo
     from config import mafia_rollar
     from utils.role_names import RoleNames
     from utils.premium_emojis import role_display
@@ -439,20 +474,8 @@ async def team_chat_handler(message: Message, bot: Bot):
 
     try:
         game_id = await player_repo.find_player_active_game(user_id)
-        if not game_id:
-            return
-
-        game_state = await game_repo.load_game(game_id)
-        if not game_state or not game_state.is_active or game_state.phase not in ("night", "day"):
-            return
-
         player = await player_repo.load_player(game_id, user_id)
-        if not player or not player.is_alive:
-            return
-
         alive_players = await player_repo.get_alive_players(game_id)
-        teammates = []
-        team_title = "Jamoa"
 
         if player.role in mafia_rollar:
             teammates = [p for p in alive_players if p.role in mafia_rollar and p.user_id != user_id]
@@ -461,38 +484,22 @@ async def team_chat_handler(message: Message, bot: Bot):
             teammates = [p for p in alive_players if p.role in (RoleNames.KOMISSAR, RoleNames.SERJANT) and p.user_id != user_id]
             team_title = "Politsiya"
         else:
-            same_role = [p for p in alive_players if p.role == player.role and p.user_id != user_id]
-            if same_role:
-                teammates = same_role
-                team_title = player.role
-
-        if not teammates:
-            return
+            teammates = [p for p in alive_players if p.role == player.role and p.user_id != user_id]
+            team_title = player.role
 
         sender_name = html.escape(message.from_user.full_name or message.from_user.username or str(user_id))
+        r_disp = role_display(player.role)
         
-        chat_msg = (
-            f"💬 <b>[{team_title} Chat] {sender_name} ({role_display(player.role)}):</b>\n"
-            f"{html.escape(text)}"
-        )
+        chat_msg = f'<b>{sender_name} - {r_disp}:</b> "{html.escape(text)}"'
 
-        sent_count = 0
         for tm in teammates:
             try:
                 await bot.send_message(tm.user_id, chat_msg, parse_mode="HTML")
-                sent_count += 1
             except Exception:
                 pass
-
-        if sent_count > 0:
-            p_lang = clean_lang(await get_chat_lang(user_id))
-            confirm_text = {
-                "uz": "✅ Jamoadoshlaringizga yuborildi.",
-                "ru": "✅ Отправлено вашим напарникам.",
-                "en": "✅ Sent to your teammates.",
-                "tr": "✅ Takım arkadaşlarınıza gönderildi.",
-                "kk": "✅ Серіктестеріңізге жіберілді."
-            }.get(p_lang, "✅ Jamoadoshlaringizga yuborildi.")
-            await message.answer(confirm_text)
     except Exception as e:
         print(f"Team chat relay error: {e}")
+
+@router.message(DelCommands())
+async def f(message: Message):
+    pass
