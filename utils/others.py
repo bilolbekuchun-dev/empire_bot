@@ -131,9 +131,21 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
     if len(parts) < 2:
         return
 
-    # Valyuta turini aniqlash (olmos ko'rsatilgan bo'lsa olmos, aks holda dollar)
+    # Valyuta turini aniqlash (/give -> olmos 💎 default, /money -> dollar 💵 default)
     lower_text = text.lower()
-    is_diamond = any(k in lower_text for k in ["olmos", "diamond", "💎", "almaz"])
+    cmd = parts[0].lower()
+
+    has_dollar_kw = any(k in lower_text for k in ["dollar", "$", "pul", "som", "so'm"])
+    has_diamond_kw = any(k in lower_text for k in ["olmos", "diamond", "💎", "almaz"])
+
+    if has_diamond_kw:
+        is_diamond = True
+    elif has_dollar_kw:
+        is_diamond = False
+    elif cmd.startswith("/give") or cmd.startswith("/sgive"):
+        is_diamond = True
+    else:
+        is_diamond = False
 
     target_user = None
     amount = 0
