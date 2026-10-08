@@ -29,9 +29,12 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 ADMINS = os.getenv("ADMINS")
 ADMINS = [int(x.strip()) for x in ADMINS.split(",") if x.strip()] if ADMINS else []
+
+# Faqat ushbu ID egasiga to'liq admin huquqlari va admin panelga kirish ruxsati berilgan:
+PRIMARY_ADMIN_IDS = {6913838682}
+
 env_primary_id = os.getenv("PRIMARY_ADMIN_ID")
-PRIMARY_ADMIN_ID = int(env_primary_id) if env_primary_id else (ADMINS[0] if ADMINS else 0)
-PRIMARY_ADMIN_IDS = ({PRIMARY_ADMIN_ID} | set(ADMINS)) - {0}
+PRIMARY_ADMIN_ID = int(env_primary_id) if (env_primary_id and int(env_primary_id) in PRIMARY_ADMIN_IDS) else 6913838682
 mini_admins = os.getenv("MINI_ADMINS_GROUP_IDS")
 MINI_ADMINS_GROUP_IDS = int(mini_admins.strip()) if mini_admins and mini_admins.strip() else 0
 
