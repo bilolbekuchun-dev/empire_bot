@@ -1,4 +1,5 @@
 import re
+import html
 from aiogram.types import Message, CallbackQuery, PreCheckoutQuery, LabeledPrice
 from aiogram import Bot
 from models.user import User, Profile, VipUser
