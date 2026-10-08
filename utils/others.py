@@ -60,16 +60,45 @@ async def get_profile(bot: Bot, message: Message):
     vip_obj = await VipUser.get_or_none(user=user)
     is_vip = bool(vip_obj)
     vip_status = f" ({vip_obj.emoji_char})" if (vip_obj and vip_obj.emoji_char) else ""
-    vip_text = f"⭐ VIP: <b>Mavjud{vip_status}</b>\n" if is_vip else ""
+    vip_text = f" ⭐ VIP{vip_status}" if is_vip else ""
+
+    from models.user import Paralar, ActiveRole
+    from tortoise.expressions import Q
+    para = await Paralar.filter(Q(user1=user) | Q(user2=user)).prefetch_related("user1", "user2").first()
+
+    if para:
+        partner = para.user2 if para.user1_id == user.id else para.user1
+        if partner:
+            p_name = html.escape(partner.full_name or "Foydalanuvchi")
+            para_text = f'<a href="tg://user?id={partner.user_id}">{p_name}</a>'
+        else:
+            para_text = "<i>Yo'q</i>"
+    else:
+        para_text = "<i>Yo'q</i>"
+
+    active_roles = await ActiveRole.filter(profile=profile, is_active=True).all()
+    if active_roles:
+        roles_text = ", ".join(r.role for r in active_roles)
+    else:
+        roles_text = "<i>Yo'q</i>"
 
     text = (
-        f"👤 <b>Sizning profilingiz:</b>\n\n"
-        f"🆔 ID: <code>{user.user_id}</code>\n"
-        f"{vip_text}"
-        f"💵 Dollar: <b>{profile.dollar:,}$</b>\n"
-        f"💎 Olmos: <b>{profile.diamond:,} ta</b>\n"
-        f"🎮 O'yinlar soni: <b>{profile.games_count} ta</b>\n"
-        f"🏆 G'alabalar: <b>{profile.wins:,} ta</b>\n"
+        f"👤 <b>{html.escape(user.full_name)}</b>{vip_text}\n\n"
+        f"💵 Dollar: <b>{profile.dollar:,}</b>\n"
+        f"💎 Olmos: <b>{profile.diamond:,}</b>\n\n"
+        f"🛡 Himoya: <b>{profile.himoya}</b>\n"
+        f"📜 Hujjat: <b>{profile.hujjat}</b>\n"
+        f"🔒 Osishdan himoya qilish: <b>{profile.osishdan_himoya}</b>\n"
+        f"📦 Qotildan himoya: <b>{profile.qotildan_himoya}</b>\n"
+        f"🔫 Miltiq: <b>{profile.miltiq}</b>\n"
+        f"💊 Doridan himoya: <b>{profile.doridan_himoya}</b>\n"
+        f"🎭 Maska: <b>{profile.maska}</b>\n"
+        f"🪵 Sirpanishdan himoya: <b>{profile.slip_himoya}</b>\n"
+        f"📦 Geroydan himoya: <b>{profile.geroy_himoya}</b>\n\n"
+        f"🎯 G'alaba: <b>{profile.wins}</b>\n"
+        f"📜 Barcha o'yinlar: <b>{profile.games_count}</b>\n\n"
+        f"Sizning parangiz: {para_text}\n\n"
+        f"🏙 Faol rollar: {roles_text}"
     )
     from keyboards.user_keyboards import profile_keyboards_on_private, profile_keyboards
     if message.chat.type == "private":

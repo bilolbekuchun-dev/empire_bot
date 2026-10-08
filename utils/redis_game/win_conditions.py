@@ -387,12 +387,12 @@ async def announce_game_result_redis(
     all_players = await player_repo.get_all_players(game_id)
     if para and para_winners:
         winner_ids = {p.user_id for p in para_winners}
-        winners = [p for p in all_players if p.user_id in winner_ids]
+        winners = [p for p in all_players if p.user_id in winner_ids and (p.is_alive or (p.role == RoleNames.SUIDSID and getattr(p, 'osildi', False)))]
     elif vsgame and winning_team is not None:
-        winners = [p for p in all_players if p.team == winning_team]
+        winners = [p for p in all_players if p.team == winning_team and (p.is_alive or (p.role == RoleNames.SUIDSID and getattr(p, 'osildi', False)))]
     else:
         winner_set = set(winner_roles or [])
-        winners = [p for p in all_players if p.role in winner_set]
+        winners = [p for p in all_players if p.role in winner_set and (p.is_alive or (p.role == RoleNames.SUIDSID and getattr(p, 'osildi', False)))]
 
     # Kezuvchi maxsus g'alaba sharti:
     # Faqatgina tinch aholi yutgan bo'lsa VA Kezuvchi tirik (is_alive) bo'lsa g'alaba qozonadi.
