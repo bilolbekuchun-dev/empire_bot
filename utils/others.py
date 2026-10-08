@@ -131,22 +131,12 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
         )
         return
 
-    # Valyuta turini aniqlash (dollar yoki olmos)
+    # Valyuta turini aniqlash (olmos ko'rsatilgan bo'lsa olmos, aks holda dollar)
     lower_text = text.lower()
-    cmd = parts[0].lower()
-
-    if cmd.startswith("/give"):
-        # /give buyrug'i sukut bo'yicha olmos (💎 / almaz) o'tkazadi
-        if any(k in lower_text for k in ["dollar", "dolar", "$", "💵", "pul"]):
-            is_diamond = False
-        else:
-            is_diamond = True
+    if any(k in lower_text for k in ["olmos", "diamond", "💎", "almaz"]):
+        is_diamond = True
     else:
-        # /money, /send va boshqa buyruqlar sukut bo'yicha dollar (💵) o'tkazadi
-        if any(k in lower_text for k in ["olmos", "diamond", "💎", "almaz"]):
-            is_diamond = True
-        else:
-            is_diamond = False
+        is_diamond = False
 
     target_user = None
     amount = 0
@@ -160,10 +150,10 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
 
         target_user, _ = await User.get_or_create(
             user_id=target_tg.id,
-            defaults={"full_name": target_tg.full_name, "mention": target_tg.mention_html()}
+            defaults={"full_name": target_tg.full_name or "User", "mention": target_tg.full_name or "User"}
         )
         for p in parts[1:]:
-            clean_p = p.replace("$", "").replace("💎", "")
+            clean_p = p.replace("$", "").replace("💎", "").replace(",", "").replace(".", "")
             if clean_p.isdigit():
                 amount = int(clean_p)
                 break
@@ -171,7 +161,7 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
         # 2. ID yoki Username orqali
         target_arg = parts[1].strip()
         for p in parts[1:]:
-            clean_p = p.replace("$", "").replace("💎", "")
+            clean_p = p.replace("$", "").replace("💎", "").replace(",", "").replace(".", "")
             if clean_p.isdigit():
                 if target_arg.isdigit() and int(clean_p) == int(target_arg):
                     continue
@@ -200,7 +190,7 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
         return
 
     sender_db, sender_profile = await _get_user_and_profile(
-        sender_tg.id, sender_tg.full_name, sender_tg.mention_html()
+        sender_tg.id, sender_tg.full_name or "User", sender_tg.mention_html() if hasattr(sender_tg, 'mention_html') else sender_tg.full_name
     )
     target_profile, _ = await Profile.get_or_create(user=target_user)
 
@@ -231,15 +221,20 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
 
         unit_name = "💵"
 
+    s_name = html.escape(sender_db.full_name or "Foydalanuvchi")
+    t_name = html.escape(target_user.full_name or "Foydalanuvchi")
+    s_link = f'<a href="tg://user?id={sender_db.user_id}">{s_name}</a>'
+    t_link = f'<a href="tg://user?id={target_user.user_id}">{t_name}</a>'
+
     # ✅ <name1> - <name2> ga <soni> ta <pul/almaz> yubordi!
-    success_msg = f"{sender_db.mention} - {target_user.mention} ga <b>{amount:,} ta {unit_name}</b> yubordi!"
+    success_msg = f"{s_link} - {t_link} ga <b>{amount:,} ta {unit_name}</b> yubordi! 💸"
     await message.answer(success_msg, parse_mode="HTML")
 
     if bot:
         try:
             await bot.send_message(
                 chat_id=target_user.user_id,
-                text=f"🎉 {sender_db.mention} sizga <b>{amount:,} ta {unit_name}</b> yubordi!",
+                text=f"🎉 {s_link} sizga <b>{amount:,} ta {unit_name}</b> yubordi!",
                 parse_mode="HTML"
             )
         except Exception:
