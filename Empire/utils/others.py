@@ -886,18 +886,25 @@ async def start_change_giveaway(message: Message, bot: Bot):
         "participants": [],  # list of tuples: (user_id, full_name)
     }
 
+    from utils.i18n import get_chat_lang, clean_lang
+    c_lang = clean_lang(await get_chat_lang(message.chat.id))
+
+    btn_join = {"uz": "🎲 Qatnashish", "ru": "🎲 Участвовать", "en": "🎲 Join", "tr": "🎲 Katıl", "kk": "🎲 Қатысу"}.get(c_lang, "🎲 Qatnashish")
+    btn_finish = {"uz": "⏹ Tugatish", "ru": "⏹ Завершить", "en": "⏹ Finish", "tr": "⏹ Bitir", "kk": "⏹ Аяқтау"}.get(c_lang, "⏹ Tugatish")
+
     kb = InlineKeyboardBuilder()
-    kb.button(text="🎲 Qatnashish", callback_data=f"change_join_{game_id}")
-    kb.button(text="⏹ Tugatish", callback_data=f"change_finish_{game_id}")
+    kb.button(text=btn_join, callback_data=f"change_join_{game_id}")
+    kb.button(text=btn_finish, callback_data=f"change_finish_{game_id}")
     kb.adjust(1)
 
-    msg_text = (
-        f"Kimdir <b>{count} ta {unit_disp}</b> yutib olishi mumkin!\n\n"
-        f"Ishtirokchilar:\n"
-        f"<i>Hozircha hech kim yo'q</i>\n\n"
-        f"Ishtirokchilar soni: 0/{max_participants}"
-    )
-    await message.answer(msg_text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    msg_map = {
+        "uz": f"Kimdir <b>{count} ta {unit_disp}</b> yutib olishi mumkin!\n\nIshtirokchilar:\n<i>Hozircha hech kim yo'q</i>\n\nIshtirokchilar soni: 0/{max_participants}",
+        "ru": f"Кто-то может выиграть <b>{count} {unit_disp}</b>!\n\nУчастники:\n<i>Пока никто не присоединился</i>\n\nКоличество участников: 0/{max_participants}",
+        "en": f"Someone can win <b>{count} {unit_disp}</b>!\n\nParticipants:\n<i>No one has joined yet</i>\n\nTotal participants: 0/{max_participants}",
+        "tr": f"Biri <b>{count} {unit_disp}</b> kazanabilir!\n\nKatılımcılar:\n<i>Henüz kimse katılmadı</i>\n\nKatılımcı sayısı: 0/{max_participants}",
+        "kk": f"Біреу <b>{count} {unit_disp}</b> ұтып алуы мүмкін!\n\nҚатысушылар:\n<i>Әлі ешкім қатыспады</i>\n\nҚатысушылар саны: 0/{max_participants}"
+    }
+    await message.answer(msg_map.get(c_lang, msg_map["uz"]), reply_markup=kb.as_markup(), parse_mode="HTML")
     if message.from_user:
         await send_big_giveaway_report(bot, message.from_user, message.chat, "Almashtirish konkursi", count)
 
@@ -912,8 +919,19 @@ async def change_giveaway_callback(call: CallbackQuery, bot: Bot):
     giveaway_key = f"change_{game_id}"
 
     game = _change_games.get(giveaway_key)
+    chat_id = call.message.chat.id if call.message else user.id
+    from utils.i18n import get_chat_lang, clean_lang
+    c_lang = clean_lang(await get_chat_lang(chat_id))
+
     if not game:
-        await call.answer("❌ Ushbu konkurs yakunlangan!", show_alert=True)
+        alert_map = {
+            "uz": "❌ Ushbu konkurs yakunlangan!",
+            "ru": "❌ Этот конкурс завершен!",
+            "en": "❌ This contest has ended!",
+            "tr": "❌ Bu yarışma sona erdi!",
+            "kk": "❌ Бұл конкурс аяқталды!"
+        }
+        await call.answer(alert_map.get(c_lang, alert_map["uz"]), show_alert=True)
         return
 
     # Check if action is finish
@@ -922,24 +940,37 @@ async def change_giveaway_callback(call: CallbackQuery, bot: Bot):
         is_creator = (user.id == game["creator_id"])
         is_super_admin = (user.id in PRIMARY_ADMIN_IDS)
 
+        c_name = html.escape(game["creator_name"])
         if not (is_creator or is_super_admin):
-            c_name = html.escape(game["creator_name"])
-            await call.answer(f"❌ Ushbu konkursni faqat uni boshlagan foydalanuvchi ({c_name}) tugata oladi!", show_alert=True)
+            no_perm_map = {
+                "uz": f"❌ Ushbu konkursni faqat uni boshlagan foydalanuvchi ({c_name}) tugata oladi!",
+                "ru": f"❌ Этот конкурс может завершить только создатель ({c_name})!",
+                "en": f"❌ Only the creator ({c_name}) can end this contest!",
+                "tr": f"❌ Bu yarışmayı sadece oluşturan kişi ({c_name}) bitirebilir!",
+                "kk": f"❌ Бұл конкурсты тек оны бастаған пайдаланушы ({c_name}) аяқтай алады!"
+            }
+            await call.answer(no_perm_map.get(c_lang, no_perm_map["uz"]), show_alert=True)
             return
 
         participants = game["participants"]
         unit_disp = get_diamond_display() if game["is_diamond"] else get_dollar_display()
-        c_name = html.escape(game["creator_name"])
 
         if not participants:
             _change_games.pop(giveaway_key, None)
-            finished_text = f"<b>{c_name} boshlagan almashtirish konkursi bekor qilindi.</b>\n\n<i>Hech kim qatnashmadi.</i>"
+            no_p_map = {
+                "uz": f"<b>{c_name} boshlagan almashtirish konkursi bekor qilindi.</b>\n\n<i>Hech kim qatnashmadi.</i>",
+                "ru": f"<b>Конкурс от {c_name} отменен.</b>\n\n<i>Никто не участвовал.</i>",
+                "en": f"<b>Contest created by {c_name} has been cancelled.</b>\n\n<i>No participants.</i>",
+                "tr": f"<b>{c_name} tarafından başlatılan yarışma iptal edildi.</b>\n\n<i>Kimse katılmadı.</i>",
+                "kk": f"<b>{c_name} бастаған конкурс жойылды.</b>\n\n<i>Ешкім қатыспады.</i>"
+            }
             if call.message:
                 try:
-                    await call.message.edit_text(finished_text, parse_mode="HTML", reply_markup=None)
+                    await call.message.edit_text(no_p_map.get(c_lang, no_p_map["uz"]), parse_mode="HTML", reply_markup=None)
                 except Exception:
                     pass
-            await call.answer("✅ Konkurs bekor qilindi.", show_alert=True)
+            cancel_ans = {"uz": "✅ Konkurs bekor qilindi.", "ru": "✅ Конкурс отменен.", "en": "✅ Contest cancelled.", "tr": "✅ Yarışma iptal edildi.", "kk": "✅ Конкурс жойылды."}
+            await call.answer(cancel_ans.get(c_lang, cancel_ans["uz"]), show_alert=True)
             return
 
         import random
@@ -962,21 +993,58 @@ async def change_giveaway_callback(call: CallbackQuery, bot: Bot):
         w_name_safe = html.escape(winner_name)
         w_link = f'<a href="tg://user?id={winner_id}">{w_name_safe}</a>'
 
-        result_text = (
-            f"🎉 <b>Almashtirish konkursi yakunlandi!</b>\n\n"
-            f"👤 <b>Tashkilotchi:</b> {c_name}\n"
-            f"🏆 <b>G'olib:</b> {w_link}\n"
-            f"🎁 <b>Yutuq:</b> {game['amount']} {unit_disp}\n\n"
-            f"📊 <b>Jami ishtirokchilar:</b> {len(participants)} kishi"
-        )
+        result_map = {
+            "uz": (
+                f"🎉 <b>Almashtirish konkursi yakunlandi!</b>\n\n"
+                f"👤 <b>Tashkilotchi:</b> {c_name}\n"
+                f"🏆 <b>G'olib:</b> {w_link}\n"
+                f"🎁 <b>Yutuq:</b> {game['amount']} {unit_disp}\n\n"
+                f"📊 <b>Jami ishtirokchilar:</b> {len(participants)} kishi"
+            ),
+            "ru": (
+                f"🎉 <b>Конкурс обмена завершен!</b>\n\n"
+                f"👤 <b>Организатор:</b> {c_name}\n"
+                f"🏆 <b>Победитель:</b> {w_link}\n"
+                f"🎁 <b>Приз:</b> {game['amount']} {unit_disp}\n\n"
+                f"📊 <b>Всего участников:</b> {len(participants)} чел."
+            ),
+            "en": (
+                f"🎉 <b>Exchange contest finished!</b>\n\n"
+                f"👤 <b>Organizer:</b> {c_name}\n"
+                f"🏆 <b>Winner:</b> {w_link}\n"
+                f"🎁 <b>Prize:</b> {game['amount']} {unit_disp}\n\n"
+                f"📊 <b>Total participants:</b> {len(participants)}"
+            ),
+            "tr": (
+                f"🎉 <b>Değişim yarışması bitti!</b>\n\n"
+                f"👤 <b>Organizatör:</b> {c_name}\n"
+                f"🏆 <b>Kazanan:</b> {w_link}\n"
+                f"🎁 <b>Ödül:</b> {game['amount']} {unit_disp}\n\n"
+                f"📊 <b>Toplam katılımcı:</b> {len(participants)} kişi"
+            ),
+            "kk": (
+                f"🎉 <b>Алмастыру конкурсы аяқталды!</b>\n\n"
+                f"👤 <b>Ұйымдастырушы:</b> {c_name}\n"
+                f"🏆 <b>Жеңімпаз:</b> {w_link}\n"
+                f"🎁 <b>Жүлде:</b> {game['amount']} {unit_disp}\n\n"
+                f"📊 <b>Барлық қатысушылар:</b> {len(participants)} адам"
+            )
+        }
 
         if call.message:
             try:
-                await call.message.edit_text(result_text, parse_mode="HTML", reply_markup=None)
+                await call.message.edit_text(result_map.get(c_lang, result_map["uz"]), parse_mode="HTML", reply_markup=None)
             except Exception:
                 pass
 
-        await call.answer("✅ Konkurs tugatildi va g'olibga yutuq berildi!", show_alert=True)
+        finish_ans = {
+            "uz": "✅ Konkurs tugatildi va g'olibga yutuq berildi!",
+            "ru": "✅ Конкурс завершен, приз вручен победителю!",
+            "en": "✅ Contest finished and prize awarded!",
+            "tr": "✅ Yarışma bitti ve ödül kazanan verildi!",
+            "kk": "✅ Конкурс аяқталды және жүлде жеңімпазға берілді!"
+        }
+        await call.answer(finish_ans.get(c_lang, finish_ans["uz"]), show_alert=True)
         return
 
     # Action is JOIN

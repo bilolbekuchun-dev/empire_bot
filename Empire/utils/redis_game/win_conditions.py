@@ -318,6 +318,13 @@ WIN_RESULT_STRINGS = {
         "others": "<b>Diğer oyuncular:</b>",
         "duration": "<b>Oyun süresi:</b>",
         "units": {"hours": "saat", "mins": "dakika", "secs": "saniye"}
+    },
+    "kk": {
+        "title": "<b>🎉 Ойын аяқталды!</b>",
+        "winners": "<b>Жеңімпаздар:</b>",
+        "others": "<b>Басқа ойыншылар:</b>",
+        "duration": "<b>Ойын ұзақтығы:</b>",
+        "units": {"hours": "сағат", "mins": "минут", "secs": "секунд"}
     }
 }
 

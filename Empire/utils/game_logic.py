@@ -89,4 +89,13 @@ async def create_nick_game_handler(message: Message, bot: Bot):
 
 async def extend_game_timer(message: Message, bot: Bot):
     """O'yin kutish vaqtini uzaytirish"""
-    await message.answer("⏱ O'yin boshlanish vaqti uzaytirildi!")
+    from utils.i18n import get_chat_lang, clean_lang
+    lang = clean_lang(await get_chat_lang(message.chat.id))
+    text_map = {
+        "uz": "⏱ O'yin boshlanish vaqti uzaytirildi!",
+        "ru": "⏱ Время ожидания начала игры продлено!",
+        "en": "⏱ Game wait time extended!",
+        "tr": "⏱ Oyun başlama süresi uzatıldı!",
+        "kk": "⏱ Ойынның басталу уақыты ұзартылды!"
+    }
+    await message.answer(text_map.get(lang, text_map["uz"]))
