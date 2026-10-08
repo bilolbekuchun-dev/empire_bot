@@ -635,9 +635,7 @@ async def start_giveaway_redis(message: Message, bot: Bot):
         await send_big_giveaway_report(bot, message.from_user, message.chat, "Umumiy giveaway", count)
 
 async def start_giveaway_channel(message: Message, bot: Bot):
-    from utils.i18n import get_chat_lang
-    lang = await get_chat_lang(message.chat.id)
-    strs = GIVEAWAY_STRINGS.get(lang, GIVEAWAY_STRINGS["uz"])
+    strs = GIVEAWAY_STRINGS["uz"]
     count = _parse_giveaway_count(message, default=10)
     giveaway_id = message.message_id
     kb = InlineKeyboardBuilder()
@@ -668,8 +666,11 @@ async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, i
     import random
 
     chat_id = call.message.chat.id if call.message else 0
-    lang = await get_chat_lang(chat_id)
-    strs = GIVEAWAY_STRINGS.get(lang, GIVEAWAY_STRINGS["uz"])
+    if is_channel:
+        strs = GIVEAWAY_STRINGS["uz"]
+    else:
+        lang = await get_chat_lang(chat_id)
+        strs = GIVEAWAY_STRINGS.get(lang, GIVEAWAY_STRINGS["uz"])
 
     parts = call.data.split("_")
     if len(parts) >= 4:
