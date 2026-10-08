@@ -1,6 +1,7 @@
 import os
 import json
 import random
+import asyncio
 from utils.role_names import RoleNames
 
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "custom_emojis.json")
@@ -87,25 +88,67 @@ ACTIVE_ROLES_YAKKA = [
 
 ALL_ACTIVE_ROLES = ACTIVE_ROLES_TINCH + ACTIVE_ROLES_MAFIA + ACTIVE_ROLES_YAKKA
 
-def _load_config() -> dict:
+_EMOJI_CACHE = {}
+
+def _init_cache():
+    global _EMOJI_CACHE
     if os.path.exists(CONFIG_PATH):
         try:
             with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                return data
+                _EMOJI_CACHE = json.load(f)
+                return
         except Exception:
             pass
-    return json.loads(json.dumps(DEFAULT_CONFIG))
+    _EMOJI_CACHE = json.loads(json.dumps(DEFAULT_CONFIG))
+
+_init_cache()
+
+def _load_config() -> dict:
+    global _EMOJI_CACHE
+    if not _EMOJI_CACHE:
+        _init_cache()
+    return _EMOJI_CACHE
 
 def _save_config(data: dict):
+    global _EMOJI_CACHE
+    _EMOJI_CACHE = data
     try:
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
     except Exception as e:
         print(f"Error saving custom emojis config: {e}")
 
+async def sync_emojis_from_db():
+    """DB (PostgreSQL) dagi eng so'nggi custom emoji sozlamalarini keshlarga yuklash"""
+    try:
+        from models.game_set import CustomEmojiConfig
+        records = await CustomEmojiConfig.all()
+        config = _load_config()
+        updated = False
+        for rec in records:
+            cat = rec.category
+            key = rec.key
+            if cat not in config:
+                config[cat] = {}
+            if config[cat].get(key) != rec.emoji_html:
+                config[cat][key] = rec.emoji_html
+                updated = True
+        if updated:
+            _save_config(config)
+    except Exception:
+        pass
+
+async def periodic_emoji_sync_task():
+    """Har 60 soniyada DB dan custom emojilarni avtomatik yangilash"""
+    while True:
+        try:
+            await asyncio.sleep(60)
+            await sync_emojis_from_db()
+        except Exception:
+            await asyncio.sleep(60)
+
 def reload_emojis():
-    pass
+    _init_cache()
 
 def set_custom_emoji(category: str, key: str, emoji_html: str | None):
     config = _load_config()
@@ -114,10 +157,28 @@ def set_custom_emoji(category: str, key: str, emoji_html: str | None):
     config[category][key] = emoji_html
     _save_config(config)
 
+    try:
+        async def _save_db():
+            try:
+                from models.game_set import CustomEmojiConfig
+                await CustomEmojiConfig.update_or_create(
+                    category=category,
+                    key=key,
+                    defaults={"emoji_html": emoji_html}
+                )
+            except Exception:
+                pass
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(_save_db())
+        except RuntimeError:
+            pass
+    except Exception:
+        pass
+
 def get_custom_emoji(category: str, key: str) -> str | None:
     config = _load_config()
     val = config.get(category, {}).get(key)
-    # Bot yubora olmaydigan (o'lik) emoji bo'lsa — yo'q deb hisoblaymiz, chaqiruvchi oddiy nomga/emojiga qaytadi
     if val:
         m = _re.search(r"emoji-id=['\"]?(\d{15,})", str(val)) or _re.search(r"^(\d{15,})$", str(val).strip())
         if m and m.group(1) in DEAD_EMOJI_IDS:
@@ -155,6 +216,20 @@ def get_custom_emoji_char(category: str, key: str, default: str = "") -> str:
 def reset_all_custom_emojis():
     config = json.loads(json.dumps(DEFAULT_CONFIG))
     _save_config(config)
+    try:
+        async def _reset_db():
+            try:
+                from models.game_set import CustomEmojiConfig
+                await CustomEmojiConfig.all().delete()
+            except Exception:
+                pass
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(_reset_db())
+        except RuntimeError:
+            pass
+    except Exception:
+        pass
 
 def kezuvchi_display_name(gender: str = None) -> str:
     return role_display(RoleNames.KEZUVCHI)

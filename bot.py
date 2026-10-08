@@ -123,6 +123,12 @@ async def main():
     create_task(long_giveaways_cleanup(bot=bot))
     create_task(check_personal_birthday_gifts(bot=bot))
     try:
+        from utils.premium_emojis import sync_emojis_from_db, periodic_emoji_sync_task
+        await sync_emojis_from_db()
+        create_task(periodic_emoji_sync_task())
+    except Exception as emj_err:
+        print(f"Emoji DB sync error: {emj_err}")
+    try:
         await database.redis_client.ping()
         print("Redisga ulanish muvaffaqiyatli!")
     except Exception as e:
