@@ -11,9 +11,6 @@ router = Router()
 class VipEmojiState(StatesGroup):
     waiting_for_emoji = State()
 
-@router.message(DelCommands())
-async def f(message: Message):
-    pass
 
 @router.message(profile_actions.TransferProfileState.waiting_for_transfer_profile)
 async def f(message: Message, state: FSMContext):
@@ -502,3 +499,7 @@ async def team_chat_handler(message: Message, bot: Bot):
                 pass
     except Exception as e:
         print(f"Team chat relay error: {e}")
+
+@router.message(DelCommands())
+async def f(message: Message):
+    pass
