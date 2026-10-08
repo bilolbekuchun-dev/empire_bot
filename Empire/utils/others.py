@@ -660,7 +660,10 @@ async def giveaway_callback_redis(call: CallbackQuery, bot: Bot):
 
 async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, is_channel: bool = False):
     from models.user import User, Profile
-    from utils.giveaways_redis import is_collected_user, add_collected_user, is_processing, mark_as_processing, unmark_as_processing
+    from utils.giveaways_redis import (
+        is_collected_user, add_collected_user, is_processing,
+        mark_as_processing, unmark_as_processing, add_winner_detail, get_winner_details
+    )
     from utils.i18n import get_chat_lang
     import random
 
@@ -712,20 +715,34 @@ async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, i
         await profile.save()
 
         add_collected_user(giveaway_id, user_id)
+        u_name = call.from_user.full_name or f"User_{user_id}"
+        add_winner_detail(giveaway_id, user_id, u_name, reward)
+
         new_remaining = remaining - 1
 
-        kb = InlineKeyboardBuilder()
         if new_remaining > 0:
             cb_prefix = "channel-giveaway" if is_channel else "giveaway"
+            kb = InlineKeyboardBuilder()
             kb.button(text=strs["btn_enter"].format(remaining=new_remaining), callback_data=f"{cb_prefix}_{giveaway_id}_{new_remaining}_{total}")
+            if call.message:
+                try:
+                    await call.message.edit_reply_markup(reply_markup=kb.as_markup())
+                except Exception:
+                    pass
         else:
-            kb.button(text=strs["btn_ended"], callback_data="giveaway_ended")
+            winners = get_winner_details(giveaway_id)
+            d_disp = get_diamond_display()
+            lines = ["<b>Ajratilgan sovg'alar tugadi!</b>\n", "<b>Olganlar:</b>"]
+            for idx, (w_uid, w_name, w_reward) in enumerate(winners, start=1):
+                safe_name = html.escape(w_name)
+                lines.append(f"{idx}) {safe_name} {w_reward}{d_disp}")
 
-        if call.message:
-            try:
-                await call.message.edit_reply_markup(reply_markup=kb.as_markup())
-            except Exception:
-                pass
+            finished_text = "\n".join(lines)
+            if call.message:
+                try:
+                    await call.message.edit_text(finished_text, parse_mode="HTML", reply_markup=None)
+                except Exception:
+                    pass
 
         await call.answer(strs["alert_success"].format(reward=reward), show_alert=True)
     finally:
@@ -852,42 +869,116 @@ async def start_protection_giveaway(message: Message, bot: Bot):
 async def protection_giveaway_callback(call: CallbackQuery, bot: Bot):
     await call.answer("🛡 Himoya yozildingiz!", show_alert=True)
 
+_change_games: dict = {}
+_money_giveaways: dict = {}
+
 async def start_change_giveaway(message: Message, bot: Bot):
-    count = _parse_giveaway_count(message)
+    count = _parse_giveaway_count(message, default=5)
+    text_lower = (message.text or "").lower()
+    is_diamond = not any(k in text_lower for k in ["$", "dollar", "pul", "som", "so'm"])
+    unit_disp = get_diamond_display() if is_diamond else get_dollar_display()
+
+    max_participants = 75
+    game_id = str(message.message_id)
+    giveaway_key = f"change_{game_id}"
+
+    creator_name = message.from_user.full_name if message.from_user else "Admin"
+
+    _change_games[giveaway_key] = {
+        "id": game_id,
+        "amount": count,
+        "is_diamond": is_diamond,
+        "max_participants": max_participants,
+        "creator_id": message.from_user.id if message.from_user else 0,
+        "creator_name": creator_name,
+        "participants": [],  # list of tuples: (user_id, full_name)
+    }
+
     kb = InlineKeyboardBuilder()
-    kb.button(text="🔄 Qatnashish", callback_data=f"change_{count}")
-    msg = (
-        f"🔄 <b>Almashtirish konkursi!</b>\n\n"
-        f"🔢 Soni: <b>{count} ta</b>\n"
-        f"<i>Qatnashish uchun tugmani bosing!</i>"
+    kb.button(text="🎲 Qatnashish", callback_data=f"change_join_{game_id}")
+
+    msg_text = (
+        f"Kimdir <b>{count} ta {unit_disp}</b> yutib olishi mumkin!\n\n"
+        f"Ishtirokchilar:\n"
+        f"<i>Hozircha hech kim yo'q</i>\n\n"
+        f"Ishtirokchilar soni: 0/{max_participants}"
     )
-    await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    await message.answer(msg_text, reply_markup=kb.as_markup(), parse_mode="HTML")
     if message.from_user:
         await send_big_giveaway_report(bot, message.from_user, message.chat, "Almashtirish konkursi", count)
 
 async def change_giveaway_callback(call: CallbackQuery, bot: Bot):
-    await call.answer("Qatnashdingiz!", show_alert=True)
+    user = call.from_user
+    if not user:
+        return
+
+    parts = call.data.split("_")
+    game_id = parts[-1]
+    giveaway_key = f"change_{game_id}"
+
+    game = _change_games.get(giveaway_key)
+    if not game:
+        await call.answer("Qatnashdingiz!", show_alert=True)
+        return
+
+    participants = game["participants"]
+    user_id = user.id
+
+    if any(u_id == user_id for u_id, _ in participants):
+        await call.answer("❌ Siz allaqachon qatnashdingiz!", show_alert=True)
+        return
+
+    if len(participants) >= game["max_participants"]:
+        await call.answer("🏁 Ishtirokchilar soni to'ldi!", show_alert=True)
+        return
+
+    participants.append((user_id, user.full_name or f"User_{user_id}"))
+    await call.answer("✅ Qatnashdingiz!", show_alert=False)
+
+    unit_disp = get_diamond_display() if game["is_diamond"] else get_dollar_display()
+
+    lines = [f"Kimdir <b>{game['amount']} ta {unit_disp}</b> yutib olishi mumkin!\n\nIshtirokchilar:"]
+    for idx, (uid, uname) in enumerate(participants[:50], start=1):
+        safe_name = html.escape(uname)
+        lines.append(f"{idx}) {safe_name}")
+    if len(participants) > 50:
+        lines.append(f"...va yana {len(participants) - 50} kishi")
+
+    lines.append(f"\nIshtirokchilar soni: {len(participants)}/{game['max_participants']}")
+
+    new_text = "\n".join(lines)
+
+    kb = InlineKeyboardBuilder()
+    if len(participants) < game["max_participants"]:
+        kb.button(text="🎲 Qatnashish", callback_data=f"change_join_{game_id}")
+    else:
+        kb.button(text="🏁 Ishtirokchilar to'ldi", callback_data="change_full")
+
+    try:
+        await call.message.edit_text(new_text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    except Exception:
+        pass
 
 async def start_change_giveaway_channel(message: Message, bot: Bot):
-    count = _parse_giveaway_count(message)
-    kb = InlineKeyboardBuilder()
-    kb.button(text="🔄 Qatnashish", callback_data=f"channel-change_{count}")
-    msg = (
-        f"🔄 <b>Kanal almashtirish konkursi!</b>\n\n"
-        f"🔢 Soni: <b>{count} ta</b>\n"
-        f"<i>Qatnashish uchun tugmani bosing!</i>"
-    )
-    await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
-    if message.from_user:
-        await send_big_giveaway_report(bot, message.from_user, message.chat, "Kanal almashtirish konkursi", count)
+    await start_change_giveaway(message, bot)
 
 async def change_giveaway_callback_channel(call: CallbackQuery, bot: Bot):
-    await call.answer("Qatnashdingiz!", show_alert=True)
+    await change_giveaway_callback(call, bot)
 
 async def start_money_giveaway(message: Message, bot: Bot):
-    amount = _parse_giveaway_count(message, default=100)
+    amount = _parse_giveaway_count(message, default=500)
+    creator_name = message.from_user.full_name if message.from_user else ""
+    game_id = str(message.message_id)
+
+    _money_giveaways[game_id] = {
+        "creator_name": creator_name,
+        "amount": amount,
+        "remaining": 10,
+        "winners": []  # list of tuples: (user_id, full_name, amount)
+    }
+
     kb = InlineKeyboardBuilder()
-    kb.button(text="💵 Qatnashish", callback_data=f"mgive_{amount}")
+    kb.button(text="💵 Qatnashish", callback_data=f"mgive_claim_{game_id}")
     msg = (
         f"💵 <b>Pul giveaway tarqatildi!</b>\n\n"
         f"💰 Miqdori: <b>{amount:,} $</b>\n"
@@ -898,7 +989,59 @@ async def start_money_giveaway(message: Message, bot: Bot):
         await send_big_giveaway_report(bot, message.from_user, message.chat, "Pul giveaway", amount)
 
 async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
-    await call.answer("💵 Pul sovg'asiga qatnashdingiz!", show_alert=True)
+    user = call.from_user
+    if not user:
+        return
+
+    parts = call.data.split("_")
+    game_id = parts[-1]
+
+    game = _money_giveaways.get(game_id)
+    if not game:
+        await call.answer("💵 Pul sovg'asiga qatnashdingiz!", show_alert=True)
+        return
+
+    winners = game["winners"]
+    if any(w_id == user.id for w_id, _, _ in winners):
+        await call.answer("❌ Siz ushbu giveawaydan allaqachon pul olgansiz!", show_alert=True)
+        return
+
+    if game["remaining"] <= 0:
+        await call.answer("🏁 Afsuski, barcha pul sovg'alari tugadi!", show_alert=True)
+        return
+
+    from models.user import User, Profile
+    u_db, _ = await User.get_or_create(user_id=user.id, defaults={"full_name": user.full_name or f"User_{user.id}"})
+    p_db, _ = await Profile.get_or_create(user=u_db)
+    p_db.dollar += game["amount"]
+    await p_db.save()
+
+    winners.append((user.id, user.full_name or f"User_{user.id}", game["amount"]))
+    game["remaining"] -= 1
+
+    d_disp = get_dollar_display()
+    await call.answer(f"🎉 Tabriklaymiz! Siz {game['amount']} {d_disp} yutib oldingiz!", show_alert=True)
+
+    if game["remaining"] > 0:
+        kb = InlineKeyboardBuilder()
+        kb.button(text=f"💵 Qatnashish (qoldi {game['remaining']})", callback_data=f"mgive_claim_{game_id}")
+        try:
+            await call.message.edit_reply_markup(reply_markup=kb.as_markup())
+        except Exception:
+            pass
+    else:
+        c_name = html.escape(game["creator_name"])
+        header = f"<b>{c_name} ajratgan pul sovg'alari tugadi!</b>\n\n<b>Olganlar:</b>" if c_name else "<b>Ajratilgan pul sovg'alari tugadi!</b>\n\n<b>Olganlar:</b>"
+        lines = [header]
+        for idx, (w_id, w_name, w_amt) in enumerate(winners, start=1):
+            safe_name = html.escape(w_name)
+            lines.append(f"{idx}) {safe_name} {w_amt}{d_disp}")
+
+        final_text = "\n".join(lines)
+        try:
+            await call.message.edit_text(final_text, parse_mode="HTML", reply_markup=None)
+        except Exception:
+            pass
 
 # Do'kon va Valyutalar
 async def show_shop(call: CallbackQuery):
