@@ -12,6 +12,7 @@ from utils.game_logic import safe_send_message
 from aiogram import Bot
 from .roles_text import Roles
 import asyncio
+import html
 from config import ADMINS, CHANNEL_USERNAME, CHANNEL_ID, DIAMOND_SHOP_USERNAME
 from utils.role_names import RoleNames
 from aiogram.enums import ChatMemberStatus
@@ -141,8 +142,10 @@ async def check_my_para(message: Message):
             parse_mode="HTML"
         )
         return
-    other_user = paras.user2 if paras.user1.id == user.id else paras.user1
-    await message.answer(f"Sizning parangiz: {other_user.mention} <tg-emoji emoji-id='5402100905883488232'>💍</tg-emoji>", parse_mode="HTML")
+    other_user = paras.user2 if paras.user1_id == user.id else paras.user1
+    other_name = html.escape(other_user.full_name or "Foydalanuvchi")
+    other_link = f'<a href="tg://user?id={other_user.user_id}">{other_name}</a>'
+    await message.answer(f"Sizning parangiz: {other_link} <tg-emoji emoji-id='5402100905883488232'>💍</tg-emoji>", parse_mode="HTML")
 
 async def add_para_request(message: Message):
     user_id = message.reply_to_message.from_user.id if message.reply_to_message else None
@@ -175,19 +178,24 @@ async def add_para_request(message: Message):
         await message.answer("Ushbu foydalanuvchida allaqachon para bor!")
         return
     
+    u1_name = html.escape(user.full_name or "Foydalanuvchi")
+    u2_name = html.escape(targ_user.full_name or "Foydalanuvchi")
+    u1_link = f'<a href="tg://user?id={user.user_id}">{u1_name}</a>'
+    u2_link = f'<a href="tg://user?id={targ_user.user_id}">{u2_name}</a>'
+
     markup = InlineKeyboardBuilder()
     markup.button(text="Qabul qilish", callback_data=f"para_accept_{user.user_id}_{targ_user.user_id}")
     markup.button(text="Rad etish", callback_data=f"para_decline_{user.user_id}_{targ_user.user_id}")
     markup.adjust(1)
     await message.bot.send_message(
         chat_id=targ_user.user_id,
-        text=f"Sizga {user.mention}dan para so'rov yuborildi.",
+        text=f"Sizga {u1_link}dan para so'rov yuborildi.",
         reply_markup=markup.as_markup(),
         parse_mode="HTML"
     )
     await message.bot.send_message(
         chat_id=user.user_id,
-        text=f"Siz {targ_user.mention}ga para so'rov yubordingiz.",
+        text=f"Siz {u2_link}ga para so'rov yubordingiz.",
         parse_mode="HTML"
     )
 
@@ -230,27 +238,37 @@ async def accept_para(callback: CallbackQuery):
 
             await Paralar.create(user1=user1, user2=user2)
 
+            u1_name = html.escape(user1.full_name or "Foydalanuvchi")
+            u2_name = html.escape(user2.full_name or "Foydalanuvchi")
+            u1_link = f'<a href="tg://user?id={user1.user_id}">{u1_name}</a>'
+            u2_link = f'<a href="tg://user?id={user2.user_id}">{u2_name}</a>'
+
             await callback.answer("Para so'rovi qabul qilindi.")
             await callback.message.edit_text(
-                f"Siz {user1.mention} bilan para bo'ldingiz!",
+                f"Siz {u1_link} bilan para bo'ldingiz! 💍",
                 parse_mode="HTML"
             )
             await safe_send_message(
                 callback.bot,
                 user1.user_id,
-                f"Siz {user2.mention} bilan para bo'ldingiz!",
+                f"Siz {u2_link} bilan para bo'ldingiz! 💍",
                 parse_mode="HTML"
             )
         case "decline":
+            u1_name = html.escape(user1.full_name or "Foydalanuvchi")
+            u2_name = html.escape(user2.full_name or "Foydalanuvchi")
+            u1_link = f'<a href="tg://user?id={user1.user_id}">{u1_name}</a>'
+            u2_link = f'<a href="tg://user?id={user2.user_id}">{u2_name}</a>'
+
             await callback.answer("Para so'rovi rad etildi.")
             await callback.message.edit_text(
-                f"Siz {user1.mention}ning para so'rovini rad etdingiz.",
+                f"Siz {u1_link}ning para so'rovini rad etdingiz.",
                 parse_mode="HTML"
             )
             await safe_send_message(
                 callback.bot,
                 user1.user_id,
-                f"Sizning {user2.mention}ga yuborgan para so'rovingiz rad etildi.",
+                f"Sizning {u2_link}ga yuborgan para so'rovingiz rad etildi.",
                 parse_mode="HTML"
             )
 
@@ -781,58 +799,25 @@ async def para_chat_relay(message: Message, state, bot: Bot):
     text = (message.text or "").strip()
 
     if text in ["❌ Suhbatni yopish", "/stopchat", "/stop_chat", "/endchat", "/stop", "/cancel", "/close", "/exit"]:
-        await para_chat_close_action(user_id=user_id, bot=bot, state=state, send_notification=True)
+        await para_chat_close_action(user_id, bot, state)
         return
 
-    # Buyruqlar hech qachon parangizga yuborilmaydi. Ilgari /profile, /start va
-    # hatto /dpara ham suhbatga tushib ketardi va odam botdan chiqa olmay qolardi.
-    if text.startswith("/"):
-        await para_chat_close_action(user_id=user_id, bot=bot, state=state, send_notification=True)
-        await message.answer(
-            "💬 Anonim suhbat yopildi (buyruq yuborildi).\n"
-            f"Endi <b>{text.split()[0]}</b> buyrug'ini qayta yuboring.",
-            parse_mode="HTML",
-        )
-        return
-
-    if state is not None:
-        global _fsm_storage
-        _fsm_storage = state.storage
-
-    data = await state.get_data() if state else {}
-    partner_user_id = data.get("partner_user_id") or active_chats.get(user_id)
-    if not partner_user_id:
+    data = await state.get_data()
+    partner_id = data.get("partner_user_id") or active_chats.get(user_id)
+    if not partner_id:
         try:
             r_partner = await redis_client.get(f"anon_chat:{user_id}")
             if r_partner:
-                partner_user_id = int(r_partner)
+                partner_id = int(r_partner)
         except Exception:
             pass
 
-    if not partner_user_id:
-        await para_chat_close_action(user_id=user_id, bot=bot, state=state, send_notification=True)
-        return
-
-    # Para bekor qilingan bo'lsa, xabar eski juftga ketmasligi kerak.
-    if not await _has_active_para(user_id, partner_user_id):
-        await force_close_anon_chat(user_id, partner_user_id, bot=bot)
-        try:
-            from aiogram.types import ReplyKeyboardRemove
-            await message.answer(
-                "💔 Sizda para yo'q — anonim suhbat yopildi. Xabaringiz hech kimga yuborilmadi.",
-                reply_markup=ReplyKeyboardRemove(),
-            )
-        except Exception:
-            pass
-        if state:
-            try:
-                await state.clear()
-            except Exception:
-                pass
+    if not partner_id:
+        await para_chat_close_action(user_id, bot, state, send_notification=False)
+        await message.answer("❗ Suhbatdosh topilmadi. Suhbat yopildi.")
         return
 
     try:
-        await message.copy_to(chat_id=partner_user_id)
+        await message.copy_to(chat_id=partner_id)
     except Exception:
-        await message.answer("⚠️ Parangizga xabar yetkazilmadi. Suhbat yopilmoqda...")
-        await para_chat_close_action(user_id=user_id, bot=bot, state=state, send_notification=True)
+        await message.answer("❌ Xabarni yetkazib bo'lmadi. Suhbatdosh botni bloklagan bo'lishi mumkin.")

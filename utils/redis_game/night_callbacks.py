@@ -8,7 +8,7 @@ Callback formatlari:
 """
 import html
 
-from aiogram import Router, F
+from aiogram import Router, F, Bot
 from aiogram.types import CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
@@ -55,14 +55,30 @@ async def _player_mention(uid: int) -> str:
     return f'<a href="tg://user?id={int(uid)}">{name}</a>'
 
 
-async def _confirm_choice(call: CallbackQuery, role: str, choice: str, lang: str = "uz") -> None:
+async def _get_go_group_markup(bot: Bot, gid: int, lang: str = "uz"):
+    if not gid or not bot:
+        return None
+    try:
+        from utils.telegram_utils import get_chat_join_link
+        from keyboards.game_keyboard import go_group_button
+        link = await get_chat_join_link(bot, gid)
+        if link:
+            return go_group_button(link, lang=lang)
+    except Exception:
+        pass
+    return None
+
+
+async def _confirm_choice(call: CallbackQuery, role: str, choice: str, lang: str = "uz", gid: int = None) -> None:
     text = _choice_text(role, choice, lang=lang)
     await call.answer()
+    reply_markup = await _get_go_group_markup(call.bot, gid, lang=lang)
+
     try:
-        await call.message.edit_text(text, parse_mode="HTML")
+        await call.message.edit_text(text, parse_mode="HTML", reply_markup=reply_markup)
     except Exception:
         try:
-            await call.message.edit_text(text)
+            await call.message.edit_text(text, reply_markup=reply_markup)
         except Exception:
             pass
 
@@ -323,7 +339,7 @@ async def night_action_cb(call: CallbackQuery, bot=None):
 
     if kind == "s":
         await _announce_night_action(call, gid, ph, uid, role, skipped=True)
-        await _confirm_choice(call, role, skip_text, lang=chat_lang)
+        await _confirm_choice(call, role, skip_text, lang=chat_lang, gid=gid)
         await _mark_action_completed(gid, ph, uid)
         return
 
@@ -372,7 +388,7 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         await _announce_night_action(call, gid, ph, uid, role, kind=kind)
         action_name = "Tekshirish" if kind == "c" else "O'ldirish"
         target_name = await _player_name(int(target))
-        await _confirm_choice(call, role, f"{action_name} ➔ {target_name}", lang=chat_lang)
+        await _confirm_choice(call, role, f"{action_name} ➔ {target_name}", lang=chat_lang, gid=gid)
         await _mark_action_completed(gid, ph, uid)
         return
 
@@ -410,7 +426,7 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         n1 = await _player_name(int(first)) if first else "?"
         n2 = await _player_name(int(target))
         await _announce_night_action(call, gid, ph, uid, role)
-        await _confirm_choice(call, role, f"{n1}, {n2}", lang=chat_lang)
+        await _confirm_choice(call, role, f"{n1}, {n2}", lang=chat_lang, gid=gid)
         await _mark_action_completed(gid, ph, uid)
         return
 
@@ -448,7 +464,7 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         await ActionService.clear_player_actions(gid, ph, uid)
         await ActionService.save_action(gid, ph, uid, uid, "jin_hayot")
         await _announce_night_action(call, gid, ph, uid, role)
-        await _confirm_choice(call, role, "✨ Hayot ➔ O'zimga", lang=chat_lang)
+        await _confirm_choice(call, role, "✨ Hayot ➔ O'zimga", lang=chat_lang, gid=gid)
         await _mark_action_completed(gid, ph, uid)
         return
 
@@ -473,7 +489,7 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         await ActionService.save_action(gid, ph, uid, int(target), "jin_hayot")
         target_name = await _player_name(int(target))
         await _announce_night_action(call, gid, ph, uid, role)
-        await _confirm_choice(call, role, f"✨ Hayot ➔ {target_name}", lang=chat_lang)
+        await _confirm_choice(call, role, f"✨ Hayot ➔ {target_name}", lang=chat_lang, gid=gid)
         await _mark_action_completed(gid, ph, uid)
         return
 
@@ -500,7 +516,7 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         await ActionService.save_action(gid, ph, uid, int(target), "jin_pul")
         target_name = await _player_name(int(target))
         await _announce_night_action(call, gid, ph, uid, role)
-        await _confirm_choice(call, role, f"💰 Pul ➔ {target_name}", lang=chat_lang)
+        await _confirm_choice(call, role, f"💰 Pul ➔ {target_name}", lang=chat_lang, gid=gid)
         await _mark_action_completed(gid, ph, uid)
         return
 
@@ -525,7 +541,7 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         await ActionService.save_action(gid, ph, uid, int(target), "jin_qotil")
         target_name = await _player_name(int(target))
         await _announce_night_action(call, gid, ph, uid, role)
-        await _confirm_choice(call, role, f"💀 Qotillik ➔ {target_name}", lang=chat_lang)
+        await _confirm_choice(call, role, f"💀 Qotillik ➔ {target_name}", lang=chat_lang, gid=gid)
         await _mark_action_completed(gid, ph, uid)
         return
 
@@ -539,7 +555,7 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         else:
             choice = await _player_name(int(target))
         await _announce_night_action(call, gid, ph, uid, role)
-        await _confirm_choice(call, role, choice, lang=chat_lang)
+        await _confirm_choice(call, role, choice, lang=chat_lang, gid=gid)
         await _mark_action_completed(gid, ph, uid)
         return
 
@@ -631,8 +647,9 @@ async def day_vote_cb(call: CallbackQuery, bot=None):
         await VoteService.save_vote(gid, day, uid, 0)
         await _announce_day_vote(call, gid, uid, skipped=True)
         await call.answer("Hech kimni tanlamaslikka qaror qildingiz!")
+        group_markup = await _get_go_group_markup(call.bot, gid)
         try:
-            await call.message.edit_text("Hech kimni tanlamaslikka qaror qildingiz!", reply_markup=None)
+            await call.message.edit_text("Hech kimni tanlamaslikka qaror qildingiz!", reply_markup=group_markup)
         except Exception:
             pass
         return
@@ -660,11 +677,12 @@ async def day_vote_cb(call: CallbackQuery, bot=None):
     await _announce_day_vote(call, gid, uid, target_id)
     await call.answer(f"Siz {name}ga ovoz berdingiz!")
     text = f"Siz {name}ga ovoz berdingiz!"
+    group_markup = await _get_go_group_markup(call.bot, gid)
     try:
-        await call.message.edit_text(text, parse_mode="HTML", reply_markup=None)
+        await call.message.edit_text(text, parse_mode="HTML", reply_markup=group_markup)
     except Exception:
         try:
-            await call.message.edit_text(text, reply_markup=None)
+            await call.message.edit_text(text, reply_markup=group_markup)
         except Exception:
             pass
 
@@ -701,4 +719,3 @@ async def vote_like_cb(call: CallbackQuery, bot=None):
     except Exception:
         pass
     await call.answer("👍" if is_like else "👎")
-
