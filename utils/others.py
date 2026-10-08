@@ -119,6 +119,13 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
     if not sender_tg:
         return
 
+    # Guruhda bo'lsa buyruq xabarini o'chirish (guruh toza turishi uchun)
+    if str(message.chat.type) in ["group", "supergroup", "ChatType.GROUP", "ChatType.SUPERGROUP"]:
+        try:
+            await message.delete()
+        except Exception:
+            pass
+
     text = (message.text or "").strip()
     parts = text.split()
     if len(parts) < 2:
