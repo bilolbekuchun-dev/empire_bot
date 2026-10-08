@@ -156,14 +156,47 @@ class DelCommands(Filter):
                 await user.save()
 
         if message.chat.type == ChatType.PRIVATE:
-            return
+            return False
         msg_text = (message.text or message.caption or "").strip()
-        if msg_text and (msg_text.startswith("/") or msg_text.startswith("!")):
+        if not msg_text:
+            return False
+
+        # Tun fazasi ekanligini tekshirish (DB hamda Redis o'yinlari uchun)
+        is_night = False
+        try:
+            game = await Game.filter(chat__chat_id=message.chat.id, is_active=True).first()
+            if game:
+                night_phase = await GamePhase.filter(game=game, phase_type="night", is_end=False).first()
+                if night_phase:
+                    is_night = True
+
+            if not is_night:
+                from utils.redis_game.repositories.game_repository import game_repository
+                rg_id = await game_repository.get_active_game(message.chat.id)
+                if rg_id:
+                    rg = await game_repository.load_game(rg_id)
+                    if rg and rg.is_active and rg.phase == "night":
+                        is_night = True
+        except Exception:
+            pass
+
+        if is_night:
+            # Tun fazasida: '!' bilan boshlangan xabarlar o'chirilmaydi, '!'siz yozilganlar o'chiriladi
+            if msg_text.startswith("!"):
+                return False
+            else:
+                try:
+                    await message.delete()
+                except Exception:
+                    pass
+                return True
+
+        if msg_text.startswith("/") or msg_text.startswith("!"):
             try:
                 await message.delete()
-            except:
+            except Exception:
                 pass
-            return
+            return True
 
         admin = False
         member = None

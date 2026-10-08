@@ -411,40 +411,24 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
             return
 
         # 7) TUN FAZASI UCHUN CHEKLOV:
-        # Tun payti faqat:
-        #   - VIP a'zolar (agar tirik bo'lsa)
-        #   - Adminlar (xabar boshiga '!' qo'yib yozsa)
-        # yozishi mumkin. Qolgan barcha oddiy xabarlar o'chiriladi!
+        # Tun payti:
+        #   - Xabar boshiga '!' qo'yib yozilsa -> xabar O'CHIRILMAYDI (guruhda saqlanib qoladi)
+        #   - '/' bilan boshlansa -> slash buyruq o'chiriladi va bajariladi
+        #   - '!' qo'yilmasdan yozilsa -> xabar O'CHIRILADI
         if is_game_active and phase_key == "night":
-            is_vip = False
-            if message.from_user:
-                try:
-                    from models.user import VipUser
-                    is_vip = bool(await VipUser.filter(user__user_id=message.from_user.id).first())
-                except Exception:
-                    is_vip = False
-
-            if is_vip:
+            if msg_text.startswith("!"):
+                # Undov (!) bilan yozilgan xabar tunda o'chirilmaydi
                 return await handler(message, data)
-
-            is_admin = False
-            if message.from_user:
-                if message.from_user.id in set(ADMINS):
-                    is_admin = True
-                else:
-                    try:
-                        m = await message.bot.get_chat_member(message.chat.id, message.from_user.id)
-                        is_admin = self._is_admin_status(getattr(m, "status", ""))
-                    except Exception:
-                        is_admin = False
-
-            if is_admin and msg_text.startswith("!"):
+            elif msg_text.startswith("/"):
+                # Slash (/) buyruq bo'lsa — buyruq xabari o'chiriladi va bajariladi
+                if bot_can_delete:
+                    await self._delete_quietly(message)
                 return await handler(message, data)
-
-            # Tun fazasida ruxsatsiz yozilgan har qanday xabar o'chiriladi
-            if bot_can_delete:
-                await self._delete_quietly(message)
-            return
+            else:
+                # Undov (!) qo'yilmagan oddiy xabar — tunda o'chiriladi
+                if bot_can_delete:
+                    await self._delete_quietly(message)
+                return
 
         # 8) Slash buyruqlar (/start, /profile, /give, ! va hk)
         if msg_text and (msg_text.startswith("/") or msg_text.startswith("!")):
