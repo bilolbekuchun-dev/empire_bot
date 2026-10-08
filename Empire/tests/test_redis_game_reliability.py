@@ -354,7 +354,10 @@ async def test_gameplayer_migration_columns_match_model():
     for col in ("qm_portlat_used", "qm_tiriltir_used", "qm_xazina_used"):
         assert col in model_fields
 
-    src = pathlib.Path("utils/database.py").read_text(encoding="utf-8")
+    db_path = pathlib.Path("utils/database.py")
+    if not db_path.exists():
+        db_path = pathlib.Path("Empire/utils/database.py")
+    src = db_path.read_text(encoding="utf-8")
     # the renamed (nonexistent) columns must not come back
     assert "kom_portlat_used" not in src
     assert "kom_tiriltir_used" not in src
