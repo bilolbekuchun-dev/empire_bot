@@ -148,19 +148,40 @@ async def check_my_para(message: Message):
     await message.answer(f"Sizning parangiz: {other_link} <tg-emoji emoji-id='5402100905883488232'>💍</tg-emoji>", parse_mode="HTML")
 
 async def add_para_request(message: Message):
-    user_id = message.reply_to_message.from_user.id if message.reply_to_message else None
+    user_id = None
+    if message.reply_to_message:
+        if message.reply_to_message.from_user.is_bot:
+            await message.answer("Botlar bilan para bo'lish mumkin emas!")
+            return
+        user_id = message.reply_to_message.from_user.id
+    else:
+        parts = message.text.split() if message.text else []
+        if len(parts) > 1:
+            arg = parts[1].strip()
+            if arg.startswith("@"):
+                u_obj = await User.get_or_none(username__iexact=arg[1:])
+                if u_obj:
+                    user_id = u_obj.user_id
+            elif arg.isdigit():
+                user_id = int(arg)
+
     if not user_id:
+        await message.answer(
+            "<b>Para bo'lish uchun:</b>\n"
+            "1. Biror foydalanuvchining xabariga <code>/para</code> deb javob (reply) qaytaring;\n"
+            "2. Yoki <code>/para @username</code> deb yozing.",
+            parse_mode="HTML"
+        )
         return
+
     if user_id == message.from_user.id:
         await message.answer("O'zingiz bilan para bo'la olmaysiz!")
         return
-    if message.reply_to_message.from_user.is_bot:
-        await message.answer("Botlar bilan para bo'lish mumkin emas!")
-        return
 
-    user = await User.get_or_none(user_id=message.from_user.id)
-    if not user:
-        return
+    user, _ = await User.get_or_create(
+        user_id=message.from_user.id,
+        defaults={"full_name": (message.from_user.full_name or "Foydalanuvchi")[:100]}
+    )
     targ_user = await User.get_or_none(user_id=user_id)
     if not targ_user:
         await message.answer("Foydalanuvchi ma'lumotlar bazasidan topilmadi. Avval u botga /start bosishi kerak.")
@@ -187,15 +208,28 @@ async def add_para_request(message: Message):
     markup.button(text="Qabul qilish", callback_data=f"para_accept_{user.user_id}_{targ_user.user_id}")
     markup.button(text="Rad etish", callback_data=f"para_decline_{user.user_id}_{targ_user.user_id}")
     markup.adjust(1)
-    await message.bot.send_message(
-        chat_id=targ_user.user_id,
-        text=f"Sizga {u1_link}dan para so'rov yuborildi.",
-        reply_markup=markup.as_markup(),
-        parse_mode="HTML"
-    )
-    await message.bot.send_message(
-        chat_id=user.user_id,
-        text=f"Siz {u2_link}ga para so'rov yubordingiz.",
+
+    sent = False
+    try:
+        await message.bot.send_message(
+            chat_id=targ_user.user_id,
+            text=f"Sizga {u1_link}dan para so'rov yuborildi.",
+            reply_markup=markup.as_markup(),
+            parse_mode="HTML"
+        )
+        sent = True
+    except Exception:
+        pass
+
+    if not sent:
+        await message.answer(
+            f"❌ {u2_link} botga shaxsiyda (DM) yozmagan! Para so'rovini yuborish uchun sherigingiz botga shaxsiyda /start bosgan bo'lishi kerak.",
+            parse_mode="HTML"
+        )
+        return
+
+    await message.answer(
+        f"💍 {u1_link} foydalanuvchisi {u2_link}ga para bo'lish so'rovini yubordi!",
         parse_mode="HTML"
     )
 
