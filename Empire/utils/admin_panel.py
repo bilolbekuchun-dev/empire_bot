@@ -11,10 +11,10 @@ from keyboards.admin_keyboard import (
     admin_games_menu_kb, admin_broadcast_menu_kb, admin_vip_menu_kb,
     admin_logs_menu_kb, admin_back_btn
 )
-from config import ADMINS
+from config import ADMINS, PRIMARY_ADMIN_IDS
 
 def is_admin(user_id: int) -> bool:
-    return user_id in ADMINS
+    return user_id in PRIMARY_ADMIN_IDS
 
 async def get_admin_dashboard_text() -> str:
     """Admin panel asosiy statistikasi va holati"""
