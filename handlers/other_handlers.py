@@ -90,6 +90,8 @@ async def f(message: Message, bot: Bot):
 
 @router.message(Command("give"))
 @router.message(F.text.startswith("/give "))
+@router.message(Command("pay"))
+@router.message(F.text.startswith("/pay "))
 async def f(message: Message, bot: Bot):
     await others.transfer_funds_handler(message=message, bot=bot)
 
