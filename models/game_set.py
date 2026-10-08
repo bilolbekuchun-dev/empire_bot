@@ -156,3 +156,14 @@ class GroupBalanceTransfer(models.Model):
     chat_id = fields.BigIntField(unique=True)
     balance = fields.DecimalField(max_digits=10, decimal_places=2)
     updated_at = fields.DatetimeField(auto_now=True)
+
+class CustomEmojiConfig(models.Model):
+    id = fields.BigIntField(pk=True)
+    category = fields.CharField(max_length=50)
+    key = fields.CharField(max_length=100)
+    emoji_html = fields.TextField(null=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+
+    class Meta:
+        table = "custom_emoji_configs"
+        unique_together = (("category", "key"),)
