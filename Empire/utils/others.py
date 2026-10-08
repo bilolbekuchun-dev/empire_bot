@@ -732,17 +732,8 @@ async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, i
         else:
             winners = get_winner_details(giveaway_id)
             d_disp = get_diamond_display()
-            lines = ["<b>Ajratilgan sovg'alar tugadi!</b>\n", "<b>Olganlar:</b>"]
-            for idx, (w_uid, w_name, w_reward) in enumerate(winners, start=1):
-                safe_name = html.escape(w_name)
-                lines.append(f"{idx}) {safe_name} {w_reward}{d_disp}")
-
-            finished_text = "\n".join(lines)
-            if call.message:
-                try:
-                    await call.message.edit_text(finished_text, parse_mode="HTML", reply_markup=None)
-                except Exception:
-                    pass
+            header = "<b>Ajratilgan sovg'alar tugadi!</b>"
+            await send_split_winners_list(call, header, winners, d_disp, chunk_size=25)
 
         await call.answer(strs["alert_success"].format(reward=reward), show_alert=True)
     finally:
@@ -1031,17 +1022,65 @@ async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
             pass
     else:
         c_name = html.escape(game["creator_name"])
-        header = f"<b>{c_name} ajratgan pul sovg'alari tugadi!</b>\n\n<b>Olganlar:</b>" if c_name else "<b>Ajratilgan pul sovg'alari tugadi!</b>\n\n<b>Olganlar:</b>"
-        lines = [header]
-        for idx, (w_id, w_name, w_amt) in enumerate(winners, start=1):
-            safe_name = html.escape(w_name)
-            lines.append(f"{idx}) {safe_name} {w_amt}{d_disp}")
+        header = f"<b>{c_name} ajratgan pul sovg'alari tugadi!</b>" if c_name else "<b>Ajratilgan pul sovg'alari tugadi!</b>"
+        winners = game["winners"]
+        d_disp = get_dollar_display()
+        await send_split_winners_list(call, header, winners, d_disp, chunk_size=25)
 
-        final_text = "\n".join(lines)
-        try:
-            await call.message.edit_text(final_text, parse_mode="HTML", reply_markup=None)
-        except Exception:
-            pass
+async def send_split_winners_list(
+    call: CallbackQuery,
+    header_title: str,
+    winners: list,
+    unit_display: str,
+    chunk_size: int = 25
+):
+    """
+    Sovg'a yutib olganlar ro'yxatini shakllantiradi va agar ro'yxat uzun bo'lsa:
+    - 1-xabarni tahrirlab, birinchi bo'limni chiqaradi.
+    - Keyingi g'oliblarni "Olganlar davomi:" sarlavhasi bilan yangi postlarda 1-xabardan davom etuvchi raqamlar bilan yuboradi.
+    """
+    if not winners:
+        finished_text = f"{header_title}\n\n<i>Hech kim qatnashmadi.</i>"
+        if call.message:
+            try:
+                await call.message.edit_text(finished_text, parse_mode="HTML", reply_markup=None)
+            except Exception:
+                pass
+        return
+
+    total = len(winners)
+    chunks = [winners[i:i + chunk_size] for i in range(0, total, chunk_size)]
+
+    current_number = 1
+    for index, chunk in enumerate(chunks):
+        if index == 0:
+            lines = [f"{header_title}\n", "<b>Olganlar:</b>"]
+            for item in chunk:
+                w_uid, w_name, w_reward = item[0], item[1], item[2]
+                safe_name = html.escape(w_name or "Foydalanuvchi")
+                lines.append(f"{current_number}) {safe_name} {w_reward}{unit_display}")
+                current_number += 1
+
+            text = "\n".join(lines)
+            if call.message:
+                try:
+                    await call.message.edit_text(text, parse_mode="HTML", reply_markup=None)
+                except Exception:
+                    pass
+        else:
+            lines = ["<b>Olganlar davomi:</b>"]
+            for item in chunk:
+                w_uid, w_name, w_reward = item[0], item[1], item[2]
+                safe_name = html.escape(w_name or "Foydalanuvchi")
+                lines.append(f"{current_number}) {safe_name} {w_reward}{unit_display}")
+                current_number += 1
+
+            text = "\n".join(lines)
+            if call.message and call.message.chat:
+                try:
+                    await call.bot.send_message(call.message.chat.id, text, parse_mode="HTML")
+                except Exception:
+                    pass
 
 # Do'kon va Valyutalar
 async def show_shop(call: CallbackQuery):
