@@ -57,9 +57,10 @@ async def advokat_action_handler(call: CallbackQuery, bot: Bot, state: FSMContex
 async def qotil_action_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
     await _register_action(call, "qotil", "🔪 Qotil: Hujum nishoni qabul qilindi!")
 
-async def night_sheriklar_msg(message: Message, bot: Bot, state: FSMContext):
+async def night_sheriklar_msg(message: Message, bot: Bot, state: FSMContext = None):
     """Tunda sheriklar bir-biriga yozgan xabari"""
-    pass
+    from handlers.other_handlers import team_chat_handler
+    await team_chat_handler(message, bot)
 
 async def ovchi_action_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
     await _register_action(call, "ovchi", "🥷 Yollanma qotil: Tanlov qabul qilindi!")

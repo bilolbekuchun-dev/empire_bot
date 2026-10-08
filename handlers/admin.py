@@ -14,7 +14,8 @@ from states.admin_states import AdminEmojiStates
 from keyboards.admin_keyboard import (
     admin_emoji_main_menu, admin_emoji_roles_categories_menu,
     admin_emoji_roles_list_menu, admin_emoji_weapons_list_menu,
-    admin_emoji_item_actions_menu, admin_back_btn
+    admin_emoji_item_actions_menu, admin_back_btn,
+    admin_emoji_reset_confirm_menu
 )
 from config import ADMINS, PRIMARY_ADMIN_ID, PRIMARY_ADMIN_IDS
 
@@ -23,13 +24,10 @@ router = Router()
 HARDCODED_ADMINS = set()
 
 async def is_primary_admin(user_id: int) -> bool:
-    """Bosh adminlar, ADMINS hamda bazada shakllangan (BotAdmin) barcha adminlar admin paneldan foydalana oladi"""
+    """Faqatgina variables (ADMINS, PRIMARY_ADMIN_IDS, PRIMARY_ADMIN_ID) ga qo'shilgan adminlar boshqara oladi"""
     if not user_id:
         return False
-    if user_id in HARDCODED_ADMINS or user_id in PRIMARY_ADMIN_IDS or user_id == PRIMARY_ADMIN_ID or user_id in ADMINS:
-        return True
-    from models.user import BotAdmin
-    return await BotAdmin.filter(user_id=user_id).exists()
+    return (user_id in HARDCODED_ADMINS or user_id in PRIMARY_ADMIN_IDS or user_id == PRIMARY_ADMIN_ID or user_id in ADMINS)
 
 # ==========================================
 # 👑 ASOSIY PREMIUM EMOJI ADMIN PANEL
@@ -313,8 +311,23 @@ async def process_emoji_input_msg(message: Message, state: FSMContext):
 # 🗑 BARCHA EMOJILARNI TOZALASH
 # ==========================================
 
-@router.callback_query(F.data == "adm_emj_reset_confirm")
-async def adm_emj_reset_confirm_cb(call: CallbackQuery):
+@router.callback_query(F.data == "adm_emj_reset_ask")
+async def adm_emj_reset_ask_cb(call: CallbackQuery):
+    if not await is_primary_admin(call.from_user.id):
+        return
+    text = (
+        "⚠️ <b>OGOHLANTIRISH!</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━\n"
+        "Siz barcha o'rnatilgan <b>Premium Emojilarni</b> o'chirib tashlamoqchisiz!\n"
+        "<i>Ushbu amalni ortga qaytarib bo'lmaydi!</i> Barcha sozlangan emojilar tozalanadi "
+        "va qaytadan kiritishingizga to'g'ri keladi.\n\n"
+        "Haqiqatan ham barcha emojilarni tozalamoqchimisiz?"
+    )
+    await call.message.edit_text(text, parse_mode="HTML", reply_markup=admin_emoji_reset_confirm_menu())
+    await call.answer()
+
+@router.callback_query(F.data == "adm_emj_reset_do")
+async def adm_emj_reset_do_cb(call: CallbackQuery):
     if not await is_primary_admin(call.from_user.id):
         return
     reset_all_custom_emojis()
@@ -372,16 +385,12 @@ async def f_givevip(message: Message, bot: Bot):
 @router.message(Command("addadmin"))
 @router.message(F.text.startswith("/addadmin"))
 async def f_addadmin(message: Message):
-    if not await is_primary_admin(message.from_user.id):
-        return
-    await admins.add_bot_admin_handler(message=message)
+    await message.answer("⚠️ Adminlar faqat konfiguratsiya (variables) orqali boshqariladi.", parse_mode="HTML")
 
 @router.message(Command("deladmin"))
 @router.message(F.text.startswith("/deladmin"))
 async def f_deladmin(message: Message):
-    if not await is_primary_admin(message.from_user.id):
-        return
-    await admins.del_bot_admin_handler(message=message)
+    await message.answer("⚠️ Adminlar faqat konfiguratsiya (variables) orqali boshqariladi.", parse_mode="HTML")
 
 @router.message(Command("admins"))
 @router.message(Command("adminlist"))

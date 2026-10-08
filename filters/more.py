@@ -302,20 +302,40 @@ class DelCommands(Filter):
 class NightSheriklarMessages(Filter):
     async def __call__(self, message: Message):
         if message.chat.type != "private":
-            return
-        player = await GamePlayer.filter(
-            user__user_id=message.from_user.id, is_alive=True
-        ).prefetch_related("game").first()
-        if not player:
-            return
-        if player.role in [RoleNames.MAFIA, RoleNames.DON, RoleNames.ADVOKAT, RoleNames.KOMISSAR, RoleNames.SERJANT, RoleNames.AYGOQCHI, RoleNames.DOKTOR, RoleNames.HAMSHIRA]:
-            phase = await GamePhase.filter(
-                game=player.game, phase_type="night", is_end=False
-            ).first()
-            if not phase:
+            return False
+        user_id = message.from_user.id if message.from_user else 0
+        if not user_id:
+            return False
+
+        try:
+            from utils.redis_game.repositories.player_repository import player_repository as player_repo
+            from utils.redis_game.repositories.game_repository import game_repository as game_repo
+            from config import mafia_rollar
+            from utils.role_names import RoleNames
+
+            game_id = await player_repo.find_player_active_game(user_id)
+            if not game_id:
                 return False
-            return True
-        return False
+
+            game_state = await game_repo.load_game(game_id)
+            if not game_state or not game_state.is_active or game_state.phase not in ("night", "day"):
+                return False
+
+            player = await player_repo.load_player(game_id, user_id)
+            if not player or not player.is_alive:
+                return False
+
+            alive_players = await player_repo.get_alive_players(game_id)
+            if player.role in mafia_rollar:
+                teammates = [p for p in alive_players if p.role in mafia_rollar and p.user_id != user_id]
+            elif player.role in (RoleNames.KOMISSAR, RoleNames.SERJANT):
+                teammates = [p for p in alive_players if p.role in (RoleNames.KOMISSAR, RoleNames.SERJANT) and p.user_id != user_id]
+            else:
+                teammates = [p for p in alive_players if p.role == player.role and p.user_id != user_id]
+
+            return len(teammates) > 0
+        except Exception:
+            return False
 
 class SayLastWordFilter(Filter):
     async def __call__(self, message: Message):

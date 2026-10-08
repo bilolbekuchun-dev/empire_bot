@@ -298,55 +298,44 @@ async def _finalize_role_assignment(
         if len(mafia_team) >= 1:
             uids = [p.user_id for p in mafia_team]
             users_db = {u.user_id: u for u in await User.filter(user_id__in=uids)}
-            
-            lines_by_lang = {
-                "uz": "👥 <b>Mafialar jamoasi! Sheriklaringizni eslab qoling:</b>\n",
-                "ru": "👥 <b>Команда Мафии! Запомните своих напарников:</b>\n",
-                "en": "👥 <b>Mafia Team! Remember your teammates:</b>\n",
-                "tr": "👥 <b>Mafya Takımı! Takım arkadaşlarınızı unutmayın:</b>\n",
-                "kk": "👥 <b>Мафия тобы! Серіктестеріңізді есте сақтаңыз:</b>\n"
-            }
-            team_header = lines_by_lang.get(chat_lang, lines_by_lang["uz"])
-            
-            member_lines = []
-            for idx, mp in enumerate(mafia_team, 1):
-                u = users_db.get(mp.user_id)
-                name = html.escape((u.full_name if u else str(mp.user_id)) or str(mp.user_id))
-                member_lines.append(f"{idx}. {name} — {role_display(mp.role, lang=chat_lang)}")
-
-            full_team_msg = team_header + "\n".join(member_lines)
 
             for mp in mafia_team:
+                own_role_str = role_display(mp.role, lang=chat_lang)
+                other_members = [p for p in mafia_team if p.user_id != mp.user_id]
+                
+                msg_lines = [f"<b>Siz - {own_role_str}.</b>"]
+                if other_members:
+                    msg_lines.append("<b>Sheriklaringizni eslab qoling:</b>")
+                    for op in other_members:
+                        u = users_db.get(op.user_id)
+                        name = html.escape((u.full_name if u else str(op.user_id)) or str(op.user_id))
+                        msg_lines.append(f"{name} - {role_display(op.role, lang=chat_lang)}")
+
                 try:
-                    await bot.send_message(mp.user_id, full_team_msg, parse_mode="HTML")
+                    await bot.send_message(mp.user_id, "\n".join(msg_lines), parse_mode="HTML")
                 except Exception:
                     pass
 
         # 2. Police Team (Komissar & Serjant)
         police_team = [p for p in active_valid_players if p.role in (RoleNames.KOMISSAR, RoleNames.SERJANT)]
-        if len(police_team) >= 2:
+        if len(police_team) >= 1:
             uids = [p.user_id for p in police_team]
             users_db = {u.user_id: u for u in await User.filter(user_id__in=uids)}
-            
-            team_header = {
-                "uz": "🕵🏼 <b>Politsiya jamoasi! Sheriklaringizni eslab qoling:</b>\n",
-                "ru": "🕵🏼 <b>Команда Полиции! Запомните своих напарников:</b>\n",
-                "en": "🕵🏼 <b>Police Team! Remember your teammates:</b>\n",
-                "tr": "🕵🏼 <b>Polis Takımı! Takım arkadaşlarınızı unutmayın:</b>\n",
-                "kk": "🕵🏼 <b>Полиция тобы! Серіктестеріңізді есте сақтаңыз:</b>\n"
-            }.get(chat_lang, "🕵🏼 <b>Politsiya jamoasi! Sheriklaringizni eslab qoling:</b>\n")
-
-            member_lines = []
-            for idx, pp in enumerate(police_team, 1):
-                u = users_db.get(pp.user_id)
-                name = html.escape((u.full_name if u else str(pp.user_id)) or str(pp.user_id))
-                member_lines.append(f"{idx}. {name} — {role_display(pp.role, lang=chat_lang)}")
-
-            full_team_msg = team_header + "\n".join(member_lines)
 
             for pp in police_team:
+                own_role_str = role_display(pp.role, lang=chat_lang)
+                other_members = [p for p in police_team if p.user_id != pp.user_id]
+
+                msg_lines = [f"<b>Siz - {own_role_str}.</b>"]
+                if other_members:
+                    msg_lines.append("<b>Sheriklaringizni eslab qoling:</b>")
+                    for op in other_members:
+                        u = users_db.get(op.user_id)
+                        name = html.escape((u.full_name if u else str(op.user_id)) or str(op.user_id))
+                        msg_lines.append(f"{name} - {role_display(op.role, lang=chat_lang)}")
+
                 try:
-                    await bot.send_message(pp.user_id, full_team_msg, parse_mode="HTML")
+                    await bot.send_message(pp.user_id, "\n".join(msg_lines), parse_mode="HTML")
                 except Exception:
                     pass
     except Exception as e:
