@@ -84,10 +84,8 @@ async def _alive_players_text(players: list, *, dawn: bool = False, lang: str = 
     def faction_block(title: str, group: list) -> list:
         if not group:
             return []
-        block = [f"\n<b>{title} - {len(group)}:</b>"]
-        for p in group:
-            block.append(role_display(p.role))
-        return block
+        roles_str = ", ".join(role_display(p.role, lang=lang) for p in group)
+        return [f"\n<b>{title} - {len(group)}:</b> {roles_str}"]
 
     lines.append("")
     lines.extend(faction_block(lbls["tinch"], tinch))

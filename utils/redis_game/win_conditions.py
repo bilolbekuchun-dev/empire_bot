@@ -191,16 +191,12 @@ async def check_zombie_mode_win(game_id, players, zombilar, yakkalar, fuqarolar,
     
     # Tinchlar g'alaba qilgan
     if not check_mafialar_list(mafiyalar) and fuqarolar and not qotil and not zombilar:
-        await announce_game_result_redis(game_id, bot, chat, winner_roles=[
-            RoleNames.KOMISSAR, RoleNames.DOKTOR, RoleNames.FUQARO
-        ])
+        await announce_game_result_redis(game_id, bot, chat, winner_roles=tinchlar)
         return True
     
     # Mafiyalar g'alaba qilgan
     if len(mafiyalar) > len(fuqarolar) and mafiyalar and not qotil and not zombilar:
-        await announce_game_result_redis(game_id, bot, chat, winner_roles=[
-            RoleNames.DON, RoleNames.MAFIA
-        ])
+        await announce_game_result_redis(game_id, bot, chat, winner_roles=mafialar)
         return True
     
     return False
@@ -273,36 +269,25 @@ async def check_classic_mode_win(game_id, players, fuqarolar, mafiyalar, qotil, 
     
     # Tinchlar g'alaba qilgan
     if not check_mafialar_list(mafiyalar) and fuqarolar and not qotil:
-        await announce_game_result_redis(game_id, bot, chat, winner_roles=[
-            RoleNames.KOMISSAR, RoleNames.DOKTOR, RoleNames.FUQARO
-        ])
+        await announce_game_result_redis(game_id, bot, chat, winner_roles=tinchlar)
         return True
     
     # Mafiyalar g'alaba qilgan
     if len(mafiyalar) >= len(fuqarolar) and mafiyalar and not qotil:
-        await announce_game_result_redis(game_id, bot, chat, winner_roles=[
-            RoleNames.DON, RoleNames.MAFIA
-        ])
+        await announce_game_result_redis(game_id, bot, chat, winner_roles=mafialar)
         return True
     
     # 2 ta o'yinchi qolgan va 1 ta mafia
     if len(players) == 2 and len(mafiyalar) == 1:
-        await announce_game_result_redis(game_id, bot, chat, winner_roles=[
-            RoleNames.DON, RoleNames.MAFIA
-        ])
+        await announce_game_result_redis(game_id, bot, chat, winner_roles=mafialar)
         return True
     
     return False
 
 
 def check_mafialar_list(mafiyalar: list) -> bool:
-    """Mafiyalar orasida Don bor yoki yo'qligini tekshirish."""
-    if not mafiyalar:
-        return False
-    for player in mafiyalar:
-        if player.role == RoleNames.DON:
-            return True
-    return False
+    """Mafiyalar orasida tirik mafia bor yoki yo'qligini tekshirish."""
+    return len(mafiyalar) > 0
 
 
 WIN_RESULT_STRINGS = {
@@ -408,6 +393,19 @@ async def announce_game_result_redis(
     else:
         winner_set = set(winner_roles or [])
         winners = [p for p in all_players if p.role in winner_set]
+
+    # Kezuvchi maxsus g'alaba sharti:
+    # Faqatgina tinch aholi yutgan bo'lsa VA Kezuvchi tirik (is_alive) bo'lsa g'alaba qozonadi.
+    # Agar Kezuvchi o'lgan bo'lsa yoki tinch aholi yutqazgan bo'lsa, Kezuvchi yutqazadi.
+    civilians_won = any(r in (winner_roles or []) for r in (RoleNames.FUQARO, RoleNames.KOMISSAR))
+    filtered_winners = []
+    for p in winners:
+        if p.role == RoleNames.KEZUVCHI:
+            if civilians_won and p.is_alive:
+                filtered_winners.append(p)
+        else:
+            filtered_winners.append(p)
+    winners = filtered_winners
 
     winner_id_set = {p.user_id for p in winners}
     others = [p for p in all_players if p.user_id not in winner_id_set]

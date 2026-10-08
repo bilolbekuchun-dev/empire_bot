@@ -628,10 +628,15 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
     valid_actions = [a for a in actions if a["actor_id"] not in slept or a.get("action_type") == "sleep"]
 
     mafia_votes: Dict[int, int] = {}
+    mafia_voters: Dict[int, int] = {}
     don_target = None
+    don_actor_id = None
     qotil_target = None
+    qotil_actor_id = None
     ovchi_target = None
+    ovchi_actor_id = None
     komissar_target = None
+    komissar_actor_id = None
     healed, protected = set(), set()
     zanjir: Dict[int, list] = {}
     swaps: Dict[int, list] = {}
@@ -657,17 +662,23 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
 
         if atype == "komissar_shoot" and tgt:
             komissar_target = tgt
+            komissar_actor_id = actor.user_id
         elif atype == "kill" and tgt:
             if role == RoleNames.DON:
                 don_target = tgt
+                don_actor_id = actor.user_id
             elif role == RoleNames.MAFIA:
                 mafia_votes[tgt] = mafia_votes.get(tgt, 0) + 1
+                mafia_voters[tgt] = actor.user_id
             elif role == RoleNames.QOTIL:
                 qotil_target = tgt
+                qotil_actor_id = actor.user_id
             elif role == RoleNames.OVCHI:
                 ovchi_target = tgt
+                ovchi_actor_id = actor.user_id
             elif role == RoleNames.KOMISSAR:
                 komissar_target = tgt
+                komissar_actor_id = actor.user_id
         elif atype == "investigate" and tgt:
             investigates.append((actor.user_id, tgt))
         elif atype == "heal" and tgt:
@@ -689,7 +700,7 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
         elif atype == "jin_pul" and tgt:
             jin_pul.append(tgt)
         elif atype == "jin_qotil" and tgt:
-            jin_kill.append(tgt)
+            jin_kill.append((tgt, actor.user_id))
         elif atype == "qaroqchi":
             qaroqchi.append((actor.user_id, tgt))
         elif atype == "konchi":
@@ -698,15 +709,18 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
     # Don tanlovi mafia ovozlaridan ustun. Don yurmasa — eng ko'p mafia ovozi.
     family_target = None
     family_killer = None
+    family_actor_id = None
     if don_target:
         family_target = don_target
         family_killer = RoleNames.DON
+        family_actor_id = don_actor_id
     elif mafia_votes:
         mx = max(mafia_votes.values())
         top = [t for t, c in mafia_votes.items() if c == mx]
         if len(top) == 1:
             family_target = top[0]
             family_killer = RoleNames.MAFIA
+            family_actor_id = mafia_voters.get(top[0])
 
     protected |= set(jin_protect)
 
@@ -763,16 +777,35 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
     # --- O'lim nomzodlari ---
     dead_uids = []
     kill_sources: Dict[int, str] = {}
-    for target, killer in (
-        (family_target, family_killer),
-        (qotil_target, RoleNames.QOTIL),
-        (ovchi_target, RoleNames.OVCHI),
-        (komissar_target, RoleNames.KOMISSAR),
-    ):
+    qasoskor_revenge_queue = []
+
+    kill_attempts = [
+        (family_target, family_killer, family_actor_id),
+        (qotil_target, RoleNames.QOTIL, qotil_actor_id),
+        (ovchi_target, RoleNames.OVCHI, ovchi_actor_id),
+        (komissar_target, RoleNames.KOMISSAR, komissar_actor_id),
+    ]
+    for jt, jactor in jin_kill:
+        kill_attempts.append((jt, RoleNames.JIN, jactor))
+
+    for target, killer, attacker_id in kill_attempts:
         if target and target not in healed and target not in protected:
-            dead_uids.append(target)
+            if target not in dead_uids:
+                dead_uids.append(target)
             if killer:
                 kill_sources[target] = killer
+
+            # Qasoskor roli bo'lsa - hujum qilgan odamni qasosga yozib qo'yamiz
+            target_p = by_uid.get(target)
+            if target_p and target_p.role == RoleNames.QASOSKOR and attacker_id:
+                qasoskor_revenge_queue.append((attacker_id, target))
+
+    # --- Qasoskor qasosi: o'ziga hujum qilgan odamni o'ldiradi ---
+    for attacker_id, qasoskor_id in qasoskor_revenge_queue:
+        if attacker_id and attacker_id not in healed and attacker_id not in protected:
+            if attacker_id not in dead_uids:
+                dead_uids.append(attacker_id)
+            kill_sources[attacker_id] = RoleNames.QASOSKOR
 
     # --- Zanjir: juftlikdan biri o'lsa, ikkinchisi ham ---
     for actor_uid, tgts in zanjir.items():
@@ -855,7 +888,7 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
                 shown = RoleNames.MAFIA
 
         disp_shown = role_display(shown)
-        if act_role in (RoleNames.KOMISSAR, RoleNames.DAYDI):
+        if act_role == RoleNames.KOMISSAR:
             await _send_private(bot, actor_uid, get_msg(actor_uid, "investigate_res", name=names.get(tgt), role=disp_shown))
         elif act_role == RoleNames.JURNALIST:
             await _send_private(bot, actor_uid, get_msg(actor_uid, "jurnalist_res", name=names.get(tgt), role=disp_shown))

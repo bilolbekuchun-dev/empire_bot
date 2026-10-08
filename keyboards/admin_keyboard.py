@@ -25,7 +25,18 @@ def admin_emoji_main_menu() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="🚫 Banlanganlar", callback_data="adm_blocked_list_0")
     )
     builder.row(
-        InlineKeyboardButton(text="🗑 Barcha emojilarni tozalash", callback_data="adm_emj_reset_confirm")
+        InlineKeyboardButton(text="🔴 🚨 BARCHA EMOJILARNI TOZALASH 🚨 🔴", callback_data="adm_emj_reset_ask")
+    )
+    return builder.as_markup()
+
+def admin_emoji_reset_confirm_menu() -> InlineKeyboardMarkup:
+    """Emojilarni tozalashni tasdiqlash menyusi"""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="🔴 Ha, tasdiqlayman (ortga qaytarilmaydi)", callback_data="adm_emj_reset_do")
+    )
+    builder.row(
+        InlineKeyboardButton(text="🔵 ⬅️ Ortga qaytish", callback_data="adm_emj_main")
     )
     return builder.as_markup()
 

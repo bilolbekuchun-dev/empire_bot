@@ -491,29 +491,14 @@ async def team_chat_handler(message: Message, bot: Bot):
             team_title = player.role
 
         sender_name = html.escape(message.from_user.full_name or message.from_user.username or str(user_id))
+        r_disp = role_display(player.role)
         
-        chat_msg = (
-            f"💬 <b>[{team_title} Chat] {sender_name} ({role_display(player.role)}):</b>\n"
-            f"{html.escape(text)}"
-        )
+        chat_msg = f'<b>{sender_name} - {r_disp}:</b> "{html.escape(text)}"'
 
-        sent_count = 0
         for tm in teammates:
             try:
                 await bot.send_message(tm.user_id, chat_msg, parse_mode="HTML")
-                sent_count += 1
             except Exception:
                 pass
-
-        if sent_count > 0:
-            p_lang = clean_lang(await get_chat_lang(user_id))
-            confirm_text = {
-                "uz": "✅ Jamoadoshlaringizga yuborildi.",
-                "ru": "✅ Отправлено вашим напарникам.",
-                "en": "✅ Sent to your teammates.",
-                "tr": "✅ Takım arkadaşlarınıza gönderildi.",
-                "kk": "✅ Серіктестеріңізге жіберілді."
-            }.get(p_lang, "✅ Jamoadoshlaringizga yuborildi.")
-            await message.answer(confirm_text)
     except Exception as e:
         print(f"Team chat relay error: {e}")
