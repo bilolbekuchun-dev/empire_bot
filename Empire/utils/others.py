@@ -874,19 +874,22 @@ async def start_change_giveaway(message: Message, bot: Bot):
     giveaway_key = f"change_{game_id}"
 
     creator_name = message.from_user.full_name if message.from_user else "Admin"
+    creator_id = message.from_user.id if message.from_user else 0
 
     _change_games[giveaway_key] = {
         "id": game_id,
         "amount": count,
         "is_diamond": is_diamond,
         "max_participants": max_participants,
-        "creator_id": message.from_user.id if message.from_user else 0,
+        "creator_id": creator_id,
         "creator_name": creator_name,
         "participants": [],  # list of tuples: (user_id, full_name)
     }
 
     kb = InlineKeyboardBuilder()
     kb.button(text="🎲 Qatnashish", callback_data=f"change_join_{game_id}")
+    kb.button(text="⏹ Tugatish", callback_data=f"change_finish_{game_id}")
+    kb.adjust(1)
 
     msg_text = (
         f"Kimdir <b>{count} ta {unit_disp}</b> yutib olishi mumkin!\n\n"
@@ -903,15 +906,80 @@ async def change_giveaway_callback(call: CallbackQuery, bot: Bot):
     if not user:
         return
 
-    parts = call.data.split("_")
+    data = call.data
+    parts = data.split("_")
     game_id = parts[-1]
     giveaway_key = f"change_{game_id}"
 
     game = _change_games.get(giveaway_key)
     if not game:
-        await call.answer("Qatnashdingiz!", show_alert=True)
+        await call.answer("❌ Ushbu konkurs yakunlangan!", show_alert=True)
         return
 
+    # Check if action is finish
+    if "finish" in data:
+        from config import PRIMARY_ADMIN_IDS
+        is_creator = (user.id == game["creator_id"])
+        is_super_admin = (user.id in PRIMARY_ADMIN_IDS)
+
+        if not (is_creator or is_super_admin):
+            c_name = html.escape(game["creator_name"])
+            await call.answer(f"❌ Ushbu konkursni faqat uni boshlagan foydalanuvchi ({c_name}) tugata oladi!", show_alert=True)
+            return
+
+        participants = game["participants"]
+        unit_disp = get_diamond_display() if game["is_diamond"] else get_dollar_display()
+        c_name = html.escape(game["creator_name"])
+
+        if not participants:
+            _change_games.pop(giveaway_key, None)
+            finished_text = f"<b>{c_name} boshlagan almashtirish konkursi bekor qilindi.</b>\n\n<i>Hech kim qatnashmadi.</i>"
+            if call.message:
+                try:
+                    await call.message.edit_text(finished_text, parse_mode="HTML", reply_markup=None)
+                except Exception:
+                    pass
+            await call.answer("✅ Konkurs bekor qilindi.", show_alert=True)
+            return
+
+        import random
+        winner_id, winner_name = random.choice(participants)
+
+        from models.user import User, Profile
+        w_user, _ = await User.get_or_create(
+            user_id=winner_id,
+            defaults={"full_name": winner_name[:100], "mention": winner_name[:100]}
+        )
+        w_profile, _ = await Profile.get_or_create(user=w_user)
+        if game["is_diamond"]:
+            w_profile.diamond += game["amount"]
+        else:
+            w_profile.dollar += game["amount"]
+        await w_profile.save()
+
+        _change_games.pop(giveaway_key, None)
+
+        w_name_safe = html.escape(winner_name)
+        w_link = f'<a href="tg://user?id={winner_id}">{w_name_safe}</a>'
+
+        result_text = (
+            f"🎉 <b>Almashtirish konkursi yakunlandi!</b>\n\n"
+            f"👤 <b>Tashkilotchi:</b> {c_name}\n"
+            f"🏆 <b>G'olib:</b> {w_link}\n"
+            f"🎁 <b>Yutuq:</b> {game['amount']} {unit_disp}\n\n"
+            f"📊 <b>Jami ishtirokchilar:</b> {len(participants)} kishi"
+        )
+
+        if call.message:
+            try:
+                await call.message.edit_text(result_text, parse_mode="HTML", reply_markup=None)
+            except Exception:
+                pass
+
+        await call.answer("✅ Konkurs tugatildi va g'olibga yutuq berildi!", show_alert=True)
+        return
+
+    # Action is JOIN
     participants = game["participants"]
     user_id = user.id
 
@@ -942,8 +1010,12 @@ async def change_giveaway_callback(call: CallbackQuery, bot: Bot):
     kb = InlineKeyboardBuilder()
     if len(participants) < game["max_participants"]:
         kb.button(text="🎲 Qatnashish", callback_data=f"change_join_{game_id}")
+        kb.button(text="⏹ Tugatish", callback_data=f"change_finish_{game_id}")
+        kb.adjust(1)
     else:
         kb.button(text="🏁 Ishtirokchilar to'ldi", callback_data="change_full")
+        kb.button(text="⏹ Tugatish", callback_data=f"change_finish_{game_id}")
+        kb.adjust(1)
 
     try:
         await call.message.edit_text(new_text, reply_markup=kb.as_markup(), parse_mode="HTML")
