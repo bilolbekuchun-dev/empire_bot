@@ -33,8 +33,8 @@ class GameService:
         # Bot va guruh tekshirish
         me = await bot.get_me()
         gaming_set, _ = await GamingOnChat.get_or_create(
-            bot_id=me.id,
-            chat_id=message.chat.id
+            chat_id=message.chat.id,
+            defaults={"bot_id": me.id}
         )
         
         if not gaming_set.can_gaming:

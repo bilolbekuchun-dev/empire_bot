@@ -656,7 +656,7 @@ async def _start_game_handler_redis_impl(message: Message, bot: Bot, state):
     )
     
     me = await bot.get_me()
-    gaming_set, _ = await GamingOnChat.get_or_create(bot_id=me.id, chat_id=message.chat.id)
+    gaming_set, _ = await GamingOnChat.get_or_create(chat_id=message.chat.id, defaults={"bot_id": me.id})
     if not gaming_set.can_gaming:
         await message.answer(
             f"<b>⚠️ {message.from_user.mention_html()} bu guruhda o'yin o'ynash mumkin emas!</b>", 
