@@ -27,6 +27,7 @@ class PlayerState(BaseModel):
     is_alive: bool = True
     is_sleep: bool = False
     life: int = 100
+    death_reason: Optional[str] = None
 
     can_heal_self: bool = True
     is_actioned: bool = False
