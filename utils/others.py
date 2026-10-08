@@ -635,9 +635,7 @@ async def start_giveaway_redis(message: Message, bot: Bot):
         await send_big_giveaway_report(bot, message.from_user, message.chat, "Umumiy giveaway", count)
 
 async def start_giveaway_channel(message: Message, bot: Bot):
-    from utils.i18n import get_chat_lang
-    lang = await get_chat_lang(message.chat.id)
-    strs = GIVEAWAY_STRINGS.get(lang, GIVEAWAY_STRINGS["uz"])
+    strs = GIVEAWAY_STRINGS["uz"]
     count = _parse_giveaway_count(message, default=10)
     giveaway_id = message.message_id
     kb = InlineKeyboardBuilder()
@@ -660,13 +658,19 @@ async def giveaway_callback_redis(call: CallbackQuery, bot: Bot):
 
 async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, is_channel: bool = False):
     from models.user import User, Profile
-    from utils.giveaways_redis import is_collected_user, add_collected_user, is_processing, mark_as_processing, unmark_as_processing
+    from utils.giveaways_redis import (
+        is_collected_user, add_collected_user, is_processing,
+        mark_as_processing, unmark_as_processing, add_winner_detail, get_winner_details
+    )
     from utils.i18n import get_chat_lang
     import random
 
     chat_id = call.message.chat.id if call.message else 0
-    lang = await get_chat_lang(chat_id)
-    strs = GIVEAWAY_STRINGS.get(lang, GIVEAWAY_STRINGS["uz"])
+    if is_channel:
+        strs = GIVEAWAY_STRINGS["uz"]
+    else:
+        lang = await get_chat_lang(chat_id)
+        strs = GIVEAWAY_STRINGS.get(lang, GIVEAWAY_STRINGS["uz"])
 
     parts = call.data.split("_")
     if len(parts) >= 4:
@@ -712,20 +716,25 @@ async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, i
         await profile.save()
 
         add_collected_user(giveaway_id, user_id)
+        u_name = call.from_user.full_name or f"User_{user_id}"
+        add_winner_detail(giveaway_id, user_id, u_name, reward)
+
         new_remaining = remaining - 1
 
-        kb = InlineKeyboardBuilder()
         if new_remaining > 0:
             cb_prefix = "channel-giveaway" if is_channel else "giveaway"
+            kb = InlineKeyboardBuilder()
             kb.button(text=strs["btn_enter"].format(remaining=new_remaining), callback_data=f"{cb_prefix}_{giveaway_id}_{new_remaining}_{total}")
+            if call.message:
+                try:
+                    await call.message.edit_reply_markup(reply_markup=kb.as_markup())
+                except Exception:
+                    pass
         else:
-            kb.button(text=strs["btn_ended"], callback_data="giveaway_ended")
-
-        if call.message:
-            try:
-                await call.message.edit_reply_markup(reply_markup=kb.as_markup())
-            except Exception:
-                pass
+            winners = get_winner_details(giveaway_id)
+            d_disp = get_diamond_display()
+            header = "<b>Ajratilgan sovg'alar tugadi!</b>"
+            await send_split_winners_list(call, header, winners, d_disp, chunk_size=25)
 
         await call.answer(strs["alert_success"].format(reward=reward), show_alert=True)
     finally:
@@ -852,42 +861,256 @@ async def start_protection_giveaway(message: Message, bot: Bot):
 async def protection_giveaway_callback(call: CallbackQuery, bot: Bot):
     await call.answer("🛡 Himoya yozildingiz!", show_alert=True)
 
+_change_games: dict = {}
+_money_giveaways: dict = {}
+
 async def start_change_giveaway(message: Message, bot: Bot):
-    count = _parse_giveaway_count(message)
+    count = _parse_giveaway_count(message, default=5)
+    text_lower = (message.text or "").lower()
+    is_diamond = not any(k in text_lower for k in ["$", "dollar", "pul", "som", "so'm"])
+    unit_disp = get_diamond_display() if is_diamond else get_dollar_display()
+
+    max_participants = 75
+    game_id = str(message.message_id)
+    giveaway_key = f"change_{game_id}"
+
+    creator_name = message.from_user.full_name if message.from_user else "Admin"
+    creator_id = message.from_user.id if message.from_user else 0
+
+    _change_games[giveaway_key] = {
+        "id": game_id,
+        "amount": count,
+        "is_diamond": is_diamond,
+        "max_participants": max_participants,
+        "creator_id": creator_id,
+        "creator_name": creator_name,
+        "participants": [],  # list of tuples: (user_id, full_name)
+    }
+
+    from utils.i18n import get_chat_lang, clean_lang
+    c_lang = clean_lang(await get_chat_lang(message.chat.id))
+
+    btn_join = {"uz": "🎲 Qatnashish", "ru": "🎲 Участвовать", "en": "🎲 Join", "tr": "🎲 Katıl", "kk": "🎲 Қатысу"}.get(c_lang, "🎲 Qatnashish")
+    btn_finish = {"uz": "⏹ Tugatish", "ru": "⏹ Завершить", "en": "⏹ Finish", "tr": "⏹ Bitir", "kk": "⏹ Аяқтау"}.get(c_lang, "⏹ Tugatish")
+
     kb = InlineKeyboardBuilder()
-    kb.button(text="🔄 Qatnashish", callback_data=f"change_{count}")
-    msg = (
-        f"🔄 <b>Almashtirish konkursi!</b>\n\n"
-        f"🔢 Soni: <b>{count} ta</b>\n"
-        f"<i>Qatnashish uchun tugmani bosing!</i>"
-    )
-    await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    kb.button(text=btn_join, callback_data=f"change_join_{game_id}")
+    kb.button(text=btn_finish, callback_data=f"change_finish_{game_id}")
+    kb.adjust(1)
+
+    msg_map = {
+        "uz": f"Kimdir <b>{count} ta {unit_disp}</b> yutib olishi mumkin!\n\nIshtirokchilar:\n<i>Hozircha hech kim yo'q</i>\n\nIshtirokchilar soni: 0/{max_participants}",
+        "ru": f"Кто-то может выиграть <b>{count} {unit_disp}</b>!\n\nУчастники:\n<i>Пока никто не присоединился</i>\n\nКоличество участников: 0/{max_participants}",
+        "en": f"Someone can win <b>{count} {unit_disp}</b>!\n\nParticipants:\n<i>No one has joined yet</i>\n\nTotal participants: 0/{max_participants}",
+        "tr": f"Biri <b>{count} {unit_disp}</b> kazanabilir!\n\nKatılımcılar:\n<i>Henüz kimse katılmadı</i>\n\nKatılımcı sayısı: 0/{max_participants}",
+        "kk": f"Біреу <b>{count} {unit_disp}</b> ұтып алуы мүмкін!\n\nҚатысушылар:\n<i>Әлі ешкім қатыспады</i>\n\nҚатысушылар саны: 0/{max_participants}"
+    }
+    await message.answer(msg_map.get(c_lang, msg_map["uz"]), reply_markup=kb.as_markup(), parse_mode="HTML")
     if message.from_user:
         await send_big_giveaway_report(bot, message.from_user, message.chat, "Almashtirish konkursi", count)
 
 async def change_giveaway_callback(call: CallbackQuery, bot: Bot):
-    await call.answer("Qatnashdingiz!", show_alert=True)
+    user = call.from_user
+    if not user:
+        return
+
+    data = call.data
+    parts = data.split("_")
+    game_id = parts[-1]
+    giveaway_key = f"change_{game_id}"
+
+    game = _change_games.get(giveaway_key)
+    chat_id = call.message.chat.id if call.message else user.id
+    from utils.i18n import get_chat_lang, clean_lang
+    c_lang = clean_lang(await get_chat_lang(chat_id))
+
+    if not game:
+        alert_map = {
+            "uz": "❌ Ushbu konkurs yakunlangan!",
+            "ru": "❌ Этот конкурс завершен!",
+            "en": "❌ This contest has ended!",
+            "tr": "❌ Bu yarışma sona erdi!",
+            "kk": "❌ Бұл конкурс аяқталды!"
+        }
+        await call.answer(alert_map.get(c_lang, alert_map["uz"]), show_alert=True)
+        return
+
+    # Check if action is finish
+    if "finish" in data:
+        from config import PRIMARY_ADMIN_IDS
+        is_creator = (user.id == game["creator_id"])
+        is_super_admin = (user.id in PRIMARY_ADMIN_IDS)
+
+        c_name = html.escape(game["creator_name"])
+        if not (is_creator or is_super_admin):
+            no_perm_map = {
+                "uz": f"❌ Ushbu konkursni faqat uni boshlagan foydalanuvchi ({c_name}) tugata oladi!",
+                "ru": f"❌ Этот конкурс может завершить только создатель ({c_name})!",
+                "en": f"❌ Only the creator ({c_name}) can end this contest!",
+                "tr": f"❌ Bu yarışmayı sadece oluşturan kişi ({c_name}) bitirebilir!",
+                "kk": f"❌ Бұл конкурсты тек оны бастаған пайдаланушы ({c_name}) аяқтай алады!"
+            }
+            await call.answer(no_perm_map.get(c_lang, no_perm_map["uz"]), show_alert=True)
+            return
+
+        participants = game["participants"]
+        unit_disp = get_diamond_display() if game["is_diamond"] else get_dollar_display()
+
+        if not participants:
+            _change_games.pop(giveaway_key, None)
+            no_p_map = {
+                "uz": f"<b>{c_name} boshlagan almashtirish konkursi bekor qilindi.</b>\n\n<i>Hech kim qatnashmadi.</i>",
+                "ru": f"<b>Конкурс от {c_name} отменен.</b>\n\n<i>Никто не участвовал.</i>",
+                "en": f"<b>Contest created by {c_name} has been cancelled.</b>\n\n<i>No participants.</i>",
+                "tr": f"<b>{c_name} tarafından başlatılan yarışma iptal edildi.</b>\n\n<i>Kimse katılmadı.</i>",
+                "kk": f"<b>{c_name} бастаған конкурс жойылды.</b>\n\n<i>Ешкім қатыспады.</i>"
+            }
+            if call.message:
+                try:
+                    await call.message.edit_text(no_p_map.get(c_lang, no_p_map["uz"]), parse_mode="HTML", reply_markup=None)
+                except Exception:
+                    pass
+            cancel_ans = {"uz": "✅ Konkurs bekor qilindi.", "ru": "✅ Конкурс отменен.", "en": "✅ Contest cancelled.", "tr": "✅ Yarışma iptal edildi.", "kk": "✅ Конкурс жойылды."}
+            await call.answer(cancel_ans.get(c_lang, cancel_ans["uz"]), show_alert=True)
+            return
+
+        import random
+        winner_id, winner_name = random.choice(participants)
+
+        from models.user import User, Profile
+        w_user, _ = await User.get_or_create(
+            user_id=winner_id,
+            defaults={"full_name": winner_name[:100], "mention": winner_name[:100]}
+        )
+        w_profile, _ = await Profile.get_or_create(user=w_user)
+        if game["is_diamond"]:
+            w_profile.diamond += game["amount"]
+        else:
+            w_profile.dollar += game["amount"]
+        await w_profile.save()
+
+        _change_games.pop(giveaway_key, None)
+
+        w_name_safe = html.escape(winner_name)
+        w_link = f'<a href="tg://user?id={winner_id}">{w_name_safe}</a>'
+
+        result_map = {
+            "uz": (
+                f"🎉 <b>Almashtirish konkursi yakunlandi!</b>\n\n"
+                f"👤 <b>Tashkilotchi:</b> {c_name}\n"
+                f"🏆 <b>G'olib:</b> {w_link}\n"
+                f"🎁 <b>Yutuq:</b> {game['amount']} {unit_disp}\n\n"
+                f"📊 <b>Jami ishtirokchilar:</b> {len(participants)} kishi"
+            ),
+            "ru": (
+                f"🎉 <b>Конкурс обмена завершен!</b>\n\n"
+                f"👤 <b>Организатор:</b> {c_name}\n"
+                f"🏆 <b>Победитель:</b> {w_link}\n"
+                f"🎁 <b>Приз:</b> {game['amount']} {unit_disp}\n\n"
+                f"📊 <b>Всего участников:</b> {len(participants)} чел."
+            ),
+            "en": (
+                f"🎉 <b>Exchange contest finished!</b>\n\n"
+                f"👤 <b>Organizer:</b> {c_name}\n"
+                f"🏆 <b>Winner:</b> {w_link}\n"
+                f"🎁 <b>Prize:</b> {game['amount']} {unit_disp}\n\n"
+                f"📊 <b>Total participants:</b> {len(participants)}"
+            ),
+            "tr": (
+                f"🎉 <b>Değişim yarışması bitti!</b>\n\n"
+                f"👤 <b>Organizatör:</b> {c_name}\n"
+                f"🏆 <b>Kazanan:</b> {w_link}\n"
+                f"🎁 <b>Ödül:</b> {game['amount']} {unit_disp}\n\n"
+                f"📊 <b>Toplam katılımcı:</b> {len(participants)} kişi"
+            ),
+            "kk": (
+                f"🎉 <b>Алмастыру конкурсы аяқталды!</b>\n\n"
+                f"👤 <b>Ұйымдастырушы:</b> {c_name}\n"
+                f"🏆 <b>Жеңімпаз:</b> {w_link}\n"
+                f"🎁 <b>Жүлде:</b> {game['amount']} {unit_disp}\n\n"
+                f"📊 <b>Барлық қатысушылар:</b> {len(participants)} адам"
+            )
+        }
+
+        if call.message:
+            try:
+                await call.message.edit_text(result_map.get(c_lang, result_map["uz"]), parse_mode="HTML", reply_markup=None)
+            except Exception:
+                pass
+
+        finish_ans = {
+            "uz": "✅ Konkurs tugatildi va g'olibga yutuq berildi!",
+            "ru": "✅ Конкурс завершен, приз вручен победителю!",
+            "en": "✅ Contest finished and prize awarded!",
+            "tr": "✅ Yarışma bitti ve ödül kazanan verildi!",
+            "kk": "✅ Конкурс аяқталды және жүлде жеңімпазға берілді!"
+        }
+        await call.answer(finish_ans.get(c_lang, finish_ans["uz"]), show_alert=True)
+        return
+
+    # Action is JOIN
+    participants = game["participants"]
+    user_id = user.id
+
+    if any(u_id == user_id for u_id, _ in participants):
+        await call.answer("❌ Siz allaqachon qatnashdingiz!", show_alert=True)
+        return
+
+    if len(participants) >= game["max_participants"]:
+        await call.answer("🏁 Ishtirokchilar soni to'ldi!", show_alert=True)
+        return
+
+    participants.append((user_id, user.full_name or f"User_{user_id}"))
+    await call.answer("✅ Qatnashdingiz!", show_alert=False)
+
+    unit_disp = get_diamond_display() if game["is_diamond"] else get_dollar_display()
+
+    lines = [f"Kimdir <b>{game['amount']} ta {unit_disp}</b> yutib olishi mumkin!\n\nIshtirokchilar:"]
+    for idx, (uid, uname) in enumerate(participants[:50], start=1):
+        safe_name = html.escape(uname)
+        lines.append(f"{idx}) {safe_name}")
+    if len(participants) > 50:
+        lines.append(f"...va yana {len(participants) - 50} kishi")
+
+    lines.append(f"\nIshtirokchilar soni: {len(participants)}/{game['max_participants']}")
+
+    new_text = "\n".join(lines)
+
+    kb = InlineKeyboardBuilder()
+    if len(participants) < game["max_participants"]:
+        kb.button(text="🎲 Qatnashish", callback_data=f"change_join_{game_id}")
+        kb.button(text="⏹ Tugatish", callback_data=f"change_finish_{game_id}")
+        kb.adjust(1)
+    else:
+        kb.button(text="🏁 Ishtirokchilar to'ldi", callback_data="change_full")
+        kb.button(text="⏹ Tugatish", callback_data=f"change_finish_{game_id}")
+        kb.adjust(1)
+
+    try:
+        await call.message.edit_text(new_text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    except Exception:
+        pass
 
 async def start_change_giveaway_channel(message: Message, bot: Bot):
-    count = _parse_giveaway_count(message)
-    kb = InlineKeyboardBuilder()
-    kb.button(text="🔄 Qatnashish", callback_data=f"channel-change_{count}")
-    msg = (
-        f"🔄 <b>Kanal almashtirish konkursi!</b>\n\n"
-        f"🔢 Soni: <b>{count} ta</b>\n"
-        f"<i>Qatnashish uchun tugmani bosing!</i>"
-    )
-    await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
-    if message.from_user:
-        await send_big_giveaway_report(bot, message.from_user, message.chat, "Kanal almashtirish konkursi", count)
+    await start_change_giveaway(message, bot)
 
 async def change_giveaway_callback_channel(call: CallbackQuery, bot: Bot):
-    await call.answer("Qatnashdingiz!", show_alert=True)
+    await change_giveaway_callback(call, bot)
 
 async def start_money_giveaway(message: Message, bot: Bot):
-    amount = _parse_giveaway_count(message, default=100)
+    amount = _parse_giveaway_count(message, default=500)
+    creator_name = message.from_user.full_name if message.from_user else ""
+    game_id = str(message.message_id)
+
+    _money_giveaways[game_id] = {
+        "creator_name": creator_name,
+        "amount": amount,
+        "remaining": 10,
+        "winners": []  # list of tuples: (user_id, full_name, amount)
+    }
+
     kb = InlineKeyboardBuilder()
-    kb.button(text="💵 Qatnashish", callback_data=f"mgive_{amount}")
+    kb.button(text="💵 Qatnashish", callback_data=f"mgive_claim_{game_id}")
     msg = (
         f"💵 <b>Pul giveaway tarqatildi!</b>\n\n"
         f"💰 Miqdori: <b>{amount:,} $</b>\n"
@@ -898,7 +1121,107 @@ async def start_money_giveaway(message: Message, bot: Bot):
         await send_big_giveaway_report(bot, message.from_user, message.chat, "Pul giveaway", amount)
 
 async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
-    await call.answer("💵 Pul sovg'asiga qatnashdingiz!", show_alert=True)
+    user = call.from_user
+    if not user:
+        return
+
+    parts = call.data.split("_")
+    game_id = parts[-1]
+
+    game = _money_giveaways.get(game_id)
+    if not game:
+        await call.answer("💵 Pul sovg'asiga qatnashdingiz!", show_alert=True)
+        return
+
+    winners = game["winners"]
+    if any(w_id == user.id for w_id, _, _ in winners):
+        await call.answer("❌ Siz ushbu giveawaydan allaqachon pul olgansiz!", show_alert=True)
+        return
+
+    if game["remaining"] <= 0:
+        await call.answer("🏁 Afsuski, barcha pul sovg'alari tugadi!", show_alert=True)
+        return
+
+    from models.user import User, Profile
+    u_db, _ = await User.get_or_create(user_id=user.id, defaults={"full_name": user.full_name or f"User_{user.id}"})
+    p_db, _ = await Profile.get_or_create(user=u_db)
+    p_db.dollar += game["amount"]
+    await p_db.save()
+
+    winners.append((user.id, user.full_name or f"User_{user.id}", game["amount"]))
+    game["remaining"] -= 1
+
+    d_disp = get_dollar_display()
+    await call.answer(f"🎉 Tabriklaymiz! Siz {game['amount']} {d_disp} yutib oldingiz!", show_alert=True)
+
+    if game["remaining"] > 0:
+        kb = InlineKeyboardBuilder()
+        kb.button(text=f"💵 Qatnashish (qoldi {game['remaining']})", callback_data=f"mgive_claim_{game_id}")
+        try:
+            await call.message.edit_reply_markup(reply_markup=kb.as_markup())
+        except Exception:
+            pass
+    else:
+        c_name = html.escape(game["creator_name"])
+        header = f"<b>{c_name} ajratgan pul sovg'alari tugadi!</b>" if c_name else "<b>Ajratilgan pul sovg'alari tugadi!</b>"
+        winners = game["winners"]
+        d_disp = get_dollar_display()
+        await send_split_winners_list(call, header, winners, d_disp, chunk_size=25)
+
+async def send_split_winners_list(
+    call: CallbackQuery,
+    header_title: str,
+    winners: list,
+    unit_display: str,
+    chunk_size: int = 25
+):
+    """
+    Sovg'a yutib olganlar ro'yxatini shakllantiradi va agar ro'yxat uzun bo'lsa:
+    - 1-xabarni tahrirlab, birinchi bo'limni chiqaradi.
+    - Keyingi g'oliblarni "Olganlar davomi:" sarlavhasi bilan yangi postlarda 1-xabardan davom etuvchi raqamlar bilan yuboradi.
+    """
+    if not winners:
+        finished_text = f"{header_title}\n\n<i>Hech kim qatnashmadi.</i>"
+        if call.message:
+            try:
+                await call.message.edit_text(finished_text, parse_mode="HTML", reply_markup=None)
+            except Exception:
+                pass
+        return
+
+    total = len(winners)
+    chunks = [winners[i:i + chunk_size] for i in range(0, total, chunk_size)]
+
+    current_number = 1
+    for index, chunk in enumerate(chunks):
+        if index == 0:
+            lines = [f"{header_title}\n", "<b>Olganlar:</b>"]
+            for item in chunk:
+                w_uid, w_name, w_reward = item[0], item[1], item[2]
+                safe_name = html.escape(w_name or "Foydalanuvchi")
+                lines.append(f"{current_number}) {safe_name} {w_reward}{unit_display}")
+                current_number += 1
+
+            text = "\n".join(lines)
+            if call.message:
+                try:
+                    await call.message.edit_text(text, parse_mode="HTML", reply_markup=None)
+                except Exception:
+                    pass
+        else:
+            lines = ["<b>Olganlar davomi:</b>"]
+            for item in chunk:
+                w_uid, w_name, w_reward = item[0], item[1], item[2]
+                safe_name = html.escape(w_name or "Foydalanuvchi")
+                lines.append(f"{current_number}) {safe_name} {w_reward}{unit_display}")
+                current_number += 1
+
+            text = "\n".join(lines)
+            if call.message and call.message.chat:
+                try:
+                    await call.bot.send_message(call.message.chat.id, text, parse_mode="HTML")
+                except Exception:
+                    pass
 
 # Do'kon va Valyutalar
 async def show_shop(call: CallbackQuery):

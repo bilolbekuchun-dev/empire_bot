@@ -20,21 +20,67 @@ def get_bot_link_markup(lang: str = "uz"):
 
 bot_link_markup = get_bot_link_markup("uz")
 
-def get_start_markup():
+def get_start_markup(lang: str = "uz"):
     from config import BOT_URL, SUPPORT_ADMIN, CHANNEL_USERNAME, WEBAPP_URL
+    from utils.i18n import clean_lang
+    c = clean_lang(lang)
+
     b_url = BOT_URL if (BOT_URL and BOT_URL.startswith("http")) else "https://t.me/test_empire_bot"
     w_url = WEBAPP_URL if (WEBAPP_URL and WEBAPP_URL.startswith("http")) else "https://empiremafiaweb.netlify.app"
     s_admin = SUPPORT_ADMIN if (SUPPORT_ADMIN and SUPPORT_ADMIN.startswith("http")) else "https://t.me/Yuldashev_01s"
     c_user = CHANNEL_USERNAME.lstrip("@") if CHANNEL_USERNAME else "Empire_yangiliklar"
     c_url = f"https://t.me/{c_user}"
     
+    texts_cabinet = {
+        "uz": "🌐 Shaxsiy kabinet",
+        "ru": "🌐 Личный кабинет",
+        "en": "🌐 Profile Cabinet",
+        "tr": "🌐 Kişisel Kabine",
+        "kk": "🌐 Жеке кабинет"
+    }
+    texts_airdrop = {
+        "uz": "🪂 Airdrop & Rol Spin",
+        "ru": "🪂 Airdrop & Вращение ролей",
+        "en": "🪂 Airdrop & Role Spin",
+        "tr": "🪂 Airdrop & Rol Çarkı",
+        "kk": "🪂 Airdrop & Рөл айналдыру"
+    }
+    texts_add_group = {
+        "uz": "✅ Guruhga qo'shish",
+        "ru": "✅ Добавить в группу",
+        "en": "✅ Add to group",
+        "tr": "✅ Gruba ekle",
+        "kk": "✅ Топқа қосу"
+    }
+    texts_prem_groups = {
+        "uz": "🌟 Premium guruhlar",
+        "ru": "🌟 Премиум группы",
+        "en": "🌟 Premium groups",
+        "tr": "🌟 Premium gruplar",
+        "kk": "🌟 Премиум топтар"
+    }
+    texts_support = {
+        "uz": "✍🏻 Savollar uchun",
+        "ru": "✍🏻 Вопросы/Поддержка",
+        "en": "✍🏻 Support",
+        "tr": "✍🏻 Destek için",
+        "kk": "✍🏻 Қолдау"
+    }
+    texts_channel = {
+        "uz": "📡 Kanal",
+        "ru": "📡 Канал",
+        "en": "📡 Channel",
+        "tr": "📡 Kanal",
+        "kk": "📡 Канал"
+    }
+
     b = InlineKeyboardBuilder()
-    b.button(text="🌐 Shaxsiy kabinet", web_app=WebAppInfo(url=w_url))
-    b.button(text="🪂 Airdrop & Rol Spin", callback_data="refresh_airdrop_menu")
-    b.button(text="✅ Guruhga qo'shish", url=f"{b_url}?startgroup=true")
-    b.button(text="🌟 Premium guruhlar", callback_data="prem_groups_start")
-    b.button(text="✍🏻 Savollar uchun", url=s_admin)
-    b.button(text="📡 Kanal", url=c_url)
+    b.button(text=texts_cabinet.get(c, texts_cabinet["uz"]), web_app=WebAppInfo(url=w_url))
+    b.button(text=texts_airdrop.get(c, texts_airdrop["uz"]), callback_data="refresh_airdrop_menu")
+    b.button(text=texts_add_group.get(c, texts_add_group["uz"]), url=f"{b_url}?startgroup=true")
+    b.button(text=texts_prem_groups.get(c, texts_prem_groups["uz"]), callback_data="prem_groups_start")
+    b.button(text=texts_support.get(c, texts_support["uz"]), url=s_admin)
+    b.button(text=texts_channel.get(c, texts_channel["uz"]), url=c_url)
     b.adjust(1, 1, 1, 1, 2)
     return b.as_markup()
 
