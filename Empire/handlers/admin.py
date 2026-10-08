@@ -8,7 +8,8 @@ from utils.premium_emojis import (
     ALL_ACTIVE_ROLES, WEAPON_NAMES, CURRENCY_NAMES,
     get_custom_emoji, set_custom_emoji, reset_all_custom_emojis,
     parse_emoji_from_message, role_display, get_item_display,
-    get_diamond_display, get_dollar_display
+    get_diamond_display, get_dollar_display,
+    sync_emojis_from_db, _load_config
 )
 from states.admin_states import AdminEmojiStates
 from keyboards.admin_keyboard import (
@@ -334,6 +335,40 @@ async def adm_emj_reset_do_cb(call: CallbackQuery):
     await call.answer("🗑 Barcha maxsus premium emojilar tozalandi va standart holatga qaytarildi!", show_alert=True)
     text = get_main_panel_text()
     await call.message.edit_text(text, parse_mode="HTML", reply_markup=admin_emoji_main_menu())
+
+@router.callback_query(F.data == "adm_emj_save_to_db")
+async def adm_emj_save_to_db_cb(call: CallbackQuery):
+    if not await is_primary_admin(call.from_user.id):
+        return
+    try:
+        from models.game_set import CustomEmojiConfig
+        config = _load_config()
+        count = 0
+        for category, items in config.items():
+            if isinstance(items, dict):
+                for key, val in items.items():
+                    if val:
+                        await CustomEmojiConfig.update_or_create(
+                            category=category,
+                            key=key,
+                            defaults={"emoji_html": val}
+                        )
+                        count += 1
+        await call.answer(f"💾 {count} ta premium emoji PostgreSQL bazaga muvaffaqiyatli saqlandi! Redeploy bo'lganda ham saqlanib qoladi.", show_alert=True)
+    except Exception as e:
+        await call.answer(f"❌ Saqlashda xatolik: {str(e)}", show_alert=True)
+
+@router.callback_query(F.data == "adm_emj_load_from_db")
+async def adm_emj_load_from_db_cb(call: CallbackQuery):
+    if not await is_primary_admin(call.from_user.id):
+        return
+    try:
+        await sync_emojis_from_db()
+        await call.answer("🔄 Barcha premium emojilar bazadan qayta tiklandi va yangilandi!", show_alert=True)
+        text = get_main_panel_text()
+        await call.message.edit_text(text, parse_mode="HTML", reply_markup=admin_emoji_main_menu())
+    except Exception as e:
+        await call.answer(f"❌ Tiklashda xatolik: {str(e)}", show_alert=True)
 
 # ==========================================
 # ⚡️ STANDART BUYRUQLAR (PRESERVED)
