@@ -291,6 +291,7 @@ async def process_emoji_input_msg(message: Message, state: FSMContext):
     target_name = data.get("target_name")
     await state.clear()
 
+    real_key = None
     if category == "roles":
         idx = int(raw_key)
         real_key = ALL_ACTIVE_ROLES[idx]
@@ -299,6 +300,18 @@ async def process_emoji_input_msg(message: Message, state: FSMContext):
         set_custom_emoji("weapons", raw_key, emoji_html)
     elif category == "currency":
         set_custom_emoji("currency", raw_key, emoji_html)
+
+    # DARHOL (0-soniyada) PostgreSQL bazaga ham saqlash
+    try:
+        from models.game_set import CustomEmojiConfig
+        target_k = real_key if category == "roles" else raw_key
+        await CustomEmojiConfig.update_or_create(
+            category=category,
+            key=target_k,
+            defaults={"emoji_html": emoji_html}
+        )
+    except Exception as db_err:
+        print(f"Error auto-saving emoji to DB: {db_err}")
 
     await message.answer(
         f"✅ <b>{target_name}</b> uchun premium emoji muvaffaqiyatli saqlandi!\n\n"
