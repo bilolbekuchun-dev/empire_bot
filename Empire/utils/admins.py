@@ -201,7 +201,7 @@ async def change_profile_answer(message: Message):
     await message.answer(f"{user.full_name} va {targ_user.full_name} profillari almashdirildi!")
 
 async def bust_user_answer(message: Message):
-    if message.from_user.id not in ADMINS:
+    if not await is_bot_admin(message.from_user.id):
         return
     points = message.text.split()
     if len(points) == 2:
