@@ -160,22 +160,26 @@ class DelCommands(Filter):
         if not msg_text:
             return False
 
-        # Tun fazasi ekanligini tekshirish (DB hamda Redis o'yinlari uchun)
+        # Tun fazasi ekanligini va faol o'yin bor-yo'qligini tekshirish
         is_night = False
+        is_active_game = False
         try:
             game = await Game.filter(chat__chat_id=message.chat.id, is_active=True).first()
             if game:
+                is_active_game = True
                 night_phase = await GamePhase.filter(game=game, phase_type="night", is_end=False).first()
                 if night_phase:
                     is_night = True
 
-            if not is_night:
+            if not is_active_game:
                 from utils.redis_game.repositories.game_repository import game_repository
                 rg_id = await game_repository.get_active_game(message.chat.id)
                 if rg_id:
                     rg = await game_repository.load_game(rg_id)
-                    if rg and rg.is_active and rg.phase == "night":
-                        is_night = True
+                    if rg and rg.is_active:
+                        is_active_game = True
+                        if rg.phase == "night":
+                            is_night = True
         except Exception:
             pass
 
@@ -190,7 +194,8 @@ class DelCommands(Filter):
                     pass
                 return True
 
-        if msg_text.startswith("/") or msg_text.startswith("!"):
+        # Faqat o'yin vaqtidagina '/' va '!' li xabarlarni tozalash
+        if is_active_game and (msg_text.startswith("/") or msg_text.startswith("!")):
             try:
                 await message.delete()
             except Exception:
