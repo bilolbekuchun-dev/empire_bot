@@ -17,7 +17,7 @@ import asyncio
 import html
 import random
 from datetime import datetime, timezone
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Union
 
 from aiogram import Bot
 from aiogram.utils.keyboard import InlineKeyboardBuilder
