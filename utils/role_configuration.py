@@ -44,24 +44,34 @@ class RoleConfiguration:
         (19, RoleNames.OMADLI),
         # 20 kishi (Sehrgar erta chiqadi)
         (20, RoleNames.SEHRGAR),
-        # 21 kishi (Bo'ri erta chiqadi)
-        (21, RoleNames.BORI),
-        # 22 kishi
-        (22, RoleNames.JANOB),
-        # 23 kishi (G'azabkor erta chiqadi)
-        (23, RoleNames.GAZABDOR),
-        # 24 kishi (Aferist erta chiqadi)
-        (24, RoleNames.AFERIST),
-        # 25 kishi (Qo'riqchi)
-        (25, RoleNames.QORIQCHI),
-        # 26 kishi
-        (26, RoleNames.MAFIA),
+        # 21 kishi (Ayg'oqchi)
+        (21, RoleNames.AYGOQCHI),
+        # 22 kishi (Bo'ri erta chiqadi)
+        (22, RoleNames.BORI),
+        # 23 kishi
+        (23, RoleNames.JANOB),
+        # 24 kishi (G'azabkor erta chiqadi)
+        (24, RoleNames.GAZABDOR),
+        # 25 kishi (Aferist erta chiqadi)
+        (25, RoleNames.AFERIST),
+        # 26 kishi (Qo'riqchi)
+        (26, RoleNames.QORIQCHI),
         # 27 kishi
-        (27, RoleNames.SUIDSID),
-        # 28 kishi
-        (28, RoleNames.MAFIA),
+        (27, RoleNames.MAFIA),
+        # 28 kishi (Hamshira)
+        (28, RoleNames.HAMSHIRA),
         # 29 kishi
-        (29, RoleNames.QASOSKOR),
+        (29, RoleNames.JURNALIST),
+        # 30 kishi
+        (30, RoleNames.SOTQIN),
+        # 31 kishi
+        (31, RoleNames.SUIDSID),
+        # 32 kishi
+        (32, RoleNames.XOYIN),
+        # 33 kishi
+        (33, RoleNames.MAFIA),
+        # 34 kishi
+        (34, RoleNames.QASOSKOR),
         # 35 kishi
         (35, RoleNames.BORI),
         # 36 kishi
@@ -98,6 +108,7 @@ class RoleConfiguration:
 
     @classmethod
     def get_roles_for_mode(cls, mode: str, player_count: int) -> List[str]:
+        from config import is_role_enabled
         role_config = None
         for mode_key, config in cls.MODE_MAP.items():
             if mode.startswith(mode_key):
@@ -110,7 +121,8 @@ class RoleConfiguration:
         roles = []
         for min_players, role in role_config:
             if player_count >= min_players:
-                roles.append(role)
+                if is_role_enabled(role):
+                    roles.append(role)
         
         return roles
 
