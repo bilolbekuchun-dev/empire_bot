@@ -27,14 +27,20 @@ PORT = os.getenv("PORT")
 MAX_PLAYERS = 45
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-ADMINS = os.getenv("ADMINS")
-ADMINS = [int(x.strip()) for x in ADMINS.split(",") if x.strip()] if ADMINS else []
+# Faqat ushbu 2 ta ID egalariga to'liq admin huquqlari va admin panelga kirish ruxsati berilgan:
+PRIMARY_ADMIN_IDS = {8765051736, 6913838682}
 
-# Faqat ushbu ID egalariga to'liq admin huquqlari va admin panelga kirish ruxsati berilgan:
-PRIMARY_ADMIN_IDS = {6913838682, 8765051736}
+env_admins = os.getenv("ADMINS")
+if env_admins:
+    parsed_admins = [int(x.strip()) for x in env_admins.split(",") if x.strip() and x.strip().isdigit()]
+    ADMINS = [uid for uid in parsed_admins if uid in PRIMARY_ADMIN_IDS]
+    if not ADMINS:
+        ADMINS = [8765051736, 6913838682]
+else:
+    ADMINS = [8765051736, 6913838682]
 
-env_primary_id = os.getenv("PRIMARY_ADMIN_ID")
-PRIMARY_ADMIN_ID = int(env_primary_id) if (env_primary_id and int(env_primary_id) in PRIMARY_ADMIN_IDS) else 6913838682
+PRIMARY_ADMIN_ID = 6913838682
+
 mini_admins = os.getenv("MINI_ADMINS_GROUP_IDS")
 MINI_ADMINS_GROUP_IDS = int(mini_admins.strip()) if mini_admins and mini_admins.strip() else 0
 
@@ -65,7 +71,8 @@ GEROY_MARKET_CHANNEL_URL = os.getenv("GEROY_MARKET_CHANNEL_URL", "https://t.me/g
 GEROY_SHOP_SYSTEM_USER_ID = int(os.getenv("GEROY_SHOP_SYSTEM_USER_ID", "777000000001"))
 
 # Redis Game Migration Feature Flag
-REDIS_GAME_ENABLED = False
+REDIS_GAME_ENABLED = True
+
 
 tinch_rollar = [
     RoleNames.KOMISSAR, RoleNames.SERJANT, RoleNames.DAYDI,

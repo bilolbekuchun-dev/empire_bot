@@ -194,10 +194,11 @@ def resolve_media(event: str, phase: str = "night") -> Media:
             return Media(_infer_kind(str(path), cfg.get("type")), str(path))
 
     # 3) bundled default assets
-    default_name = "day.jpg" if lookup == EVENT_DAY else "night.jpg"
-    bundled = _resolve_local_path(f"gifs/{default_name}")
-    if bundled:
-        return Media("photo", str(bundled))
+    candidates = ["kun.jpg", "day.jpg"] if lookup == EVENT_DAY else ["tun.jpg", "night.jpg"]
+    for c_name in candidates:
+        bundled = _resolve_local_path(f"gifs/{c_name}")
+        if bundled:
+            return Media("photo", str(bundled))
 
     return Media("none", None)
 
@@ -253,14 +254,20 @@ async def _acquire_slot(key: str) -> bool:
 # --------------------------------------------------------------------------
 async def _send_media(bot, chat_id, media: Media, text: str, reply_markup) -> None:
     """Send media+caption. Raises on failure (handled by caller)."""
+    from aiogram.types import FSInputFile
+
+    val = media.value
+    if isinstance(val, str) and (os.path.isabs(val) or "/" in val or "\\" in val) and os.path.exists(val):
+        val = FSInputFile(val)
+
     if media.kind == "animation":
-        await bot.send_animation(chat_id, media.value, caption=text,
+        await bot.send_animation(chat_id, val, caption=text,
                                  parse_mode="HTML", reply_markup=reply_markup)
     elif media.kind == "video":
-        await bot.send_video(chat_id, media.value, caption=text,
+        await bot.send_video(chat_id, val, caption=text,
                              parse_mode="HTML", reply_markup=reply_markup)
     elif media.kind == "photo":
-        await bot.send_photo(chat_id, media.value, caption=text,
+        await bot.send_photo(chat_id, val, caption=text,
                              parse_mode="HTML", reply_markup=reply_markup)
     else:
         await bot.send_message(chat_id, text, parse_mode="HTML", reply_markup=reply_markup)

@@ -18,10 +18,16 @@ GROUPS_PER_PAGE = 15
 _vip_giveaways: dict = {}
 
 async def is_bot_admin(user_id: int) -> bool:
-    """Faqatgina ruxsat berilgan SUPER ADMINLAR (PRIMARY_ADMIN_IDS) boshqara oladi."""
+    """Config primary adminlar yoki BotAdmin DB adminlari."""
     if not user_id:
         return False
-    return (user_id in PRIMARY_ADMIN_IDS or user_id == PRIMARY_ADMIN_ID)
+    if user_id in PRIMARY_ADMIN_IDS:
+        return True
+    try:
+        from models.user import BotAdmin
+        return await BotAdmin.filter(user_id=user_id).exists()
+    except Exception:
+        return False
 
 def _vip_giveaway_text(remaining: int, total: int) -> str:
     return (
@@ -657,20 +663,19 @@ async def unblock_user_answer(message: Message):
     await message.answer(f"<b>✅ {user_id} foydalanuvchisidan blok (ban) olib tashlandi!</b>", parse_mode="HTML")
 
 async def get_all_bot_admins():
-    """Barcha static adminlar ro'yxatini User ob'yektlari shaklida qaytaradi."""
-    from models.user import User
-    from config import ADMINS, PRIMARY_ADMIN_IDS, PRIMARY_ADMIN_ID
-    
-    admin_ids = set()
-    if PRIMARY_ADMIN_ID:
-        admin_ids.add(PRIMARY_ADMIN_ID)
-    for aid in PRIMARY_ADMIN_IDS:
-        if aid:
-            admin_ids.add(int(aid))
-    for aid in ADMINS:
-        if aid:
-            admin_ids.add(int(aid))
-            
+    """Barcha config va DB dynamic adminlar ro'yxatini User ob'yektlari shaklida qaytaradi."""
+    from models.user import User, BotAdmin
+    from config import PRIMARY_ADMIN_IDS
+
+    admin_ids = set(PRIMARY_ADMIN_IDS)
+    try:
+        db_admins = await BotAdmin.all().values_list("user_id", flat=True)
+        for aid in db_admins:
+            if aid:
+                admin_ids.add(int(aid))
+    except Exception:
+        pass
+
     users = []
     for uid in admin_ids:
         user = await User.get_or_none(user_id=uid)
@@ -680,8 +685,32 @@ async def get_all_bot_admins():
     return users
 
 async def add_admin_answer(message: Message):
-    """/addadmin - notification that admins are set via config variables"""
-    await message.answer("⚠️ Adminlar faqat konfiguratsiya (variables) orqali boshqariladi.", parse_mode="HTML")
+    """/addadmin <user_id> - yangi tayinlangan admin qo'shish (faqat PRIMARY_ADMIN_IDS)"""
+    if message.from_user.id not in PRIMARY_ADMIN_IDS:
+        return
+
+    parts = message.text.split()
+    if len(parts) < 2 or not parts[1].isdigit():
+        await message.answer("<b>Format:</b> <code>/addadmin <user_id></code>", parse_mode="HTML")
+        return
+
+    target_id = int(parts[1])
+    from models.user import BotAdmin, User
+    user, _ = await User.get_or_create(
+        user_id=target_id,
+        defaults={"full_name": f"Admin_{target_id}", "mention": f"<code>{target_id}</code>"}
+    )
+    already = await BotAdmin.filter(user_id=target_id).exists()
+    if already or target_id in PRIMARY_ADMIN_IDS:
+        await message.answer(f"⚠️ <code>{target_id}</code> allaqachon adminlar ro'yxatida mavjud!", parse_mode="HTML")
+        return
+
+    await BotAdmin.create(user_id=target_id)
+    await message.answer(
+        f"✅ <code>{target_id}</code> foydalanuvchisi yangi tayinlangan adminlar ro'yxatiga qo'shildi!\n"
+        f"<i>(Eslatma: Ushbu adminga /admin va /panel buyruqlari ishlamaydi, boshqa admin buyruqlari ishlaydi)</i>",
+        parse_mode="HTML"
+    )
 
 async def show_admins_list(event, page: int = 0):
     """/admins buyrug'i va tugmasi uchun adminlar ro'yxati"""

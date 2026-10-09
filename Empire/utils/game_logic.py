@@ -88,14 +88,37 @@ async def create_nick_game_handler(message: Message, bot: Bot):
 
 
 async def extend_game_timer(message: Message, bot: Bot):
-    """O'yin kutish vaqtini uzaytirish"""
+    """O'yin registratsiya vaqtini (120s) bekor qilib cheksizga uzaytirish"""
     from utils.i18n import get_chat_lang, clean_lang
+    from utils.redis_game.repositories import game_repository
+    from utils.database import redis_client as r
+
     lang = clean_lang(await get_chat_lang(message.chat.id))
+    active_game_id = await game_repository.get_active_game(message.chat.id)
+
+    if active_game_id:
+        game_state = await game_repository.load_game(active_game_id)
+        if game_state and game_state.phase == "waiting":
+            await r.set(f"game:{active_game_id}:is_extended", "1", ex=86400)
+            await r.delete(f"game:{active_game_id}:reg_expires_at")
+
+            text_map = {
+                "uz": "⏱ <b>Taymer cheksiz qilib belgilandi!</b>",
+                "ru": "⏱ <b>Таймер установлен на бессрочно!</b>",
+                "en": "⏱ <b>Timer set to unlimited!</b>",
+                "tr": "⏱ <b>Zamanlayıcı süresiz olarak ayarlandı!</b>",
+                "kk": "⏱ <b>Таймер шексіздікке орнатылды!</b>"
+            }
+            await message.answer(text_map.get(lang, text_map["uz"]), parse_mode="HTML")
+            return
+
     text_map = {
-        "uz": "⏱ O'yin boshlanish vaqti uzaytirildi!",
-        "ru": "⏱ Время ожидания начала игры продлено!",
-        "en": "⏱ Game wait time extended!",
-        "tr": "⏱ Oyun başlama süresi uzatıldı!",
-        "kk": "⏱ Ойынның басталу уақыты ұзартылды!"
+        "uz": "⚠️ Hozirda kutish rejimida faol o'yin topilmadi!",
+        "ru": "⚠️ В настоящее время активная игра в режиме ожидания не найдена!",
+        "en": "⚠️ No active game in waiting mode found!",
+        "tr": "⚠️ Bekleme modunda aktif oyun bulunamadı!",
+        "kk": "⚠️ Күту режимінде белсенді ойын табылмады!"
     }
-    await message.answer(text_map.get(lang, text_map["uz"]))
+    await message.answer(text_map.get(lang, text_map["uz"]), parse_mode="HTML")
+
+
