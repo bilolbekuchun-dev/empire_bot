@@ -252,6 +252,15 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
 
         unit_name = m_disp
 
+    from models.user import Transfers
+    await Transfers.create(
+        from_user=sender_db,
+        to_user=target_user,
+        amount=amount,
+        type="diamond" if is_diamond else "dollar",
+        caption="Telegram o'tkazma"
+    )
+
     s_name = html.escape(sender_db.full_name or "Foydalanuvchi")
     t_name = html.escape(target_user.full_name or "Foydalanuvchi")
     s_link = f'<a href="tg://user?id={sender_db.user_id}">{s_name}</a>'
@@ -715,6 +724,16 @@ async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, i
         profile.diamond += reward
         await profile.save()
 
+        from models.user import Transfers
+        admin_user, _ = await User.get_or_create(user_id=bot.id, defaults={"full_name": "Bot"})
+        await Transfers.create(
+            from_user=admin_user,
+            to_user=user,
+            amount=reward,
+            type="diamond",
+            caption="Umumiy giveaway yutug'i"
+        )
+
         add_collected_user(giveaway_id, user_id)
         u_name = call.from_user.full_name or f"User_{user_id}"
         add_winner_detail(giveaway_id, user_id, u_name, reward)
@@ -989,6 +1008,16 @@ async def change_giveaway_callback(call: CallbackQuery, bot: Bot):
             w_profile.dollar += game["amount"]
         await w_profile.save()
 
+        from models.user import Transfers
+        admin_user, _ = await User.get_or_create(user_id=game["creator_id"] or bot.id, defaults={"full_name": game.get("creator_name", "Bot")[:100]})
+        await Transfers.create(
+            from_user=admin_user,
+            to_user=w_user,
+            amount=game["amount"],
+            type="diamond" if game["is_diamond"] else "dollar",
+            caption="Almashtirish yutug'i"
+        )
+
         _change_games.pop(giveaway_key, None)
 
         w_name_safe = html.escape(winner_name)
@@ -1245,6 +1274,16 @@ async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
     else:
         p_db.dollar += per_person
     await p_db.save()
+
+    from models.user import Transfers
+    admin_user, _ = await User.get_or_create(user_id=bot.id, defaults={"full_name": game.get("creator_name", "Bot")[:100]})
+    await Transfers.create(
+        from_user=admin_user,
+        to_user=u_db,
+        amount=per_person,
+        type="diamond" if game["is_diamond"] else "dollar",
+        caption="Pul giveaway yutug'i"
+    )
 
     w_name = user.full_name or f"User_{user.id}"
     winners.append((user.id, w_name, per_person))
