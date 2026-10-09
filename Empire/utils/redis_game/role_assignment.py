@@ -361,5 +361,5 @@ async def get_role_config_text(mode: str = None) -> list:
         text = "<b>📋 MAVJUD O'YIN MODE'LARI:</b>\n\n"
         for i, m in enumerate(modes, 1):
             text += f"{i}. <code>{m}</code>\n"
-        text += "\n💡 Ma'lum bir mode uchun: <code>/roles {mode_name}</code>"
+        text += "\n💡 Ma'lum bir mode uchun: <code>/roleconfig {mode_name}</code>"
         return [text]
