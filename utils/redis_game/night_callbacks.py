@@ -359,7 +359,7 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         kb.adjust(2, 1)
         kom_head = {"uz": "🕵🏼 <b>Komissar</b>, nima qilasiz?", "ru": "🕵🏼 <b>Комиссар</b>, что делаем?", "en": "🕵🏼 <b>Detective</b>, what is your move?", "tr": "🕵🏼 <b>Komiser</b>, ne yapacaksınız?", "kk": "🕵🏼 <b>Комиссар</b>, не істейсіз?"}.get(chat_lang, "🕵🏼 <b>Komissar</b>, nima qilasiz?")
         if hist_lines:
-            kom_head = "📋 <b>Tekshiruvlar hisoboti:</b>\n" + "\n".join(hist_lines) + "\n\n" + kom_head
+            kom_head = "📋 <b>Tekshiruv tarixi:</b>\n" + "\n".join(hist_lines) + "\n\n" + kom_head
 
         try:
             await call.message.edit_text(kom_head, parse_mode="HTML", reply_markup=kb.as_markup())

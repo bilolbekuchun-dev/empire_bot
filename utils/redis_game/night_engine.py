@@ -410,7 +410,7 @@ async def send_night_actions(
 
             kom_prompt = ns.get("komissar_prompt", "🕵🏼 <b>Komissar</b>, nima qilasiz?")
             if hist_lines:
-                hist_header = "📋 <b>Tekshiruvlar hisoboti:</b>\n" + "\n".join(hist_lines) + "\n\n"
+                hist_header = "📋 <b>Tekshiruv tarixi:</b>\n" + "\n".join(hist_lines) + "\n\n"
                 kom_prompt = hist_header + kom_prompt
 
             kb = InlineKeyboardBuilder()
