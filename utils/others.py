@@ -896,6 +896,27 @@ async def start_change_giveaway(message: Message, bot: Bot):
     creator_name = message.from_user.full_name if message.from_user else "Admin"
     creator_id = message.from_user.id if message.from_user else 0
 
+    from config import PRIMARY_ADMIN_IDS
+    from models.user import User, Profile
+    is_admin = creator_id in PRIMARY_ADMIN_IDS
+    is_channel = message.chat.type == "channel"
+
+    if not is_channel and not is_admin and message.from_user:
+        u_db, _ = await User.get_or_create(user_id=creator_id, defaults={"full_name": creator_name[:100]})
+        p_db, _ = await Profile.get_or_create(user=u_db)
+        if is_diamond:
+            if p_db.diamond < count:
+                await message.answer(f"❌ Balansingizda yetarli olmos yo'q! (Sizga yana {count - p_db.diamond} kerak)")
+                return
+            p_db.diamond -= count
+        else:
+            if p_db.dollar < count:
+                await message.answer(f"❌ Balansingizda yetarli dollar yo'q! (Sizga yana {count - p_db.dollar} kerak)")
+                return
+            p_db.dollar -= count
+        await p_db.save()
+
+    import time
     _change_games[giveaway_key] = {
         "id": game_id,
         "amount": count,
@@ -904,6 +925,7 @@ async def start_change_giveaway(message: Message, bot: Bot):
         "creator_id": creator_id,
         "creator_name": creator_name,
         "participants": [],  # list of tuples: (user_id, full_name)
+        "expires_at": time.time() + 86400  # 24 hours
     }
 
     from utils.i18n import get_chat_lang, clean_lang
@@ -952,6 +974,16 @@ async def change_giveaway_callback(call: CallbackQuery, bot: Bot):
             "kk": "❌ Бұл конкурс аяқталды!"
         }
         await call.answer(alert_map.get(c_lang, alert_map["uz"]), show_alert=True)
+        return
+
+    import time
+    if time.time() > game.get("expires_at", 0):
+        await call.answer("❌ Bu sovg'aning muddati o'tgan (kuyib ketdi)!", show_alert=True)
+        _change_games.pop(giveaway_key, None)
+        try:
+            await call.message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            pass
         return
 
     # Check if action is finish
@@ -1217,10 +1249,32 @@ async def start_money_giveaway(message: Message, bot: Bot, is_dollar: bool = Fal
 
     is_channel = message.chat.type in ("channel",)
 
+    creator_id = message.from_user.id if message.from_user else 0
+    from models.user import User, Profile
+    from config import PRIMARY_ADMIN_IDS
+    is_admin = creator_id in PRIMARY_ADMIN_IDS
+
+    if not is_channel and not is_admin and message.from_user:
+        u_db, _ = await User.get_or_create(user_id=creator_id, defaults={"full_name": creator_name[:100]})
+        p_db, _ = await Profile.get_or_create(user=u_db)
+        if not is_dollar:
+            if p_db.diamond < actual_total:
+                await message.answer(f"❌ Balansingizda yetarli olmos yo'q! (Sizga yana {actual_total - p_db.diamond} kerak)")
+                return
+            p_db.diamond -= actual_total
+        else:
+            if p_db.dollar < actual_total:
+                await message.answer(f"❌ Balansingizda yetarli dollar yo'q! (Sizga yana {actual_total - p_db.dollar} kerak)")
+                return
+            p_db.dollar -= actual_total
+        await p_db.save()
+
+    import time
     data = {
         "id": game_id,
         "chat_id": message.chat.id,
         "creator_name": creator_name,
+        "creator_id": creator_id,
         "creator_mention": creator_mention,
         "is_diamond": not is_dollar,
         "is_channel": is_channel,
@@ -1228,6 +1282,7 @@ async def start_money_giveaway(message: Message, bot: Bot, is_dollar: bool = Fal
         "count_total": count_total,
         "per_person": per_person,
         "winners": [],  # list of tuples: (user_id, full_name, per_person)
+        "expires_at": time.time() + 86400  # 24 hours
     }
 
     _money_giveaways[game_id] = data
@@ -1253,6 +1308,16 @@ async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
     game = _money_giveaways.get(game_id)
     if not game:
         await call.answer("❌ Ushbu giveaway yakunlangan yoki topilmadi!", show_alert=True)
+        return
+
+    import time
+    if time.time() > game.get("expires_at", 0):
+        await call.answer("❌ Bu sovg'aning muddati o'tgan (kuyib ketdi)!", show_alert=True)
+        _money_giveaways.pop(game_id, None)
+        try:
+            await call.message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            pass
         return
 
     winners = game["winners"]

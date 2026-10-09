@@ -332,9 +332,7 @@ async def f(call: CallbackQuery, bot: Bot):
 
 @router.message(F.text.startswith("/change"))
 async def f(message: Message, bot: Bot):
-    from config import PRIMARY_ADMIN_IDS
-    if message.from_user and message.from_user.id in PRIMARY_ADMIN_IDS:
-        await others.start_change_giveaway(message=message, bot=bot)
+    await others.start_change_giveaway(message=message, bot=bot)
 
 @router.callback_query(F.data.startswith("change"))
 async def f(call: CallbackQuery, bot: Bot):
@@ -351,9 +349,7 @@ async def f(call: CallbackQuery, bot: Bot):
 
 @router.message(F.text.startswith("/mgive"))
 async def f(message: Message, bot: Bot):
-    from config import PRIMARY_ADMIN_IDS
-    if message.from_user and message.from_user.id in PRIMARY_ADMIN_IDS:
-        await others.start_money_giveaway(message=message, bot=bot, is_dollar=False)
+    await others.start_money_giveaway(message=message, bot=bot, is_dollar=False)
 
 @router.channel_post(F.text.startswith("/mgive"))
 async def f(message: Message, bot: Bot):
@@ -361,9 +357,7 @@ async def f(message: Message, bot: Bot):
 
 @router.message(F.text.startswith("/msend"))
 async def f(message: Message, bot: Bot):
-    from config import PRIMARY_ADMIN_IDS
-    if message.from_user and message.from_user.id in PRIMARY_ADMIN_IDS:
-        await others.start_money_giveaway(message=message, bot=bot, is_dollar=True)
+    await others.start_money_giveaway(message=message, bot=bot, is_dollar=True)
 
 @router.channel_post(F.text.startswith("/msend"))
 async def f(message: Message, bot: Bot):
