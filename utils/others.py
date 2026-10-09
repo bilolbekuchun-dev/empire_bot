@@ -711,7 +711,7 @@ async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, i
         )
         profile, _ = await Profile.get_or_create(user=user)
 
-        reward = random.randint(1, 3)
+        reward = 1
         profile.diamond += reward
         await profile.save()
 
@@ -719,7 +719,7 @@ async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, i
         u_name = call.from_user.full_name or f"User_{user_id}"
         add_winner_detail(giveaway_id, user_id, u_name, reward)
 
-        new_remaining = remaining - 1
+        new_remaining = remaining - reward
 
         if new_remaining > 0:
             cb_prefix = "channel-giveaway" if is_channel else "giveaway"
