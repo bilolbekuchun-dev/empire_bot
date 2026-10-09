@@ -329,14 +329,12 @@ async def test_ended_games_expire_and_leave_indexes():
 # PHASE 10/20 — full Redis cleanup completeness + idempotency
 # --------------------------------------------------------------------------
 async def test_full_cleanup_removes_all_game_keys():
-    from utils.redis_game.services.game_service import GameService
-
     gid = await _new_game(chat_id=180)
     await _join_many(gid, range(50, 55))
     await vote_service.save_vote(gid, 1, 50, 51)
 
-    await GameService._cleanup_redis(gid)
-    await GameService._cleanup_redis(gid)  # idempotent
+    await game_repository.cleanup_game_data(gid)
+    await game_repository.cleanup_game_data(gid)  # idempotent
 
     _cursor, keys = await redis_client.scan(0, match=f"game:{gid}:*", count=100)
     assert keys == []
