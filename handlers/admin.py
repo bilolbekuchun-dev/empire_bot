@@ -5,7 +5,8 @@ from aiogram.types import Message, CallbackQuery, FSInputFile
 from aiogram.fsm.context import FSMContext
 from utils import admins, statistika
 from utils.premium_emojis import (
-    ALL_ACTIVE_ROLES, WEAPON_NAMES, CURRENCY_NAMES,
+    get_active_tinch, get_active_mafia, get_active_yakka, get_all_active_roles,
+    WEAPON_NAMES, CURRENCY_NAMES,
     get_custom_emoji, set_custom_emoji, reset_all_custom_emojis,
     parse_emoji_from_message, role_display, get_item_display,
     get_diamond_display, get_dollar_display,
@@ -108,7 +109,8 @@ async def adm_emj_roles_menu_cb(call: CallbackQuery, state: FSMContext):
 async def adm_emj_cat_tinch_cb(call: CallbackQuery):
     if not await is_primary_admin(call.from_user.id):
         return
-    text = "🏛 <b>Tinch aholi rollari (13 ta):</b>\n\nEmoji o'rnatmoqchi bo'lgan rolni tanlang:"
+    cnt = len(get_active_tinch())
+    text = f"🏛 <b>Tinch aholi rollari ({cnt} ta):</b>\n\nEmoji o'rnatmoqchi bo'lgan rolni tanlang:"
     await call.message.edit_text(text, parse_mode="HTML", reply_markup=admin_emoji_roles_list_menu("tinch"))
     await call.answer()
 
@@ -116,7 +118,8 @@ async def adm_emj_cat_tinch_cb(call: CallbackQuery):
 async def adm_emj_cat_mafia_cb(call: CallbackQuery):
     if not await is_primary_admin(call.from_user.id):
         return
-    text = "🤵 <b>Mafia rollari (6 ta):</b>\n\nEmoji o'rnatmoqchi bo'lgan rolni tanlang:"
+    cnt = len(get_active_mafia())
+    text = f"🤵 <b>Mafia rollari ({cnt} ta):</b>\n\nEmoji o'rnatmoqchi bo'lgan rolni tanlang:"
     await call.message.edit_text(text, parse_mode="HTML", reply_markup=admin_emoji_roles_list_menu("mafia"))
     await call.answer()
 
@@ -124,7 +127,8 @@ async def adm_emj_cat_mafia_cb(call: CallbackQuery):
 async def adm_emj_cat_yakka_cb(call: CallbackQuery):
     if not await is_primary_admin(call.from_user.id):
         return
-    text = "⚔️ <b>Yakka va Neytral rollar (10 ta):</b>\n\nEmoji o'rnatmoqchi bo'lgan rolni tanlang:"
+    cnt = len(get_active_yakka())
+    text = f"⚔️ <b>Yakka va Neytral rollar ({cnt} ta):</b>\n\nEmoji o'rnatmoqchi bo'lgan rolni tanlang:"
     await call.message.edit_text(text, parse_mode="HTML", reply_markup=admin_emoji_roles_list_menu("yakka"))
     await call.answer()
 
@@ -133,9 +137,10 @@ async def adm_emj_role_view_cb(call: CallbackQuery, state: FSMContext):
     if not await is_primary_admin(call.from_user.id):
         return
     idx = int(call.data.replace("adm_emj_role_", ""))
-    if idx >= len(ALL_ACTIVE_ROLES):
+    all_roles = get_all_active_roles()
+    if idx >= len(all_roles):
         return
-    role_name = ALL_ACTIVE_ROLES[idx]
+    role_name = all_roles[idx]
     custom = get_custom_emoji("roles", role_name)
     current_display = role_display(role_name)
 
@@ -247,7 +252,8 @@ async def adm_emj_del_item_cb(call: CallbackQuery):
 
     if category == "roles":
         idx = int(raw_key)
-        key = ALL_ACTIVE_ROLES[idx]
+        all_roles = get_all_active_roles()
+        key = all_roles[idx]
         set_custom_emoji("roles", key, None)
         await call.answer("✅ Rol emojisi standart holatga qaytarildi!", show_alert=True)
         # Qayta ko'rsatish
@@ -277,7 +283,8 @@ async def adm_emj_set_item_cb(call: CallbackQuery, state: FSMContext):
     target_name = ""
     if category == "roles":
         idx = int(raw_key)
-        target_name = ALL_ACTIVE_ROLES[idx]
+        all_roles = get_all_active_roles()
+        target_name = all_roles[idx]
     elif category == "weapons":
         target_name = WEAPON_NAMES.get(raw_key, ("", raw_key))[1]
     elif category == "currency":
@@ -313,7 +320,8 @@ async def process_emoji_input_msg(message: Message, state: FSMContext):
     real_key = None
     if category == "roles":
         idx = int(raw_key)
-        real_key = ALL_ACTIVE_ROLES[idx]
+        all_roles = get_all_active_roles()
+        real_key = all_roles[idx]
         set_custom_emoji("roles", real_key, emoji_html)
     elif category == "weapons":
         set_custom_emoji("weapons", raw_key, emoji_html)

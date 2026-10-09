@@ -65,26 +65,43 @@ CURRENCY_NAMES = {
     "dollar": ("💵", "Dollar")
 }
 
-ACTIVE_ROLES_TINCH = [
+from config import is_role_enabled
+
+RAW_ACTIVE_ROLES_TINCH = [
     RoleNames.KOMISSAR, RoleNames.SERJANT, RoleNames.FUQARO,
     RoleNames.DOKTOR, RoleNames.DAYDI,
     RoleNames.KEZUVCHI, RoleNames.OMADLI, RoleNames.JANOB,
     RoleNames.QORIQCHI, RoleNames.ZANJIR
 ]
 
-ACTIVE_ROLES_MAFIA = [
+RAW_ACTIVE_ROLES_MAFIA = [
     RoleNames.DON, RoleNames.MAFIA, RoleNames.ADVOKAT,
     RoleNames.OVCHI
 ]
 
-ACTIVE_ROLES_YAKKA = [
+RAW_ACTIVE_ROLES_YAKKA = [
     RoleNames.QOTIL, RoleNames.BORI, RoleNames.AFERIST,
     RoleNames.GAZABDOR, RoleNames.SEHRGAR, RoleNames.SUIDSID,
     RoleNames.QASOSKOR, RoleNames.QAROQCHI, RoleNames.AKTYOR,
     RoleNames.JIN, RoleNames.KONCHI, RoleNames.TAQLIDCHI
 ]
 
-ALL_ACTIVE_ROLES = ACTIVE_ROLES_TINCH + ACTIVE_ROLES_MAFIA + ACTIVE_ROLES_YAKKA
+def get_active_tinch():
+    return [r for r in RAW_ACTIVE_ROLES_TINCH if is_role_enabled(r)]
+
+def get_active_mafia():
+    return [r for r in RAW_ACTIVE_ROLES_MAFIA if is_role_enabled(r)]
+
+def get_active_yakka():
+    return [r for r in RAW_ACTIVE_ROLES_YAKKA if is_role_enabled(r)]
+
+def get_all_active_roles():
+    return get_active_tinch() + get_active_mafia() + get_active_yakka()
+
+ACTIVE_ROLES_TINCH = get_active_tinch()
+ACTIVE_ROLES_MAFIA = get_active_mafia()
+ACTIVE_ROLES_YAKKA = get_active_yakka()
+ALL_ACTIVE_ROLES = get_all_active_roles()
 
 _EMOJI_CACHE = {}
 

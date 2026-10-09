@@ -1,8 +1,8 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from utils.premium_emojis import (
-    ACTIVE_ROLES_TINCH, ACTIVE_ROLES_MAFIA, ACTIVE_ROLES_YAKKA,
-    ALL_ACTIVE_ROLES, WEAPON_NAMES, CURRENCY_NAMES,
+    get_active_tinch, get_active_mafia, get_active_yakka, get_all_active_roles,
+    WEAPON_NAMES, CURRENCY_NAMES,
     get_custom_emoji, get_diamond_display, get_dollar_display,
     get_item_display
 )
@@ -48,15 +48,19 @@ def admin_emoji_reset_confirm_menu() -> InlineKeyboardMarkup:
 
 def admin_emoji_roles_categories_menu() -> InlineKeyboardMarkup:
     """Rollar toifalari menyusi"""
+    tinch_cnt = len(get_active_tinch())
+    mafia_cnt = len(get_active_mafia())
+    yakka_cnt = len(get_active_yakka())
+
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="🏛 Tinch aholi rollari (13 ta)", callback_data="adm_emj_cat_tinch")
+        InlineKeyboardButton(text=f"🏛 Tinch aholi rollari ({tinch_cnt} ta)", callback_data="adm_emj_cat_tinch")
     )
     builder.row(
-        InlineKeyboardButton(text="🤵 Mafia rollari (6 ta)", callback_data="adm_emj_cat_mafia")
+        InlineKeyboardButton(text=f"🤵 Mafia rollari ({mafia_cnt} ta)", callback_data="adm_emj_cat_mafia")
     )
     builder.row(
-        InlineKeyboardButton(text="⚔️ Yakka rollar (10 ta)", callback_data="adm_emj_cat_yakka")
+        InlineKeyboardButton(text=f"⚔️ Yakka rollar ({yakka_cnt} ta)", callback_data="adm_emj_cat_yakka")
     )
     builder.row(
         InlineKeyboardButton(text="🔙 Asosiy menyu", callback_data="adm_emj_main")
@@ -66,17 +70,18 @@ def admin_emoji_roles_categories_menu() -> InlineKeyboardMarkup:
 def admin_emoji_roles_list_menu(category: str) -> InlineKeyboardMarkup:
     """Kategoriya bo'yicha rollar ro'yxati"""
     if category == "tinch":
-        roles = ACTIVE_ROLES_TINCH
+        roles = get_active_tinch()
     elif category == "mafia":
-        roles = ACTIVE_ROLES_MAFIA
+        roles = get_active_mafia()
     else:
-        roles = ACTIVE_ROLES_YAKKA
+        roles = get_active_yakka()
 
+    all_roles = get_all_active_roles()
     builder = InlineKeyboardBuilder()
     for r in roles:
         custom = get_custom_emoji("roles", r)
         status_icon = "✨" if custom else "▫️"
-        idx = ALL_ACTIVE_ROLES.index(r)
+        idx = all_roles.index(r)
         builder.button(
             text=f"{status_icon} {r}",
             callback_data=f"adm_emj_role_{idx}"
