@@ -613,5 +613,9 @@ async def cleanup_game_redis(game_id: str):
         player.is_alive = False
         await player_repo.save_player(player, ttl_sec=_ENDED_TTL)
     
-    # TODO: Clean up phases and actions
-    # TODO: Remove from active games list
+    # Set TTL on game state key
+    try:
+        from utils.database import redis_client
+        await redis_client.expire(f"game:{game_id}:state", _ENDED_TTL)
+    except Exception:
+        pass
