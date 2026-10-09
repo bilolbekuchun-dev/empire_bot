@@ -395,8 +395,8 @@ async def send_night_actions(
             target_pool = [q for q in others if q.role not in MAFIA_ROLES]
         elif role == RoleNames.OVCHI:
             target_pool = [q for q in others if q.role not in (RoleNames.DON, RoleNames.MAFIA)]
-        elif role == RoleNames.KOMISSAR:
-            target_pool = [q for q in others if q.role != RoleNames.SERJANT]
+        elif role in (RoleNames.KOMISSAR, RoleNames.SERJANT):
+            target_pool = [q for q in others if q.role not in (RoleNames.SERJANT, RoleNames.KOMISSAR)]
         else:
             target_pool = others
 
@@ -404,6 +404,15 @@ async def send_night_actions(
 
         # --- Komissar: avval rejim tanlash (tekshirish / o'ldirish / skip) ---
         if role == RoleNames.KOMISSAR:
+            history_key = f"game:{game_id}:komissar_history"
+            history_raw = await r.lrange(history_key, 0, -1) or []
+            hist_lines = [h.decode() if isinstance(h, bytes) else str(h) for h in history_raw]
+
+            kom_prompt = ns.get("komissar_prompt", "🕵🏼 <b>Komissar</b>, nima qilasiz?")
+            if hist_lines:
+                hist_header = "📋 <b>Tekshiruvlar hisoboti:</b>\n" + "\n".join(hist_lines) + "\n\n"
+                kom_prompt = hist_header + kom_prompt
+
             kb = InlineKeyboardBuilder()
             kb.button(text=ns.get("komissar_check_btn", "🔍 Tekshirish"), callback_data=_cb("ko", game_id, night_num, "c", 0))
             kb.button(text=ns.get("komissar_shoot_btn", "🔫 O'ldirish"), callback_data=_cb("ko", game_id, night_num, "k", 0))
@@ -411,7 +420,7 @@ async def send_night_actions(
             kb.adjust(2, 1)
             await _send_private(
                 bot, uid,
-                ns.get("komissar_prompt", "🕵🏼 <b>Komissar</b>, nima qilasiz?"),
+                kom_prompt,
                 kb.as_markup()
             )
             continue
@@ -947,8 +956,12 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
             if t.role == RoleNames.SOTQIN:
                 shown = RoleNames.MAFIA
 
-        disp_shown = role_display(shown)
         if act_role == RoleNames.KOMISSAR:
+            target_name = names.get(tgt) or str(tgt)
+            hist_entry = f"• {html.escape(target_name)} — {disp_shown}"
+            history_key = f"game:{game_id}:komissar_history"
+            await r.rpush(history_key, hist_entry)
+            await r.expire(history_key, 86400)
             await _send_private(bot, actor_uid, get_msg(actor_uid, "investigate_res", name=names.get(tgt), role=disp_shown))
         elif act_role == RoleNames.JURNALIST:
             await _send_private(bot, actor_uid, get_msg(actor_uid, "jurnalist_res", name=names.get(tgt), role=disp_shown))
