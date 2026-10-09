@@ -974,15 +974,28 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
             if don:
                 await _send_private(bot, don.user_id, get_msg(don.user_id, "aygoqchi_res", name=names.get(tgt), role=disp_shown))
         elif act_role == RoleNames.DAYDI:
+            tgt_p = by_uid.get(tgt)
             target_name = html.escape(names.get(tgt) or str(tgt))
+            if tgt_p and tgt_p.role:
+                tgt_disp = f"{target_name} {role_display(tgt_p.role)}"
+            else:
+                tgt_disp = target_name
+
             visitors = [
                 a["actor_id"] for a in valid_actions 
                 if a.get("target_id") == tgt and a.get("actor_id") != actor_uid
             ]
             if visitors:
-                vis_names = [html.escape(names.get(v) or str(v)) for v in visitors]
-                v_text = ", ".join(vis_names)
-                msg = f"🍾Siz tunda <b>{target_name}</b> ning jasadi ustida <b>{v_text}</b> turganini turganini guvohi bo'ldingiz!"
+                vis_list = []
+                for v in visitors:
+                    v_p = by_uid.get(v)
+                    v_name = html.escape(names.get(v) or str(v))
+                    if v_p and v_p.role:
+                        vis_list.append(f"{role_display(v_p.role)} {v_name}")
+                    else:
+                        vis_list.append(v_name)
+                v_text = ", ".join(vis_list)
+                msg = f"🍾 Siz <b>{tgt_disp}</b> ning jasadi ustida <b>{v_text}</b> turganini ko'rdingiz!"
             else:
                 msg = f"🍾 Siz ichimlik idishini oldingiz va shubhali narsani ko'rmadingiz."
             await _send_private(bot, actor_uid, msg)
