@@ -183,29 +183,12 @@ class DelCommands(Filter):
         except Exception:
             pass
 
-        if is_night:
-            # Tun fazasida: '!' bilan boshlangan xabarlar o'chirilmaydi, '!'siz yozilganlar o'chiriladi
-            if msg_text.startswith("!"):
-                return False
-            else:
-                try:
-                    await message.delete()
-                except Exception:
-                    pass
-                return True
-
-        # Faqat o'yin vaqtidagina '/' va '!' li xabarlarni tozalash
-        if is_active_game and (msg_text.startswith("/") or msg_text.startswith("!")):
-            try:
-                await message.delete()
-            except Exception:
-                pass
-            return True
+        # O'yin yo'q payti filter HECH NARSANI o'chirmaydi
+        if not is_active_game:
+            return False
 
         admin = False
         member = None
-
-        # 1. User adminligini tekshirish
         if message.from_user:
             try:
                 member = await message.bot.get_chat_member(
@@ -215,6 +198,31 @@ class DelCommands(Filter):
                     admin = True
             except Exception:
                 pass
+
+        is_vip = False
+        if message.from_user:
+            is_vip = await VipUser.filter(user__user_id=message.from_user.id).exists()
+
+        is_admin_or_vip = admin or is_vip or (message.from_user and message.from_user.id in ADMINS)
+
+        # Faol o'yin payti '!' va '/' xabarlarni faqat admin/vip yozishi mumkin
+        if msg_text.startswith("!") or msg_text.startswith("/"):
+            if is_admin_or_vip:
+                return False  # O'chirmaymiz (admin ishlata olsin)
+            else:
+                try:
+                    await message.delete()
+                except Exception:
+                    pass
+                return True
+
+        if is_night:
+            # Tunda barcha boshqa oddiy xabarlar o'chiriladi
+            try:
+                await message.delete()
+            except Exception:
+                pass
+            return True
 
 
         # 2. Guruh sozlamalari va o'yin mavjudligini tekshirish
