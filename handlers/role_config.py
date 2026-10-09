@@ -12,7 +12,7 @@ import config
 router = Router()
 
 
-@router.message(Command("roles"))
+@router.message(Command("roleconfig"))
 async def roles_command_handler(message: Message):
     """
     Show role configuration for all modes or specific mode.
