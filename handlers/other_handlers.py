@@ -331,11 +331,19 @@ async def f(call: CallbackQuery, bot: Bot):
 
 @router.message(F.text.startswith("/mgive"))
 async def f(message: Message, bot: Bot):
-    await others.start_money_giveaway(message=message, bot=bot)
+    await others.start_money_giveaway(message=message, bot=bot, is_dollar=False)
 
 @router.channel_post(F.text.startswith("/mgive"))
 async def f(message: Message, bot: Bot):
-    await others.start_money_giveaway(message=message, bot=bot)
+    await others.start_money_giveaway(message=message, bot=bot, is_dollar=False)
+
+@router.message(F.text.startswith("/msend"))
+async def f(message: Message, bot: Bot):
+    await others.start_money_giveaway(message=message, bot=bot, is_dollar=True)
+
+@router.channel_post(F.text.startswith("/msend"))
+async def f(message: Message, bot: Bot):
+    await others.start_money_giveaway(message=message, bot=bot, is_dollar=True)
 
 @router.callback_query(F.data.startswith("mgive_"))
 async def f(call: CallbackQuery, bot: Bot):

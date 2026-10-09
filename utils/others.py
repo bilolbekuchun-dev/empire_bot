@@ -1097,28 +1097,121 @@ async def start_change_giveaway_channel(message: Message, bot: Bot):
 async def change_giveaway_callback_channel(call: CallbackQuery, bot: Bot):
     await change_giveaway_callback(call, bot)
 
-async def start_money_giveaway(message: Message, bot: Bot):
-    amount = _parse_giveaway_count(message, default=500)
-    creator_name = message.from_user.full_name if message.from_user else ""
+def _parse_mgive_args(message: Message, is_dollar: bool) -> tuple[int, int, int]:
+    """
+    Parses args for /mgive or /msend.
+    Formats supported:
+      /mgive 50-10   -> 50 diamonds total to 10 people = 5 per person
+      /mgive 51-10   -> 50 diamonds total to 10 people = 5 per person (1 diamond remainder)
+      /mgive 10      -> 10 diamonds total to 10 people = 1 per person
+      /msend 1000-10 -> 1000$ total to 10 people = 100 per person
+    Returns: (actual_total, count_total, per_person)
+    """
+    parts = (message.text or "").strip().split()
+    total_raw = 10
+    count_raw = 10
+
+    if len(parts) >= 2:
+        arg = parts[1].replace("$", "").replace("💎", "").strip()
+        if "-" in arg:
+            sub = arg.split("-")
+            if len(sub) >= 2 and sub[0].isdigit() and sub[1].isdigit():
+                total_raw = int(sub[0])
+                count_raw = int(sub[1])
+        elif arg.isdigit():
+            total_raw = int(arg)
+            count_raw = total_raw
+
+    total_raw = max(1, total_raw)
+    count_raw = max(1, count_raw)
+
+    per_person = total_raw // count_raw
+    if per_person < 1:
+        per_person = 1
+        count_raw = total_raw
+
+    actual_total = per_person * count_raw
+    return actual_total, count_raw, per_person
+
+
+def _build_mgive_text_and_kb(data: dict, winners: list, is_ended: bool = False):
+    c_mention = data["creator_mention"]
+    dest_str = "kanalga" if data["is_channel"] else "guruhga"
+    total = data["actual_total"]
+    count_total = data["count_total"]
+    is_diamond = data["is_diamond"]
+    unit_disp = get_diamond_display() if is_diamond else get_dollar_display()
+
+    if is_diamond:
+        header = f"🎁 {c_mention} {dest_str} <b>{total} ta olmos</b> {unit_disp} hadya qildi!\n"
+    else:
+        header = f"🎁 {c_mention} {dest_str} <b>{total}$</b> {unit_disp} hadya qildi!\n"
+
+    rem = count_total - len(winners)
+
+    lines = [header]
+    lines.append(f"<b>Olganlar ({len(winners)}/{count_total}):</b>")
+    if not winners:
+        lines.append("<i>Hozircha hech kim olmadi</i>")
+    else:
+        for idx, (uid, uname, amt) in enumerate(winners[:50], start=1):
+            safe_name = html.escape(uname)
+            lines.append(f"{idx}) {safe_name} {amt}{unit_disp}")
+        if len(winners) > 50:
+            lines.append(f"...va yana {len(winners) - 50} kishi")
+
+    if is_ended or rem <= 0:
+        lines.append("\n<b>Ajratilgan sovg'alar tugadi!</b>")
+
+    text = "\n".join(lines)
+
+    kb = None
+    if not is_ended and rem > 0:
+        builder = InlineKeyboardBuilder()
+        builder.button(
+            text=f"🎁 Olish uchun bosing ({rem} ta qoldi)",
+            callback_data=f"mgive_claim_{data['id']}"
+        )
+        kb = builder.as_markup()
+
+    return text, kb
+
+
+_mgive_last_update: dict = {}
+
+async def start_money_giveaway(message: Message, bot: Bot, is_dollar: bool = False):
+    actual_total, count_total, per_person = _parse_mgive_args(message, is_dollar=is_dollar)
+
+    creator_name = message.from_user.full_name if message.from_user else "Admin"
+    creator_mention = message.from_user.mention_html() if message.from_user else "<b>Admin</b>"
     game_id = str(message.message_id)
 
-    _money_giveaways[game_id] = {
+    is_channel = message.chat.type in ("channel",)
+
+    data = {
+        "id": game_id,
+        "chat_id": message.chat.id,
         "creator_name": creator_name,
-        "amount": amount,
-        "remaining": 10,
-        "winners": []  # list of tuples: (user_id, full_name, amount)
+        "creator_mention": creator_mention,
+        "is_diamond": not is_dollar,
+        "is_channel": is_channel,
+        "actual_total": actual_total,
+        "count_total": count_total,
+        "per_person": per_person,
+        "winners": [],  # list of tuples: (user_id, full_name, per_person)
     }
 
-    kb = InlineKeyboardBuilder()
-    kb.button(text="💵 Qatnashish", callback_data=f"mgive_claim_{game_id}")
-    msg = (
-        f"💵 <b>Pul giveaway tarqatildi!</b>\n\n"
-        f"💰 Miqdori: <b>{amount:,} $</b>\n"
-        f"<i>Qatnashish uchun tugmani bosing!</i>"
-    )
-    await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+    _money_giveaways[game_id] = data
+
+    text, kb = _build_mgive_text_and_kb(data, winners=[], is_ended=False)
+    sent = await message.answer(text, reply_markup=kb, parse_mode="HTML")
+    if sent:
+        data["msg_id"] = sent.message_id
+
     if message.from_user:
-        await send_big_giveaway_report(bot, message.from_user, message.chat, "Pul giveaway", amount)
+        label = "Pul giveaway" if is_dollar else "Olmos giveaway"
+        await send_big_giveaway_report(bot, message.from_user, message.chat, label, actual_total)
+
 
 async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
     user = call.from_user
@@ -1130,43 +1223,48 @@ async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
 
     game = _money_giveaways.get(game_id)
     if not game:
-        await call.answer("💵 Pul sovg'asiga qatnashdingiz!", show_alert=True)
+        await call.answer("❌ Ushbu giveaway yakunlangan yoki topilmadi!", show_alert=True)
         return
 
     winners = game["winners"]
     if any(w_id == user.id for w_id, _, _ in winners):
-        await call.answer("❌ Siz ushbu giveawaydan allaqachon pul olgansiz!", show_alert=True)
+        await call.answer("❌ Siz ushbu giveawaydan allaqachon sovg'a olgansiz!", show_alert=True)
         return
 
-    if game["remaining"] <= 0:
-        await call.answer("🏁 Afsuski, barcha pul sovg'alari tugadi!", show_alert=True)
+    if len(winners) >= game["count_total"]:
+        await call.answer("🏁 Afsuski, barcha sovg'alar tugadi!", show_alert=True)
         return
 
     from models.user import User, Profile
     u_db, _ = await User.get_or_create(user_id=user.id, defaults={"full_name": user.full_name or f"User_{user.id}"})
     p_db, _ = await Profile.get_or_create(user=u_db)
-    p_db.dollar += game["amount"]
+
+    per_person = game["per_person"]
+    if game["is_diamond"]:
+        p_db.diamond += per_person
+    else:
+        p_db.dollar += per_person
     await p_db.save()
 
-    winners.append((user.id, user.full_name or f"User_{user.id}", game["amount"]))
-    game["remaining"] -= 1
+    w_name = user.full_name or f"User_{user.id}"
+    winners.append((user.id, w_name, per_person))
 
-    d_disp = get_dollar_display()
-    await call.answer(f"🎉 Tabriklaymiz! Siz {game['amount']} {d_disp} yutib oldingiz!", show_alert=True)
+    unit_disp = get_diamond_display() if game["is_diamond"] else get_dollar_display()
+    await call.answer(f"🎉 Tabriklaymiz! Siz {per_person} {unit_disp} yutib oldingiz!", show_alert=True)
 
-    if game["remaining"] > 0:
-        kb = InlineKeyboardBuilder()
-        kb.button(text=f"💵 Qatnashish (qoldi {game['remaining']})", callback_data=f"mgive_claim_{game_id}")
-        try:
-            await call.message.edit_reply_markup(reply_markup=kb.as_markup())
-        except Exception:
-            pass
-    else:
-        c_name = html.escape(game["creator_name"])
-        header = f"<b>{c_name} ajratgan pul sovg'alari tugadi!</b>" if c_name else "<b>Ajratilgan pul sovg'alari tugadi!</b>"
-        winners = game["winners"]
-        d_disp = get_dollar_display()
-        await send_split_winners_list(call, header, winners, d_disp, chunk_size=25)
+    import time
+    now = time.time()
+    last_t = _mgive_last_update.get(game_id, 0)
+    is_ended = len(winners) >= game["count_total"]
+
+    if is_ended or (now - last_t >= 2.5):
+        _mgive_last_update[game_id] = now
+        text, kb = _build_mgive_text_and_kb(game, winners, is_ended=is_ended)
+        if call.message:
+            try:
+                await call.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+            except Exception:
+                pass
 
 async def send_split_winners_list(
     call: CallbackQuery,
