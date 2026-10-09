@@ -18,26 +18,13 @@ class RoleNames:
     AFERIST = "🤹🏻 Aferist"
     GAZABDOR = "🧌 G'azabkor"
     SEHRGAR = "🧙‍ Sehrgar"
-    JOKER = "🤡 Joker"
-    ADMIRAL = "🧑🏻‍✈️ Admiral"
-    KIMYOGAR = "👨‍🔬 Kimyogar"
-    BOYOTA = "💰 Rais"
-    MINIOR = "☠️  Minior"
-    ROBIN_GUD = "🏹 Robin Gud"
     KONCHI = "👷🏻‍♂️ Konchi"
-    FOTOPARATCHI = "📸 Fotoparatchi"
     QAROQCHI = "⚔️ Qaroqchi"
-    ZOMBI = "🧟 Zombi"
-    LABARANT = "👩‍⚕️ Labarant"
-    KOLDUN = "⚡️ Koldun"
-    QORBOBO = "🎅🏻 Qorbobo"
-    TULKI = "🦊 Tulki"
     QORIQCHI = "🛡 Qo'riqchi"
     ZANJIR = "⛓ Zanjir"
     
     AKTYOR = "🎭 Aktyor"
     JIN = "🧞 Jin"
-    SAVDOGAR = "🏪 Savdogar"
     TAQLIDCHI = "🎭 Taqlidchi"
 
     @classmethod
@@ -54,6 +41,7 @@ class RoleNames:
             cls.SUIDSID, cls.QASOSKOR, cls.QAROQCHI, cls.AKTYOR, cls.JIN, cls.KONCHI,
             cls.TAQLIDCHI
         ]
+
     @classmethod
     def get_by_role(cls, clean_name: str) -> str:
         mapping = {
@@ -78,25 +66,12 @@ class RoleNames:
             "aferist": cls.AFERIST,
             "G'azabkor": cls.GAZABDOR,
             "Sehrgar": cls.SEHRGAR,
-            "Joker": cls.JOKER,
-            "Admiral": cls.ADMIRAL,
-            "kimyogar": cls.KIMYOGAR,
-            "boy ota": cls.BOYOTA,
-            "minior": cls.MINIOR,
-            "Robin Gud": cls.ROBIN_GUD,
             "Konchi": cls.KONCHI,
-            "Fotoparatchi": cls.FOTOPARATCHI,
             "Qaroqchi": cls.QAROQCHI,
-            "Zombie 1": cls.ZOMBI,
-            "Labarant": cls.LABARANT,
-            "Koldun": cls.KOLDUN,
-            "Qorbobo": cls.QORBOBO,
-            "Tulki": cls.TULKI,
             "Qo'riqchi": cls.QORIQCHI,
             "Zanjir": cls.ZANJIR,
             "aktyor": cls.AKTYOR,
             "jin": cls.JIN,
-            "Savdogar": cls.SAVDOGAR,
             "taqlidchi": cls.TAQLIDCHI,
             "mimic": cls.TAQLIDCHI,
         }

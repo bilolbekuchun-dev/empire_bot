@@ -12,9 +12,7 @@ ROLE_WEIGHTS = {
     "Komissar": 2,
     "Advokat": 3,
     "Qotil": 3,
-    "Joker": 3,
     "Sehrgar": 3,
-    "Robin Gud": 3,
     "Aferist": 4,
 
     # O'rtacha rollar
