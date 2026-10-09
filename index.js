@@ -3162,9 +3162,12 @@
 
     /* ---------------- shop ---------------- */
     function splitIconLabel(label) {
-        const m = /^(\S+)\s+(.*)$/.exec(label || "");
-        return m ? { icon: m[1], text: m[2] } : { icon: "🛒", text: label || "" };
+        if (!label) return { icon: "🛒", text: "" };
+        let clean = String(label).replace(/<tg-emoji[^>]*>(.*?)<\/tg-emoji>/gi, "$1").trim();
+        const m = /^(\S+)\s+(.*)$/.exec(clean);
+        return m ? { icon: m[1], text: m[2] } : { icon: "🛒", text: clean };
     }
+
 
     function renderShop(data) {
         const box = document.getElementById("shop-container");
