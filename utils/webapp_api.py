@@ -287,6 +287,8 @@ def setup_webapp_routes(app: web.Application, static_dir: str, bot=None):
         if not user:
             return web.json_response({"ok": False, "error": "user_not_found"}, status=404)
 
+        user_lang = getattr(user, "lang", "uz") or "uz"
+
         # VIP status
         vip = await VipUser.get_or_none(user=user)
         is_vip = bool(vip)
