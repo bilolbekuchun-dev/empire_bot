@@ -64,6 +64,33 @@ async def role_modes_handler(message: Message):
     )
 
 
+@router.callback_query(F.data == "roleconfig_back")
+async def role_config_back_handler(call: CallbackQuery):
+    """
+    Go back to mode selection.
+    """
+    modes = RoleConfiguration.get_all_modes()
+    
+    keyboard = []
+    for mode in modes:
+        keyboard.append([
+            InlineKeyboardButton(
+                text=f"🎭 {mode}",
+                callback_data=f"roleconfig_{mode}"
+            )
+        ])
+    
+    markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
+    
+    await call.message.edit_text(
+        "<b>📋 O'YIN MODE'LARINI TANLANG:</b>\n\n"
+        "Rol tartibini ko'rish uchun mode'ni bosing:",
+        reply_markup=markup,
+        parse_mode="HTML"
+    )
+    await call.answer()
+
+
 @router.callback_query(F.data.startswith("roleconfig_"))
 async def role_config_callback_handler(call: CallbackQuery):
     """
@@ -99,33 +126,6 @@ async def role_config_callback_handler(call: CallbackQuery):
             parse_mode="HTML"
         )
     
-    await call.answer()
-
-
-@router.callback_query(F.data == "roleconfig_back")
-async def role_config_back_handler(call: CallbackQuery):
-    """
-    Go back to mode selection.
-    """
-    modes = RoleConfiguration.get_all_modes()
-    
-    keyboard = []
-    for mode in modes:
-        keyboard.append([
-            InlineKeyboardButton(
-                text=f"🎭 {mode}",
-                callback_data=f"roleconfig_{mode}"
-            )
-        ])
-    
-    markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-    
-    await call.message.edit_text(
-        "<b>📋 O'YIN MODE'LARINI TANLANG:</b>\n\n"
-        "Rol tartibini ko'rish uchun mode'ni bosing:",
-        reply_markup=markup,
-        parse_mode="HTML"
-    )
     await call.answer()
 
 
