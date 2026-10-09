@@ -199,15 +199,11 @@ class DelCommands(Filter):
             except Exception:
                 pass
 
-        is_vip = False
-        if message.from_user:
-            is_vip = await VipUser.filter(user__user_id=message.from_user.id).exists()
+        is_admin = admin or (message.from_user and message.from_user.id in ADMINS)
 
-        is_admin_or_vip = admin or is_vip or (message.from_user and message.from_user.id in ADMINS)
-
-        # Faol o'yin payti '!' va '/' xabarlarni faqat admin/vip yozishi mumkin
+        # Faol o'yin payti '!' va '/' xabarlarni faqat admin yozishi mumkin
         if msg_text.startswith("!") or msg_text.startswith("/"):
-            if is_admin_or_vip:
+            if is_admin:
                 return False  # O'chirmaymiz (admin ishlata olsin)
             else:
                 try:
