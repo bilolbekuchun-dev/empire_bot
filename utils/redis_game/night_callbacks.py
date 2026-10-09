@@ -345,6 +345,10 @@ async def night_action_cb(call: CallbackQuery, bot=None):
 
     # Komissar: Ortga qaytish (rejim tanlash menyusi)
     if code == "ko" and kind == "b":
+        history_key = f"game:{gid}:komissar_history"
+        history_raw = await r.lrange(history_key, 0, -1) or []
+        hist_lines = [h.decode() if isinstance(h, bytes) else str(h) for h in history_raw]
+
         check_btn = {"uz": "🔍 Tekshirish", "ru": "🔍 Проверить", "en": "🔍 Investigate", "tr": "🔍 Kontrol", "kk": "🔍 Тексеру"}.get(chat_lang, "🔍 Tekshirish")
         shoot_btn = {"uz": "🔫 O'ldirish", "ru": "🔫 Убить", "en": "🔫 Shoot", "tr": "🔫 Öldür", "kk": "🔫 Өлтіру"}.get(chat_lang, "🔫 O'ldirish")
         skip_btn = {"uz": "🚷 O'tkazib yuborish", "ru": "🚷 Пропустить", "en": "🚷 Skip", "tr": "🚷 Pas geç", "kk": "🚷 Өткізіп жіберу"}.get(chat_lang, "🚷 O'tkazib yuborish")
@@ -354,6 +358,9 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         kb.button(text=skip_btn, callback_data=f"na|ko|{gid}|{ph}|s|0")
         kb.adjust(2, 1)
         kom_head = {"uz": "🕵🏼 <b>Komissar</b>, nima qilasiz?", "ru": "🕵🏼 <b>Комиссар</b>, что делаем?", "en": "🕵🏼 <b>Detective</b>, what is your move?", "tr": "🕵🏼 <b>Komiser</b>, ne yapacaksınız?", "kk": "🕵🏼 <b>Комиссар</b>, не істейсіз?"}.get(chat_lang, "🕵🏼 <b>Komissar</b>, nima qilasiz?")
+        if hist_lines:
+            kom_head = "📋 <b>Tekshiruvlar hisoboti:</b>\n" + "\n".join(hist_lines) + "\n\n" + kom_head
+
         try:
             await call.message.edit_text(kom_head, parse_mode="HTML", reply_markup=kb.as_markup())
         except Exception:
@@ -363,7 +370,10 @@ async def night_action_cb(call: CallbackQuery, bot=None):
 
     # Komissar: rejim tugmasi (target==0) -> nishon ro'yxati va "🔙 Ortga" tugmasi
     if code == "ko" and kind in ("c", "k") and int(target) == 0:
-        _p, tg = await _alive_targets(gid, exclude_uid=uid)
+        all_alive_p = await player_repo.get_alive_players(gid)
+        team_uids = {p.user_id for p in all_alive_p if p.role in (RoleNames.SERJANT, RoleNames.KOMISSAR)}
+        exclude_set = team_uids | {uid}
+        _p, tg = await _alive_targets(gid, exclude_uid=exclude_set)
         back_btn = {"uz": "🔙 Ortga", "ru": "🔙 Назад", "en": "🔙 Back", "tr": "🔙 Geri", "kk": "🔙 Артқа"}.get(chat_lang, "🔙 Ortga")
         skip_btn = {"uz": "🚷 O'tkazib yuborish", "ru": "🚷 Пропустить", "en": "🚷 Skip", "tr": "🚷 Pas geç", "kk": "🚷 Өткізіп жіберу"}.get(chat_lang, "🚷 O'tkazib yuborish")
         kb = InlineKeyboardBuilder()
