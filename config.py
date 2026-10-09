@@ -74,6 +74,41 @@ GEROY_SHOP_SYSTEM_USER_ID = int(os.getenv("GEROY_SHOP_SYSTEM_USER_ID", "77700000
 REDIS_GAME_ENABLED = True
 
 
+# Rollarni o'yinga qo'shish / arxivlash sozlamasi (True = faol, False = arxivda / nofaol)
+ROLE_TOGGLES = {
+    # Hozirda nofaol (arxivlangan) rollar:
+    "Xoyin": False,
+    "Ayg'oqchi": False,
+    "Reverser": False,
+    "Hamshira": False,
+    "Jurnalist": False,
+    "Sotqin": False,
+    "Joker": False,
+    "Admiral": False,
+    "Kimyogar": False,
+    "Rais": False,
+    "Minior": False,
+    "Robin Gud": False,
+    "Fotoparatchi": False,
+    "Zombi": False,
+    "Labarant": False,
+    "Koldun": False,
+    "Qorbobo": False,
+    "Tulki": False,
+    "Savdogar": False,
+}
+
+def is_role_enabled(role_name: str) -> bool:
+    """Rolning faollik holatini tekshirish. Config faylida False qilinsa arxivda turadi va o'yinga chiqmaydi."""
+    if not role_name:
+        return False
+    clean = str(role_name).strip()
+    for prefix in ["🤵🏻", "🤵🏼", "🕵🏼", "👨🏼‍⚕️", "👮🏼", "👨🏼", "🧙‍♂️", "💃", "👨🏼‍💼", "🤦🏼", "🤞🏼", "🎖", "🐺", "🔪", "🥷", "🧨", "🤹🏻", "🧌", "🧙‍", "👩🏼‍💻", "🤓", "🛡", "👺", "⛓", "🎭", "🧞", "👷🏻‍♂️", "🦇", "⚔️", "👩🏻‍⚕️", "🤡", "🧑🏻‍✈️", "👨‍🔬", "💰", "☠️", "🏹", "📸", "🧟", "👩‍⚕️", "⚡️", "🎅🏻", "🦊", "🏪", "🔄"]:
+        clean = clean.replace(prefix, "").strip()
+    
+    return ROLE_TOGGLES.get(clean, True)
+
+
 tinch_rollar = [
     RoleNames.KOMISSAR, RoleNames.SERJANT, RoleNames.DAYDI,
     RoleNames.DOKTOR, RoleNames.KEZUVCHI, RoleNames.FUQARO,
