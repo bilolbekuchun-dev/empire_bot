@@ -484,7 +484,7 @@ async def send_night_actions(
 # NATIJALARNI QAYTA ISHLASH
 # ==================================================================
 async def _kill(game_id: int, uid: int, by_uid: Dict, bot: Bot, chat: Chat, names: Dict,
-                reason: str = "", killer_role: Optional[str] = None) -> Optional[object]:
+                reason: str = "", killer_role: Optional[str] = None, custom_text: Optional[str] = None) -> Optional[object]:
     p = by_uid.get(uid)
     if not p or not p.is_alive:
         return None
@@ -492,13 +492,16 @@ async def _kill(game_id: int, uid: int, by_uid: Dict, bot: Bot, chat: Chat, name
     p.deaded_at = datetime.now(timezone.utc)
     await player_repo.save_player(p)
     try:
-        victim_name = html.escape(str(names.get(uid) or uid))
-        mention = f'<a href="tg://user?id={int(uid)}">{victim_name}</a>'
-        text = f"Tunda {role_display(p.role)} {mention} vaxshiylarcha o'ldirildi!"
-        if killer_role:
-            text += f"\nAytishlaricha unikiga {role_display(killer_role)} kelgan ekan..."
-        elif reason:
-            text += f"\n{reason}"
+        if custom_text:
+            text = custom_text
+        else:
+            victim_name = html.escape(str(names.get(uid) or uid))
+            mention = f'<a href="tg://user?id={int(uid)}">{victim_name}</a>'
+            text = f"Tunda {role_display(p.role)} {mention} vaxshiylarcha o'ldirildi!"
+            if killer_role:
+                text += f"\nAytishlaricha unikiga {role_display(killer_role)} kelgan ekan..."
+            elif reason:
+                text += f"\n{reason}"
         # Xabar darhol emas, TONGDAN KEYIN yuboriladi (navbatga qo'yiladi).
         await queue_death_message(game_id, text)
         try:
@@ -837,9 +840,49 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
             dead_uids.append(target)
             kill_sources.setdefault(target, RoleNames.JIN)
 
+    # --- Faol rollarning harakatsizligini tekshirish (Inactivity: 2 tun harakat qilmasa uxlab qolib vafot etadi) ---
+    completed_key = f"game:{game_id}:night:{night_num}:completed_users"
+    try:
+        completed_uids_raw = await r.smembers(completed_key) or []
+    except Exception:
+        completed_uids_raw = []
+
+    completed_uids = {int(x.decode() if isinstance(x, bytes) else x) for x in completed_uids_raw}
+    for act in actions:
+        if act.get("actor_id"):
+            completed_uids.add(int(act["actor_id"]))
+
+    inactivity_custom_texts = {}
+    for p in players:
+        # Faqat o'yinda tirik bo'lgan va tungi faol roli bor o'yinchilar
+        if not p.is_alive or p.role not in NIGHT_ACTION_ROLES:
+            continue
+
+        # Kezuvchi yoki Jin tomonidan majburiy uxlatilgan bo'lsa uxlash hisoblanmaydi
+        if getattr(p, "is_sleep", False):
+            continue
+
+        if p.user_id in completed_uids:
+            p.missed_nights = 0
+            await player_repo.save_player(p)
+        else:
+            p.missed_nights = (getattr(p, "missed_nights", 0) or 0) + 1
+            await player_repo.save_player(p)
+
+            if p.missed_nights >= 2:
+                dead_uids.append(p.user_id)
+                v_name = html.escape(names.get(p.user_id) or str(p.user_id))
+                mention = f'<a href="tg://user?id={p.user_id}">{v_name}</a>'
+                disp_role = role_display(p.role)
+                inactivity_custom_texts[p.user_id] = (
+                    f'Tunda kimdir {disp_role} {mention} ning "Men o\'yin payti boshqa uxlama-a-a-a-a-a-a-a-an!" deb qichqirganini eshitdi...'
+                )
+
     # --- Qotilliklarni qo'llash ---
     for uid in dict.fromkeys(dead_uids):
-        await _kill(game_id, uid, by_uid, bot, chat, names, killer_role=kill_sources.get(uid))
+        custom_txt = inactivity_custom_texts.get(uid)
+        await _kill(game_id, uid, by_uid, bot, chat, names, killer_role=kill_sources.get(uid), custom_text=custom_txt)
+
 
     # --- Vorislik (Role succession) ---
     await _check_role_succession(by_uid, lang_map, bot)
