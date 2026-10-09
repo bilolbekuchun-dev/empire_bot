@@ -1598,19 +1598,97 @@ async def check_hamyonlar_payment(call: CallbackQuery):
     await call.answer("To'lov tekshirildi!", show_alert=True)
 
 async def get_star(call: CallbackQuery):
-    await call.answer("Telegram Stars orqali to'lov!", show_alert=True)
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    kb = InlineKeyboardBuilder()
+    kb.button(text="⭐ 10 Stars ➔ 💎 10 Olmos", callback_data="buy_star_10")
+    kb.button(text="⭐ 50 Stars ➔ 💎 50 Olmos", callback_data="buy_star_50")
+    kb.button(text="⭐ 100 Stars ➔ 💎 100 Olmos", callback_data="buy_star_100")
+    kb.button(text="⭐ 500 Stars ➔ 💎 550 Olmos (Bonus!)", callback_data="buy_star_500")
+    kb.button(text="⬅️ Orqaga", callback_data="back_profile")
+    kb.adjust(1)
+    
+    text = (
+        "⭐ <b>Telegram Stars orqali Olmos sotib olish</b>\n\n"
+        "Quyidagi paketlardan birini tanlang va Telegram Stars orqali to'g'ridan-to'g'ri xarid qiling:"
+    )
+    try:
+        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    except Exception:
+        await call.message.answer(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    await call.answer()
 
 async def process_buy_star(call: CallbackQuery):
-    await call.answer("Telegram Stars xaridi boshlandi!", show_alert=True)
+    user_id = call.from_user.id
+    data = call.data or ""
+    
+    amount = 50
+    diamonds = 50
+    if "_10" in data:
+        amount, diamonds = 10, 10
+    elif "_100" in data:
+        amount, diamonds = 100, 100
+    elif "_500" in data:
+        amount, diamonds = 500, 550
+    elif "_50" in data:
+        amount, diamonds = 50, 50
+
+    prices = [LabeledPrice(label=f"{diamonds} ta Olmos (💎)", amount=amount)]
+    try:
+        await call.message.answer_invoice(
+            title="💎 Olmos xarid qilish",
+            description=f"{diamonds} ta Olmos (💎) Telegram Stars orqali",
+            payload=f"buy_diamonds_{diamonds}_{user_id}",
+            currency="XTR",
+            prices=prices
+        )
+        await call.answer("To'lov oynasi yuborildi! ⭐️")
+    except Exception as e:
+        logger.warning(f"send_invoice error: {e}")
+        await call.answer("Stars to'lovini yaratishda xatolik yuz berdi.", show_alert=True)
 
 async def process_buy_star_main_bot(message: Message, args: str):
-    await message.answer("⭐ Telegram Stars to'lovi qabul qilindi!", parse_mode="HTML")
+    await message.answer("⭐ Telegram Stars to'lovi xizmati faol!", parse_mode="HTML")
 
 async def pre_checkout_handler(pre_checkout_query: PreCheckoutQuery):
-    pass
+    try:
+        await pre_checkout_query.answer(ok=True)
+    except Exception as e:
+        logger.warning(f"pre_checkout_handler error: {e}")
 
 async def success_payment_handler(message: Message):
-    await message.answer("🎉 To'lov muvaffaqiyatli amalga oshirildi!")
+    sp = message.successful_payment
+    if not sp:
+        return
+    
+    payload = sp.invoice_payload or ""
+    stars_paid = sp.total_amount
+    user_id = message.from_user.id
+    
+    from models.user import User, Profile
+    user = await User.get_or_none(user_id=user_id)
+    if not user:
+        return
+    profile = await Profile.get_or_none(user=user)
+    if not profile:
+        return
+        
+    added_diamonds = stars_paid
+    if "buy_diamonds_" in payload:
+        try:
+            parts = payload.split("_")
+            added_diamonds = int(parts[2])
+        except Exception:
+            added_diamonds = stars_paid
+
+    profile.diamond += added_diamonds
+    await profile.save()
+    
+    await message.answer(
+        f"🎉 <b>To'lov muvaffaqiyatli amalga oshirildi!</b>\n\n"
+        f"⭐ Siz <b>{stars_paid} Telegram Stars</b> evaziga <b>💎 {added_diamonds} olmos</b> qabul qildingiz!\n"
+        f"Jami olmoslaringiz: <b>💎 {profile.diamond} ta</b>",
+        parse_mode="HTML"
+    )
 
 async def get_active_role(call: CallbackQuery):
     await call.answer("Faol rol ma'lumoti", show_alert=True)
