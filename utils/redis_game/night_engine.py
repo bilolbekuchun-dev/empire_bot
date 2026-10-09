@@ -274,7 +274,9 @@ async def _name_map(user_ids: List[int]) -> Dict[int, str]:
     result = {}
     users = await User.filter(user_id__in=list({int(u) for u in user_ids}))
     for u in users:
-        result[u.user_id] = u.full_name or (u.username or str(u.user_id))
+        fname = u.full_name.strip() if u.full_name else ""
+        uname = u.username.strip() if u.username else ""
+        result[u.user_id] = fname or uname or str(u.user_id)
     for uid in user_ids:
         result.setdefault(uid, str(uid))
     return result
@@ -980,9 +982,9 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
             if visitors:
                 vis_names = [html.escape(names.get(v) or str(v)) for v in visitors]
                 v_text = ", ".join(vis_names)
-                msg = f"🧙‍♂️ <b>Daydi</b>: Siz {target_name}ni kuzatdingiz! Tunda uning oldiga <b>{v_text}</b> kelganining guvohi bo'ldingiz!"
+                msg = f"🍾Siz tunda <b>{target_name}</b> ning jasadi ustida <b>{v_text}</b> turganini turganini guvohi bo'ldingiz!"
             else:
-                msg = f"🧙‍♂️ <b>Daydi</b>: Siz {target_name}ni kuzatdingiz! Tunda uning oldiga hech kim kelmadi."
+                msg = f"🍾 Siz ichimlik idishini oldingiz va shubhali narsani ko'rmadingiz."
             await _send_private(bot, actor_uid, msg)
 
     # --- Konchi ---
@@ -1132,8 +1134,13 @@ async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot,
     votes = await VoteService.get_all_votes(game_id, day_num)
 
     counts: Dict[int, int] = {}
+    from utils.role_names import RoleNames
     for voter, target in votes.items():
-        counts[target] = counts.get(target, 0) + 1
+        if target == 0:
+            continue
+        voter_player = by_uid.get(voter)
+        weight = 2 if voter_player and voter_player.role == RoleNames.JANOB else 1
+        counts[target] = counts.get(target, 0) + weight
 
     no_vote_text = {
         "uz": "Bugun hech kim osilmadi.",
