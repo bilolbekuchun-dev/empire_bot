@@ -168,19 +168,22 @@ def build_shop_items() -> list:
 
 def build_active_role_shop() -> list:
     """Build active role shop list for active enabled roles"""
+    import re
     from utils.premium_emojis import get_all_active_roles, role_display
     active_roles = get_all_active_roles()
     role_items = []
     for r in active_roles:
         disp = role_display(r)
+        disp_clean = re.sub(r'<tg-emoji[^>]*>(.*?)</tg-emoji>', r'\1', str(disp))
         role_items.append({
             "role": r,
-            "label": f"🎭 Faol rol: {disp}",
+            "label": f"🎭 Faol rol: {disp_clean}",
             "price": 10,
             "currency": "diamond",
             "elite": True
         })
     return role_items
+
 
 
 def setup_webapp_routes(app: web.Application, static_dir: str, bot=None):
