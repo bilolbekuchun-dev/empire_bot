@@ -436,6 +436,33 @@ async def onboard_lang_cb(call: CallbackQuery, bot: Bot, state: FSMContext):
     await start.start_call_handler(call)
 
 
+@router.callback_query(F.data == "check_sub")
+async def check_sub_cb(call: CallbackQuery, bot: Bot):
+    from utils.subscription import get_unsubscribed_channels, build_sub_keyboard
+    from utils.i18n import clean_lang, SUB_REQUIRED_TEXT
+    from models.user import User
+    
+    user_id = call.from_user.id
+    user = await User.get_or_none(user_id=user_id)
+    lang = clean_lang(user.lang if user else "uz")
+    
+    unsubscribed = await get_unsubscribed_channels(bot, user_id)
+    if not unsubscribed:
+        try:
+            await call.answer("Siz barcha kanallarga obuna bo'ldingiz! ✅", show_alert=True)
+            await call.message.delete()
+        except Exception:
+            pass
+    else:
+        try:
+            await call.answer("Siz hali barcha kanallarga obuna bo'lmadingiz!", show_alert=True)
+            prompt = SUB_REQUIRED_TEXT.get(lang, SUB_REQUIRED_TEXT["uz"])
+            kb = build_sub_keyboard(unsubscribed, lang=lang)
+            await call.message.edit_text(prompt, reply_markup=kb, parse_mode="HTML")
+        except Exception:
+            pass
+
+
 from aiogram.filters import Filter
 
 class IsTeamPlayerFilter(Filter):
