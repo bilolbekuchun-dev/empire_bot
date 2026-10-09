@@ -809,18 +809,6 @@ async def starting_game_redis(game_id: str, message: Optional[Message], bot: Bot
         except Exception as exc:
             print(f"Canonical clear failed (chat={chat_id}): {exc}")
         
-        # Game-start presentation (state already transitioned + persisted above).
-        # Presentation failures must never interrupt or roll back the game loop.
-        try:
-            from utils.redis_game.presentation import send_game_start_presentation
-            await send_game_start_presentation(
-                bot, chat_id, game_id,
-                phase=game_state.phase, number=1,
-                reply_markup=bot_link_markup,
-            )
-        except Exception as e:
-            print(f"O'yin boshlash taqdimotini yuborishda xato: {e}")
-        
         # Get all players
         players = await player_repo.get_alive_players(game_id)
         # Ensure all players have User and Profile records
