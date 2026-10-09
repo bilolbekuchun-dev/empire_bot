@@ -94,8 +94,12 @@ async def f(message: Message, bot: Bot):
 @router.message(F.text.startswith("/send "))
 async def f(message: Message, bot: Bot):
     parts = (message.text or "").split()
+    from config import PRIMARY_ADMIN_IDS
     if len(parts) >= 2 and any(p.replace("$", "").replace("💎", "").isdigit() for p in parts[1:]) and not message.reply_to_message:
-        await others.start_giveaway_redis(message=message, bot=bot)
+        if message.from_user and message.from_user.id in PRIMARY_ADMIN_IDS:
+            await others.start_giveaway_redis(message=message, bot=bot)
+        else:
+            await others.transfer_funds_handler(message=message, bot=bot)
     else:
         await others.transfer_funds_handler(message=message, bot=bot)
     
@@ -167,7 +171,9 @@ async def f(call: CallbackQuery, bot: Bot):
 @router.message(Command("gqotil"))
 @router.channel_post(Command("gqotil"))
 async def f(message: Message, bot: Bot):
-    await others.start_qotil_protection_giveaway(message, bot)
+    from config import PRIMARY_ADMIN_IDS
+    if message.chat.type == "channel" or (message.from_user and message.from_user.id in PRIMARY_ADMIN_IDS):
+        await others.start_qotil_protection_giveaway(message, bot)
 
 @router.callback_query(F.data.startswith("qotil-giveaway_"))
 async def f(call: CallbackQuery, bot: Bot):
@@ -176,7 +182,9 @@ async def f(call: CallbackQuery, bot: Bot):
 @router.message(Command("govoz"))
 @router.channel_post(Command("govoz"))
 async def f(message: Message, bot: Bot):
-    await others.start_ovozdan_protection_giveaway(message, bot)
+    from config import PRIMARY_ADMIN_IDS
+    if message.chat.type == "channel" or (message.from_user and message.from_user.id in PRIMARY_ADMIN_IDS):
+        await others.start_ovozdan_protection_giveaway(message, bot)
 
 @router.callback_query(F.data.startswith("ovoz-giveaway_"))
 async def f(call: CallbackQuery, bot: Bot):
@@ -185,7 +193,9 @@ async def f(call: CallbackQuery, bot: Bot):
 @router.message(Command("gdori"))
 @router.channel_post(Command("gdori"))
 async def f(message: Message, bot: Bot):
-    await others.start_doridan_protection_giveaway(message, bot)
+    from config import PRIMARY_ADMIN_IDS
+    if message.chat.type == "channel" or (message.from_user and message.from_user.id in PRIMARY_ADMIN_IDS):
+        await others.start_doridan_protection_giveaway(message, bot)
 
 @router.callback_query(F.data.startswith("dori-giveaway_"))
 async def f(call: CallbackQuery, bot: Bot):
@@ -194,7 +204,9 @@ async def f(call: CallbackQuery, bot: Bot):
 @router.message(Command("gmiltiq"))
 @router.channel_post(Command("gmiltiq"))
 async def f(message: Message, bot: Bot):
-    await others.start_miltiq_giveaway(message, bot)
+    from config import PRIMARY_ADMIN_IDS
+    if message.chat.type == "channel" or (message.from_user and message.from_user.id in PRIMARY_ADMIN_IDS):
+        await others.start_miltiq_giveaway(message, bot)
 
 @router.callback_query(F.data.startswith("miltiq-giveaway_"))
 async def f(call: CallbackQuery, bot: Bot):
@@ -203,7 +215,9 @@ async def f(call: CallbackQuery, bot: Bot):
 @router.message(Command("gslip"))
 @router.channel_post(Command("gslip"))
 async def f(message: Message, bot: Bot):
-    await others.start_slip_protection_giveaway(message, bot)
+    from config import PRIMARY_ADMIN_IDS
+    if message.chat.type == "channel" or (message.from_user and message.from_user.id in PRIMARY_ADMIN_IDS):
+        await others.start_slip_protection_giveaway(message, bot)
 
 @router.callback_query(F.data.startswith("sirpanish-giveaway_"))
 async def f(call: CallbackQuery, bot: Bot):
@@ -212,7 +226,9 @@ async def f(call: CallbackQuery, bot: Bot):
 @router.message(Command("ggeroy"))
 @router.channel_post(Command("ggeroy"))
 async def f(message: Message, bot: Bot):
-    await others.start_geroy_himoya_giveaway(message, bot)
+    from config import PRIMARY_ADMIN_IDS
+    if message.chat.type == "channel" or (message.from_user and message.from_user.id in PRIMARY_ADMIN_IDS):
+        await others.start_geroy_himoya_giveaway(message, bot)
 
 @router.callback_query(F.data.startswith("geroy-giveaway_"))
 async def f(call: CallbackQuery, bot: Bot):
@@ -221,7 +237,9 @@ async def f(call: CallbackQuery, bot: Bot):
 @router.message(Command("ghimoya"))
 @router.channel_post(Command("ghimoya"))
 async def f(message: Message, bot: Bot):
-    await others.start_protection_giveaway(message, bot)
+    from config import PRIMARY_ADMIN_IDS
+    if message.chat.type == "channel" or (message.from_user and message.from_user.id in PRIMARY_ADMIN_IDS):
+        await others.start_protection_giveaway(message, bot)
 
 @router.callback_query(F.data.startswith("protection-giveaway_"))
 async def f(call: CallbackQuery, bot: Bot):
@@ -314,7 +332,9 @@ async def f(call: CallbackQuery, bot: Bot):
 
 @router.message(F.text.startswith("/change"))
 async def f(message: Message, bot: Bot):
-    await others.start_change_giveaway(message=message, bot=bot)
+    from config import PRIMARY_ADMIN_IDS
+    if message.from_user and message.from_user.id in PRIMARY_ADMIN_IDS:
+        await others.start_change_giveaway(message=message, bot=bot)
 
 @router.callback_query(F.data.startswith("change"))
 async def f(call: CallbackQuery, bot: Bot):
@@ -331,7 +351,9 @@ async def f(call: CallbackQuery, bot: Bot):
 
 @router.message(F.text.startswith("/mgive"))
 async def f(message: Message, bot: Bot):
-    await others.start_money_giveaway(message=message, bot=bot, is_dollar=False)
+    from config import PRIMARY_ADMIN_IDS
+    if message.from_user and message.from_user.id in PRIMARY_ADMIN_IDS:
+        await others.start_money_giveaway(message=message, bot=bot, is_dollar=False)
 
 @router.channel_post(F.text.startswith("/mgive"))
 async def f(message: Message, bot: Bot):
@@ -339,7 +361,9 @@ async def f(message: Message, bot: Bot):
 
 @router.message(F.text.startswith("/msend"))
 async def f(message: Message, bot: Bot):
-    await others.start_money_giveaway(message=message, bot=bot, is_dollar=True)
+    from config import PRIMARY_ADMIN_IDS
+    if message.from_user and message.from_user.id in PRIMARY_ADMIN_IDS:
+        await others.start_money_giveaway(message=message, bot=bot, is_dollar=True)
 
 @router.channel_post(F.text.startswith("/msend"))
 async def f(message: Message, bot: Bot):
