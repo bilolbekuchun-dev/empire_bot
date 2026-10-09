@@ -3,6 +3,7 @@ Redis-based game handlers - migrated from utils/game_logic.py.
 These handlers implement the same logic but use Redis for state management.
 """
 import html
+from typing import Optional
 from aiogram import Bot
 
 from aiogram.types import Message
@@ -302,9 +303,7 @@ async def _join_game_handler_redis_core(message: Message, bot: Bot, state: FSMCo
     all_players = await player_repo.get_all_players(game_id)
     more_set, _ = await GroupMoreSet.get_or_create(chat_id=game_state.chat_id)
     if len(all_players) >= more_set.max_players:
-        # TODO: Implement starting_game_redis
-        # await starting_game_redis(game_id=game_id, message=message, start=True, bot=bot)
-        pass
+        create_task(starting_game_redis(game_id=str(game_id), message=message, bot=bot, start=True))
 
 async def join_game_handler_redis(message: Message, bot: Bot, state: FSMContext):
     user_id = message.from_user.id
@@ -505,9 +504,7 @@ async def kick_player_redis(message: Message, bot: Bot):
         remaining_players = await player_repo.get_alive_players(active_game_id)
         more_set, _ = await GroupMoreSet.get_or_create(chat_id=message.chat.id)
         if len(remaining_players) >= more_set.max_players:
-            # TODO: Implement starting_game_redis
-            # await starting_game_redis(game_id=active_game_id, message=message, start=True, bot=bot)
-            pass
+            create_task(starting_game_redis(game_id=str(active_game_id), message=message, bot=bot, start=True))
     else:
         # Game in progress - announce death
         colors_dct = TeamColors.all_colors_dict() if hasattr(TeamColors, 'all_colors_dict') else {}
@@ -778,7 +775,7 @@ async def _start_game_handler_redis_impl(message: Message, bot: Bot, state):
         create_task(starting_game_redis(active_game_id, message, bot, start=True))
 
 
-async def starting_game_redis(game_id: str, message: Message, bot: Bot, start=False, paralar=None):
+async def starting_game_redis(game_id: str, message: Optional[Message], bot: Bot, start=False, paralar=None):
     """
     Redis version of starting_game - main game loop.
     Handles game initialization, role assignment, and game phases.

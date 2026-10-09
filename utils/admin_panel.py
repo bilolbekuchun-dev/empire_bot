@@ -58,14 +58,10 @@ async def get_admin_dashboard_text() -> str:
     )
     return text
 
-async def show_admin_dashboard(event: Message | CallbackQuery):
+async def show_admin_dashboard(event: Message | CallbackQuery, bot: Bot = None):
     """Admin panelni ochish yoki yangilash"""
     user_id = event.from_user.id
-    if not is_admin(user_id):
-        if isinstance(event, CallbackQuery):
-            await event.answer("❌ Siz bot admini emassiz!", show_alert=True)
-        else:
-            await event.answer("❌ Siz bot admini emassiz!")
+    if user_id not in PRIMARY_ADMIN_IDS:
         return
 
     text = await get_admin_dashboard_text()
@@ -78,7 +74,19 @@ async def show_admin_dashboard(event: Message | CallbackQuery):
             await event.message.answer(text, parse_mode="HTML", reply_markup=reply_markup)
         await event.answer()
     else:
+        if event.chat.type != "private":
+            try:
+                await event.delete()
+            except Exception:
+                pass
+            if bot:
+                try:
+                    await bot.send_message(user_id, text, parse_mode="HTML", reply_markup=reply_markup)
+                except Exception:
+                    pass
+            return
         await event.answer(text, parse_mode="HTML", reply_markup=reply_markup)
+
 
 async def get_user_manage_info(user_id: int):
     """Foydalanuvchi haqida to'liq kartochka matni va tugmalarini qaytaradi"""

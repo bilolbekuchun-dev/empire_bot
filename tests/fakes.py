@@ -76,8 +76,9 @@ class FakeBot:
     async def _media(self, kind, chat_id, value, caption=None, **kwargs):
         if self.fail_media or self.fail_send:
             raise RuntimeError("simulated Telegram media failure")
+        val_str = getattr(value, "path", value)
         self.sent_media.append({"kind": kind, "chat_id": chat_id,
-                                "value": value, "caption": caption})
+                                "value": val_str, "caption": caption})
         return FakeSentMessage(caption or "", chat_id)
 
     async def send_photo(self, chat_id, photo=None, caption=None, **kwargs):

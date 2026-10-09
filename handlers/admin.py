@@ -25,10 +25,10 @@ router = Router()
 HARDCODED_ADMINS = set()
 
 async def is_primary_admin(user_id: int) -> bool:
-    """Faqatgina ruxsat berilgan SUPER ADMINLAR (PRIMARY_ADMIN_IDS) boshqara oladi va admin panelni ko'radi"""
+    """Faqatgina ruxsat berilgan 2 ta SUPER ADMIN (8765051736, 6913838682) boshqara oladi va admin panelni ko'radi"""
     if not user_id:
         return False
-    return (user_id in PRIMARY_ADMIN_IDS or user_id == PRIMARY_ADMIN_ID)
+    return user_id in PRIMARY_ADMIN_IDS
 
 # ==========================================
 # 👑 ASOSIY PREMIUM EMOJI ADMIN PANEL
@@ -50,23 +50,42 @@ def get_main_panel_text() -> str:
 
 @router.message(Command("admin"))
 @router.message(Command("panel"))
-async def admin_panel_cmd(message: Message, state: FSMContext):
+async def admin_panel_cmd(message: Message, state: FSMContext, bot: Bot):
     if not await is_primary_admin(message.from_user.id):
-        await message.answer("Ushbu buyruq mavjud emas")
         return
     await state.clear()
     text = get_main_panel_text()
-    await message.answer(text, parse_mode="HTML", reply_markup=admin_emoji_main_menu())
+    reply_markup = admin_emoji_main_menu()
+
+    # Guruhda yoki kanalda yozilsa, panelni bot PM (lichka) iga yuboradi
+    if message.chat.type != "private":
+        try:
+            await message.delete()
+        except Exception:
+            pass
+        try:
+            await bot.send_message(
+                chat_id=message.from_user.id,
+                text=text,
+                parse_mode="HTML",
+                reply_markup=reply_markup
+            )
+        except Exception as e:
+            print(f"PM admin panel yuborishda xato: {e}")
+        return
+
+    await message.answer(text, parse_mode="HTML", reply_markup=reply_markup)
 
 @router.callback_query(F.data == "adm_emj_main")
 async def adm_emj_main_cb(call: CallbackQuery, state: FSMContext):
     if not await is_primary_admin(call.from_user.id):
-        await call.answer("❌ Ruxsat yo'q!", show_alert=True)
         return
     await state.clear()
     text = get_main_panel_text()
     await call.message.edit_text(text, parse_mode="HTML", reply_markup=admin_emoji_main_menu())
     await call.answer()
+
+
 
 # ==========================================
 # 🎭 ROLLAR BO'LIMI
@@ -510,16 +529,15 @@ async def f_gtop(message: Message, bot: Bot):
 @router.message(Command("stats"))
 async def f_stats(message: Message, bot: Bot):
     if not await is_primary_admin(message.from_user.id):
-        await message.answer("Ushbu buyruq mavjud emas")
         return
     await statistika.bozor_statistikasi(message=message)
 
 @router.message(Command("gboylar"))
 async def f_gboylar(message: Message):
     if not await is_primary_admin(message.from_user.id):
-        await message.answer("Ushbu buyruq mavjud emas")
         return
     await statistika.show_richest_users_in_this_chat(message=message)
+
 
 @router.message(Command("admins"))
 @router.message(Command("admin_list"))
@@ -585,7 +603,6 @@ async def f_gbust(message: Message):
 @router.message(F.text.startswith("/setmoney") | F.text.startswith("/gmoney") | F.text.startswith("/set_gmoney"))
 async def f_setmoney(message: Message):
     if not await is_primary_admin(message.from_user.id):
-        await message.answer("Ushbu buyruq mavjud emas")
         return
     await admins.set_group_real_money(message=message)
 
@@ -596,10 +613,10 @@ async def f_top(message: Message, bot: Bot):
 @router.message(Command("error"))
 async def f_error(message: Message):
     if not await is_primary_admin(message.from_user.id):
-        await message.answer("Ushbu buyruq mavjud emas")
         return
     if os.path.exists("error.log"):
         await message.answer_document(FSInputFile("error.log"))
+
 
 @router.message(Command("groups"), F.chat.type == "private")
 async def f_groups(message: Message, bot: Bot):

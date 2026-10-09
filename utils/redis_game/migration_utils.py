@@ -18,7 +18,8 @@ def should_use_redis(chat_id: int) -> bool:
     Returns:
         True if Redis is enabled globally
     """
-    return config.REDIS_GAME_ENABLED
+    return getattr(config, "REDIS_GAME_ENABLED", True)
+
 
 
 def redis_migration(*, 
