@@ -151,6 +151,38 @@ def build_roles_catalog() -> list:
     )
 
 
+def build_shop_items() -> list:
+    """Build item shop list (himoya, hujjat, qotildan_himoya, osishdan_himoya, miltiq, doridan_himoya, maska, slip_himoya, geroy_himoya)"""
+    return [
+        {"key": "himoya", "label": "🛡 Tinch axoli himoyasi", "price": 100, "currency": "dollar", "elite": False},
+        {"key": "hujjat", "label": "📜 Hujjat", "price": 100, "currency": "dollar", "elite": False},
+        {"key": "qotildan_himoya", "label": "🔪 Qotildan himoya", "price": 5, "currency": "diamond", "elite": True},
+        {"key": "osishdan_himoya", "label": "🔒 Osishdan himoya", "price": 5, "currency": "diamond", "elite": True},
+        {"key": "miltiq", "label": "🔫 Miltiq", "price": 5, "currency": "diamond", "elite": False},
+        {"key": "doridan_himoya", "label": "💊 Doridan himoya", "price": 100, "currency": "dollar", "elite": False},
+        {"key": "maska", "label": "🎭 Niqob (Maska)", "price": 100, "currency": "dollar", "elite": False},
+        {"key": "slip_himoya", "label": "📜 Sirpanishdan himoya", "price": 5, "currency": "diamond", "elite": False},
+        {"key": "geroy_himoya", "label": "📦 Geroydan himoya", "price": 5, "currency": "diamond", "elite": False},
+    ]
+
+
+def build_active_role_shop() -> list:
+    """Build active role shop list for active enabled roles"""
+    from utils.premium_emojis import get_all_active_roles, role_display
+    active_roles = get_all_active_roles()
+    role_items = []
+    for r in active_roles:
+        disp = role_display(r)
+        role_items.append({
+            "role": r,
+            "label": f"🎭 Faol rol: {disp}",
+            "price": 10,
+            "currency": "diamond",
+            "elite": True
+        })
+    return role_items
+
+
 def setup_webapp_routes(app: web.Application, static_dir: str, bot=None):
     app.middlewares.append(cors_middleware)
     index_path = os.path.join(static_dir, "index.html")
@@ -351,9 +383,11 @@ def setup_webapp_routes(app: web.Application, static_dir: str, bot=None):
             "daily_claim": daily_claim_data,
             "daily": daily_claim_data,
             "para": para_info,
-            "lang": "uz",
-            "ui": get_ui_strings("uz"),
+            "lang": user_lang,
+            "ui": get_ui_strings(user_lang),
             "roles": build_roles_catalog(),
+            "shop_items": build_shop_items(),
+            "active_role_shop": build_active_role_shop(),
         }
         return web.json_response(data)
 
@@ -438,7 +472,7 @@ def setup_webapp_routes(app: web.Application, static_dir: str, bot=None):
         except: payload = {}
 
         user_id = extract_user_id_from_payload(payload)
-        item_key = payload.get("item")
+        item_key = payload.get("item") or payload.get("item_key")
         user, profile = await get_db_user_and_profile(user_id)
         if not user or not profile:
             return web.json_response({"ok": False, "error": "user_not_found"}, status=404)
@@ -452,11 +486,11 @@ def setup_webapp_routes(app: web.Application, static_dir: str, bot=None):
 
         if curr == "dollar":
             if profile.dollar < price:
-                return web.json_response({"ok": False, "error": "not_enough_dollar"})
+                return web.json_response({"ok": False, "error": "not_enough_balance"}, status=400)
             profile.dollar -= price
         else:
             if profile.diamond < price:
-                return web.json_response({"ok": False, "error": "not_enough_diamond"})
+                return web.json_response({"ok": False, "error": "not_enough_balance"}, status=400)
             profile.diamond -= price
 
         current_cnt = getattr(profile, item_key, 0)
@@ -465,6 +499,7 @@ def setup_webapp_routes(app: web.Application, static_dir: str, bot=None):
 
         return web.json_response({
             "ok": True,
+            "profile": profile_payload(profile),
             "dollar": profile.dollar,
             "diamond": profile.diamond,
             "item": item_key,
@@ -489,7 +524,7 @@ def setup_webapp_routes(app: web.Application, static_dir: str, bot=None):
 
         price_diamond = 10
         if profile.diamond < price_diamond:
-            return web.json_response({"ok": False, "error": "not_enough_diamond"})
+            return web.json_response({"ok": False, "error": "not_enough_balance"}, status=400)
 
         profile.diamond -= price_diamond
         await profile.save()
@@ -498,7 +533,16 @@ def setup_webapp_routes(app: web.Application, static_dir: str, bot=None):
         await ActiveRole.filter(profile=profile).delete()
         await ActiveRole.create(profile=profile, role=role_name, is_active=True)
 
-        return web.json_response({"ok": True, "role": role_name, "diamond": profile.diamond})
+        active_roles_list = await ActiveRole.filter(profile=profile, is_active=True).all()
+        ar_objs = [{"id": ar.id, "role": ar.role, "is_active": ar.is_active} for ar in active_roles_list]
+
+        return web.json_response({
+            "ok": True,
+            "profile": profile_payload(profile),
+            "active_roles": ar_objs,
+            "role": role_name,
+            "diamond": profile.diamond
+        })
 
     app.router.add_post("/webapp/api/buy_active_role", buy_active_role_handler)
 
