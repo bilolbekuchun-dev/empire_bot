@@ -1637,3 +1637,4 @@ Original description: Bad Request: group chat was upgraded to a supergroup chat
 2026-10-01 02:48:56,423 - WARNING - Sleep for 1.665392 seconds and try again... (tryings = 2, bot id = 8884302733)
 2026-10-01 02:49:04,435 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
 2026-10-01 02:49:04,435 - WARNING - Sleep for 1.960415 seconds and try again... (tryings = 3, bot id = 8884302733)
+2026-10-09 23:34:40,728 - WARNING - Real Redis ping/auth failed (Error 22 connecting to localhost:6379. Удаленный компьютер отклонил это сетевое подключение.). Falling back to FakeRedis.

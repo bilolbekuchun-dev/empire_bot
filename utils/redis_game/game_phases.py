@@ -311,6 +311,9 @@ async def execute_day_phase_redis(
     # Wait for voting
     await asyncio.sleep(game_times.vote_time)
     
+    # Kichik kutish (grace period) - oxirgi soniyadagi harakatlar saqlanishiga imkon berish
+    await asyncio.sleep(2)
+    
     # Check if game is still active
     game_state = await game_repo.load_game(game_id)
     if not game_state or not game_state.is_active:

@@ -1216,6 +1216,9 @@ async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot,
     except Exception:
         pass
 
+    # Kichik kutish (grace period) - oxirgi soniyadagi harakatlar saqlanishiga imkon berish
+    await asyncio.sleep(2)
+
     tally = await VoteService.get_vote_like_results(game_id, day_num, victim.user_id)
     likes = tally.get("likes", 0)
     dislikes = tally.get("dislikes", 0)
