@@ -395,8 +395,8 @@ async def send_night_actions(
             target_pool = [q for q in others if q.role not in MAFIA_ROLES]
         elif role == RoleNames.OVCHI:
             target_pool = [q for q in others if q.role not in (RoleNames.DON, RoleNames.MAFIA)]
-        elif role == RoleNames.KOMISSAR:
-            target_pool = [q for q in others if q.role != RoleNames.SERJANT]
+        elif role in (RoleNames.KOMISSAR, RoleNames.SERJANT):
+            target_pool = [q for q in others if q.role not in (RoleNames.SERJANT, RoleNames.KOMISSAR)]
         else:
             target_pool = others
 
@@ -404,6 +404,15 @@ async def send_night_actions(
 
         # --- Komissar: avval rejim tanlash (tekshirish / o'ldirish / skip) ---
         if role == RoleNames.KOMISSAR:
+            history_key = f"game:{game_id}:komissar_history"
+            history_raw = await r.lrange(history_key, 0, -1) or []
+            hist_lines = [h.decode() if isinstance(h, bytes) else str(h) for h in history_raw]
+
+            kom_prompt = ns.get("komissar_prompt", "🕵🏼 <b>Komissar</b>, nima qilasiz?")
+            if hist_lines:
+                hist_header = "📋 <b>Tekshiruvlar hisoboti:</b>\n" + "\n".join(hist_lines) + "\n\n"
+                kom_prompt = hist_header + kom_prompt
+
             kb = InlineKeyboardBuilder()
             kb.button(text=ns.get("komissar_check_btn", "🔍 Tekshirish"), callback_data=_cb("ko", game_id, night_num, "c", 0))
             kb.button(text=ns.get("komissar_shoot_btn", "🔫 O'ldirish"), callback_data=_cb("ko", game_id, night_num, "k", 0))
@@ -411,7 +420,7 @@ async def send_night_actions(
             kb.adjust(2, 1)
             await _send_private(
                 bot, uid,
-                ns.get("komissar_prompt", "🕵🏼 <b>Komissar</b>, nima qilasiz?"),
+                kom_prompt,
                 kb.as_markup()
             )
             continue
@@ -484,7 +493,7 @@ async def send_night_actions(
 # NATIJALARNI QAYTA ISHLASH
 # ==================================================================
 async def _kill(game_id: int, uid: int, by_uid: Dict, bot: Bot, chat: Chat, names: Dict,
-                reason: str = "", killer_role: Optional[str] = None, custom_text: Optional[str] = None) -> Optional[object]:
+                reason: str = "", killer_role: Optional[Union[str, List[str]]] = None, custom_text: Optional[str] = None) -> Optional[object]:
     p = by_uid.get(uid)
     if not p or not p.is_alive:
         return None
@@ -499,7 +508,16 @@ async def _kill(game_id: int, uid: int, by_uid: Dict, bot: Bot, chat: Chat, name
             mention = f'<a href="tg://user?id={int(uid)}">{victim_name}</a>'
             text = f"Tunda {role_display(p.role)} {mention} vaxshiylarcha o'ldirildi!"
             if killer_role:
-                text += f"\nAytishlaricha unikiga {role_display(killer_role)} kelgan ekan..."
+                if isinstance(killer_role, str):
+                    roles_list = [killer_role]
+                else:
+                    roles_list = killer_role
+                disp_roles = [role_display(r) for r in roles_list if r]
+                if len(disp_roles) == 1:
+                    text += f"\nAytishlaricha unikiga {disp_roles[0]} kelgan ekan..."
+                elif len(disp_roles) > 1:
+                    joined_roles = ", ".join(disp_roles[:-1]) + " va " + disp_roles[-1]
+                    text += f"\nAytishlaricha unikiga {joined_roles} kelgan ekan..."
             elif reason:
                 text += f"\n{reason}"
         # Xabar darhol emas, TONGDAN KEYIN yuboriladi (navbatga qo'yiladi).
@@ -709,10 +727,12 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
         elif atype == "konchi":
             konchi.append((actor.user_id, tgt))
 
-    # Don tanlovi mafia ovozlaridan ustun. Don yurmasa — eng ko'p mafia ovozi.
+    # Don tanlovi mafia ovozlaridan ustun. Don yurmasa — eng ko'p mafia ovozi (tenglik bo'lsa hech kim o'lmaydi).
     family_target = None
     family_killer = None
     family_actor_id = None
+    don_player = next((p for p in players if p.is_alive and p.role == RoleNames.DON), None)
+
     if don_target:
         family_target = don_target
         family_killer = RoleNames.DON
@@ -722,8 +742,8 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
         top = [t for t, c in mafia_votes.items() if c == mx]
         if len(top) == 1:
             family_target = top[0]
-            family_killer = RoleNames.MAFIA
-            family_actor_id = mafia_voters.get(top[0])
+            family_killer = RoleNames.DON
+            family_actor_id = don_player.user_id if don_player else mafia_voters.get(top[0])
 
     protected |= set(jin_protect)
 
@@ -779,7 +799,7 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
 
     # --- O'lim nomzodlari ---
     dead_uids = []
-    kill_sources: Dict[int, str] = {}
+    kill_sources: Dict[int, List[str]] = {}
     qasoskor_revenge_queue = []
 
     kill_attempts = [
@@ -796,7 +816,10 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
             if target not in dead_uids:
                 dead_uids.append(target)
             if killer:
-                kill_sources[target] = killer
+                if target not in kill_sources:
+                    kill_sources[target] = []
+                if killer not in kill_sources[target]:
+                    kill_sources[target].append(killer)
 
             # Qasoskor roli bo'lsa - hujum qilgan odamni qasosga yozib qo'yamiz
             target_p = by_uid.get(target)
@@ -808,7 +831,10 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
         if attacker_id and attacker_id not in healed and attacker_id not in protected:
             if attacker_id not in dead_uids:
                 dead_uids.append(attacker_id)
-            kill_sources[attacker_id] = RoleNames.QASOSKOR
+            if attacker_id not in kill_sources:
+                kill_sources[attacker_id] = []
+            if RoleNames.QASOSKOR not in kill_sources[attacker_id]:
+                kill_sources[attacker_id].append(RoleNames.QASOSKOR)
 
     # --- Zanjir: juftlikdan biri o'lsa, ikkinchisi ham ---
     for actor_uid, tgts in zanjir.items():
@@ -930,8 +956,12 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
             if t.role == RoleNames.SOTQIN:
                 shown = RoleNames.MAFIA
 
-        disp_shown = role_display(shown)
         if act_role == RoleNames.KOMISSAR:
+            target_name = names.get(tgt) or str(tgt)
+            hist_entry = f"• {html.escape(target_name)} — {disp_shown}"
+            history_key = f"game:{game_id}:komissar_history"
+            await r.rpush(history_key, hist_entry)
+            await r.expire(history_key, 86400)
             await _send_private(bot, actor_uid, get_msg(actor_uid, "investigate_res", name=names.get(tgt), role=disp_shown))
         elif act_role == RoleNames.JURNALIST:
             await _send_private(bot, actor_uid, get_msg(actor_uid, "jurnalist_res", name=names.get(tgt), role=disp_shown))
