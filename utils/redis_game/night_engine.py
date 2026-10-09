@@ -767,13 +767,45 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
 
     for target, killer, attacker_id in kill_attempts:
         if target and target not in healed and target not in protected:
-            if target not in dead_uids:
-                dead_uids.append(target)
-            if killer:
-                if target not in kill_sources:
-                    kill_sources[target] = []
-                if killer not in kill_sources[target]:
-                    kill_sources[target].append(killer)
+            is_saved = False
+            try:
+                from models.user import User, Profile
+                tu = await User.filter(user_id=target).first()
+                if tu:
+                    tp = await Profile.filter(user=tu).first()
+                    if tp:
+                        if killer == RoleNames.QOTIL and tp.qotildan_himoya > 0 and getattr(tp, "on_qotildan_himoya", True):
+                            tp.qotildan_himoya -= 1
+                            await tp.save()
+                            protected.add(target)
+                            is_saved = True
+                            try:
+                                await _send_private(bot, target, f"🛡 <b>Qotildan himoyangiz</b> sizni tungi hujumdan saqlab qoldi! (Qolgani: {tp.qotildan_himoya} ta)")
+                            except Exception:
+                                pass
+                        elif killer in (RoleNames.DON, RoleNames.MAFIA) and tp.himoya > 0 and getattr(tp, "on_himoya", True):
+                            target_p = by_uid.get(target)
+                            from config import tinch_rollar
+                            if target_p and target_p.role in tinch_rollar:
+                                tp.himoya -= 1
+                                await tp.save()
+                                protected.add(target)
+                                is_saved = True
+                                try:
+                                    await _send_private(bot, target, f"🛡 <b>Tinch aholi himoyangiz</b> sizni mafia hujumidan saqlab qoldi! (Qolgani: {tp.himoya} ta)")
+                                except Exception:
+                                    pass
+            except Exception as e:
+                logger.warning(f"Error checking profile protections for target {target}: {e}")
+
+            if not is_saved and target not in protected:
+                if target not in dead_uids:
+                    dead_uids.append(target)
+                if killer:
+                    if target not in kill_sources:
+                        kill_sources[target] = []
+                    if killer not in kill_sources[target]:
+                        kill_sources[target].append(killer)
 
             # Qasoskor roli bo'lsa - hujum qilgan odamni qasosga yozib qo'yamiz
             target_p = by_uid.get(target)
@@ -1153,6 +1185,24 @@ async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot,
         }.get(c_lang, f"⚖️ Advokat {mention} ni himoya qildi — u osilmadi!")
         await bot.send_message(chat.chat_id, adv_text, parse_mode="HTML")
         return
+
+    try:
+        from models.user import User, Profile
+        victim_u = await User.filter(user_id=victim.user_id).first()
+        if victim_u:
+            victim_p = await Profile.filter(user=victim_u).first()
+            if victim_p and victim_p.osishdan_himoya > 0 and getattr(victim_p, "on_osishdan_himoya", True):
+                victim_p.osishdan_himoya -= 1
+                await victim_p.save()
+                osish_text = {
+                    "uz": f"🛡 {mention} <b>Osishdan himoyasini</b> ishlatdi — u osilmadi! (Qolgani: {victim_p.osishdan_himoya} ta)",
+                    "ru": f"🛡 {mention} использовал(а) <b>защиту от повешения</b> — не повешен(а)! (Осталось: {victim_p.osishdan_himoya})",
+                    "en": f"🛡 {mention} used <b>Hang Protection</b> — lynch prevented! (Remaining: {victim_p.osishdan_himoya})",
+                }.get(c_lang, f"🛡 {mention} <b>Osishdan himoyasini</b> ishlatdi — u osilmadi!")
+                await bot.send_message(chat.chat_id, osish_text, parse_mode="HTML")
+                return
+    except Exception as e:
+        logger.warning(f"Error checking osishdan_himoya: {e}")
 
     victim.is_alive = False
     victim.osildi = True
