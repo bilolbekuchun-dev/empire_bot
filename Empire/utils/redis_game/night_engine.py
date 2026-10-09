@@ -274,7 +274,9 @@ async def _name_map(user_ids: List[int]) -> Dict[int, str]:
     result = {}
     users = await User.filter(user_id__in=list({int(u) for u in user_ids}))
     for u in users:
-        result[u.user_id] = u.full_name or (u.username or str(u.user_id))
+        fname = u.full_name.strip() if u.full_name else ""
+        uname = u.username.strip() if u.username else ""
+        result[u.user_id] = fname or uname or str(u.user_id)
     for uid in user_ids:
         result.setdefault(uid, str(uid))
     return result
@@ -956,6 +958,8 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
             if t.role == RoleNames.SOTQIN:
                 shown = RoleNames.MAFIA
 
+        disp_shown = role_display(shown)
+
         if act_role == RoleNames.KOMISSAR:
             target_name = names.get(tgt) or str(tgt)
             hist_entry = f"• {html.escape(target_name)} — {disp_shown}"
@@ -969,6 +973,32 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
             don = next((p for p in players if p.role == RoleNames.DON and p.is_alive), None)
             if don:
                 await _send_private(bot, don.user_id, get_msg(don.user_id, "aygoqchi_res", name=names.get(tgt), role=disp_shown))
+        elif act_role == RoleNames.DAYDI:
+            tgt_p = by_uid.get(tgt)
+            target_name = html.escape(names.get(tgt) or str(tgt))
+            if tgt_p and tgt_p.role:
+                tgt_disp = f"{target_name} {role_display(tgt_p.role)}"
+            else:
+                tgt_disp = target_name
+
+            visitors = [
+                a["actor_id"] for a in valid_actions 
+                if a.get("target_id") == tgt and a.get("actor_id") != actor_uid
+            ]
+            if visitors:
+                vis_list = []
+                for v in visitors:
+                    v_p = by_uid.get(v)
+                    v_name = html.escape(names.get(v) or str(v))
+                    if v_p and v_p.role:
+                        vis_list.append(f"{role_display(v_p.role)} {v_name}")
+                    else:
+                        vis_list.append(v_name)
+                v_text = ", ".join(vis_list)
+                msg = f"🍾 Siz <b>{tgt_disp}</b> ning jasadi ustida <b>{v_text}</b> turganini ko'rdingiz!"
+            else:
+                msg = f"🍾 Siz ichimlik idishini oldingiz va shubhali narsani ko'rmadingiz."
+            await _send_private(bot, actor_uid, msg)
 
     # --- Konchi ---
     for actor_uid, kon_no in konchi:
@@ -979,6 +1009,41 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
             await _kill(game_id, actor_uid, by_uid, bot, chat, names, reason=get_msg(actor_uid, "konchi_kill_reason"))
         else:
             await _send_private(bot, actor_uid, get_msg(actor_uid, "konchi_win", no=kon_no, count=random.choice([1, 2, 3])))
+
+    # --- Qaroqchi ---
+    for actor_uid, tgt in qaroqchi:
+        actor = by_uid.get(actor_uid)
+        if not actor or not actor.is_alive or not tgt:
+            continue
+        try:
+            from models.user import User, Profile
+            target_name = html.escape(names.get(tgt) or str(tgt))
+            t_user = await User.filter(user_id=tgt).first()
+            a_user = await User.filter(user_id=actor_uid).first()
+            if t_user and a_user:
+                t_prof = await Profile.filter(user=t_user).first()
+                a_prof = await Profile.filter(user=a_user).first()
+                if t_prof and a_prof:
+                    if t_prof.money >= 10:
+                        stolen = min(t_prof.money, random.randint(10, 50))
+                        t_prof.money -= stolen
+                        a_prof.money += stolen
+                        await t_prof.save()
+                        await a_prof.save()
+                        await _send_private(bot, actor_uid, f"⚔️ <b>Qaroqchi</b>: Siz {target_name}dan 💵 {stolen}$ o'g'irladingiz!")
+                        await _send_private(bot, tgt, f"⚔️ <b>Qaroqchi</b> tunda sizdan 💵 {stolen}$ o'g'irlab ketdi!")
+                    elif t_prof.diamond > 0:
+                        t_prof.diamond -= 1
+                        a_prof.diamond += 1
+                        await t_prof.save()
+                        await a_prof.save()
+                        await _send_private(bot, actor_uid, f"⚔️ <b>Qaroqchi</b>: Siz {target_name}dan 💎 1 olmos o'g'irladingiz!")
+                        await _send_private(bot, tgt, f"⚔️ <b>Qaroqchi</b> tunda sizdan 💎 1 olmos o'g'irlab ketdi!")
+                    else:
+                        await _send_private(bot, actor_uid, f"⚔️ <b>Qaroqchi</b>: {target_name}da pul topilmadi, uni do'pposlab qaytdingiz!")
+                        await _send_private(bot, tgt, "⚔️ <b>Qaroqchi</b> tunda kelib sizda pul topolmay, do'pposlab ketdi!")
+        except Exception:
+            pass
 
     # --- Gazabdor ogohlantirishi O'CHIRILGAN ---
     # Qoida: nishondagi odam G'azabkor uni nishonga olganini BILMASLIGI kerak.
@@ -1082,8 +1147,13 @@ async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot,
     votes = await VoteService.get_all_votes(game_id, day_num)
 
     counts: Dict[int, int] = {}
+    from utils.role_names import RoleNames
     for voter, target in votes.items():
-        counts[target] = counts.get(target, 0) + 1
+        if target == 0:
+            continue
+        voter_player = by_uid.get(voter)
+        weight = 2 if voter_player and voter_player.role == RoleNames.JANOB else 1
+        counts[target] = counts.get(target, 0) + weight
 
     no_vote_text = {
         "uz": "Bugun hech kim osilmadi.",
