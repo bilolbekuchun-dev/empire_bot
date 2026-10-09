@@ -29,23 +29,6 @@ async def assign_new_role(target: GamePlayer, phase: GamePhase, bot: Bot, chat: 
             )
         else:
             pass
-    elif target.role == RoleNames.DOKTOR:
-        yangi_doktor = await GamePlayer.filter(
-            game=phase.game if phase else game,
-            is_alive=True,
-            role=RoleNames.HAMSHIRA
-        ).first()
-        if yangi_doktor:
-            yangi_doktor.role = RoleNames.DOKTOR
-            await yangi_doktor.save()
-            await yangi_doktor.fetch_related("user")
-            await bot.send_message(
-                yangi_doktor.user.user_id,
-                f"Siz endi <b>{RoleNames.DOKTOR}</b> bo‘ldingiz!",
-                parse_mode="HTML"
-            )
-        else:
-            pass
 
     elif target.role == RoleNames.KOMISSAR:
         yangi_komissar = await GamePlayer.filter(

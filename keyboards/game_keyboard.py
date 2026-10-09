@@ -207,13 +207,11 @@ async def action_buttons(user_id, role, players: List[GamePlayer], phase_id, vsg
             continue
         if role in [RoleNames.DAYDI, RoleNames.QOTIL, RoleNames.AFERIST, RoleNames.QORIQCHI] and targ_id == getattr(player, "last_visited_user_id", None):
             continue
-        if role == RoleNames.JURNALIST and targ_id == getattr(player, "last_visited_user_id", None):
-            continue 
 
         if role == RoleNames.KOMISSAR and targ_role == RoleNames.SERJANT:
             continue
 
-        if role in (RoleNames.DON, RoleNames.MAFIA, RoleNames.AYGOQCHI) and targ_role in (RoleNames.DON, RoleNames.MAFIA, RoleNames.AYGOQCHI):
+        if role in (RoleNames.DON, RoleNames.MAFIA) and targ_role in (RoleNames.DON, RoleNames.MAFIA):
             continue
 
         if role in (RoleNames.OVCHI,) and targ_role in (RoleNames.DON, RoleNames.MAFIA):

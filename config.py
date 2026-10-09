@@ -77,19 +77,18 @@ REDIS_GAME_ENABLED = True
 tinch_rollar = [
     RoleNames.KOMISSAR, RoleNames.SERJANT, RoleNames.DAYDI,
     RoleNames.DOKTOR, RoleNames.KEZUVCHI, RoleNames.FUQARO,
-    RoleNames.HAMSHIRA, RoleNames.SOTQIN, RoleNames.JANOB,
-    RoleNames.OMADLI, RoleNames.XOYIN, RoleNames.QORIQCHI,
+    RoleNames.JANOB, RoleNames.OMADLI, RoleNames.QORIQCHI,
     RoleNames.ZANJIR, RoleNames.QASOSKOR
 ]
 
 mafia_rollar = [
     RoleNames.DON, RoleNames.MAFIA, RoleNames.ADVOKAT,
-    RoleNames.OVCHI, RoleNames.JURNALIST, RoleNames.AYGOQCHI
+    RoleNames.OVCHI
 ]
 
 yakka_rollar = [
     RoleNames.AFERIST, RoleNames.BORI, RoleNames.GAZABDOR,
     RoleNames.QOTIL, RoleNames.SEHRGAR, RoleNames.SUIDSID,
     RoleNames.QAROQCHI, RoleNames.AKTYOR, RoleNames.JIN, RoleNames.KONCHI,
-    RoleNames.TAQLIDCHI, RoleNames.REVERSER
+    RoleNames.TAQLIDCHI
 ]

@@ -67,23 +67,21 @@ CURRENCY_NAMES = {
 
 ACTIVE_ROLES_TINCH = [
     RoleNames.KOMISSAR, RoleNames.SERJANT, RoleNames.FUQARO,
-    RoleNames.DOKTOR, RoleNames.HAMSHIRA, RoleNames.DAYDI,
+    RoleNames.DOKTOR, RoleNames.DAYDI,
     RoleNames.KEZUVCHI, RoleNames.OMADLI, RoleNames.JANOB,
-    RoleNames.SOTQIN, RoleNames.XOYIN, RoleNames.QORIQCHI,
-    RoleNames.ZANJIR
+    RoleNames.QORIQCHI, RoleNames.ZANJIR
 ]
 
 ACTIVE_ROLES_MAFIA = [
     RoleNames.DON, RoleNames.MAFIA, RoleNames.ADVOKAT,
-    RoleNames.OVCHI, RoleNames.JURNALIST, RoleNames.AYGOQCHI
+    RoleNames.OVCHI
 ]
 
 ACTIVE_ROLES_YAKKA = [
     RoleNames.QOTIL, RoleNames.BORI, RoleNames.AFERIST,
     RoleNames.GAZABDOR, RoleNames.SEHRGAR, RoleNames.SUIDSID,
     RoleNames.QASOSKOR, RoleNames.QAROQCHI, RoleNames.AKTYOR,
-    RoleNames.JIN, RoleNames.KONCHI, RoleNames.TAQLIDCHI,
-    RoleNames.REVERSER
+    RoleNames.JIN, RoleNames.KONCHI, RoleNames.TAQLIDCHI
 ]
 
 ALL_ACTIVE_ROLES = ACTIVE_ROLES_TINCH + ACTIVE_ROLES_MAFIA + ACTIVE_ROLES_YAKKA
@@ -252,25 +250,40 @@ ROLE_CLEAN_MAP = {
     "yollanma qotil": RoleNames.OVCHI,
     "qasoskor": RoleNames.QASOSKOR,
     "aferist": RoleNames.AFERIST,
+ROLE_CLEAN_MAP = {
+    "don": RoleNames.DON,
+    "mafia": RoleNames.MAFIA,
+    "komissar": RoleNames.KOMISSAR,
+    "komissar katani": RoleNames.KOMISSAR,
+    "doktor": RoleNames.DOKTOR,
+    "serjant": RoleNames.SERJANT,
+    "fuqaro": RoleNames.FUQARO,
+    "tinch axoli": RoleNames.FUQARO,
+    "daydi": RoleNames.DAYDI,
+    "kezuvchi": RoleNames.KEZUVCHI,
+    "advokat": RoleNames.ADVOKAT,
+    "suidsid": RoleNames.SUIDSID,
+    "omadli": RoleNames.OMADLI,
+    "janob": RoleNames.JANOB,
+    "bori": RoleNames.BORI,
+    "bo'ri": RoleNames.BORI,
+    "qotil": RoleNames.QOTIL,
+    "ovchi": RoleNames.OVCHI,
+    "yollanma qotil": RoleNames.OVCHI,
+    "qasoskor": RoleNames.QASOSKOR,
+    "aferist": RoleNames.AFERIST,
     "gazabdor": RoleNames.GAZABDOR,
     "g'azabkor": RoleNames.GAZABDOR,
     "sehrgar": RoleNames.SEHRGAR,
-    "jurnalist": RoleNames.JURNALIST,
-    "sotqin": RoleNames.SOTQIN,
     "qoriqchi": RoleNames.QORIQCHI,
     "qo'riqchi": RoleNames.QORIQCHI,
-    "xoyin": RoleNames.XOYIN,
     "zanjir": RoleNames.ZANJIR,
     "aktyor": RoleNames.AKTYOR,
     "jin": RoleNames.JIN,
     "konchi": RoleNames.KONCHI,
-    "aygoqchi": RoleNames.AYGOQCHI,
-    "ayg'oqchi": RoleNames.AYGOQCHI,
     "qaroqchi": RoleNames.QAROQCHI,
-    "hamshira": RoleNames.HAMSHIRA,
     "taqlidchi": RoleNames.TAQLIDCHI,
     "mimic": RoleNames.TAQLIDCHI,
-    "reverser": RoleNames.REVERSER,
 }
 
 ROLE_NAMES_BY_LANG = {
@@ -294,19 +307,13 @@ ROLE_NAMES_BY_LANG = {
         RoleNames.AFERIST: "🤹🏻 Aferist",
         RoleNames.GAZABDOR: "🧌 G'azabkor",
         RoleNames.SEHRGAR: "🧙‍ Sehrgar",
-        RoleNames.JURNALIST: "👩🏼‍💻 Jurnalist",
-        RoleNames.SOTQIN: "🤓 Sotqin",
-        RoleNames.AYGOQCHI: "🦇 Ayg'oqchi",
         RoleNames.KONCHI: "👷🏻‍♂️ Konchi",
         RoleNames.QAROQCHI: "⚔️ Qaroqchi",
-        RoleNames.HAMSHIRA: "👩🏻‍⚕️ Hamshira",
         RoleNames.QORIQCHI: "🛡 Qo'riqchi",
-        RoleNames.XOYIN: "👺 Xoyin",
         RoleNames.ZANJIR: "⛓ Zanjir",
         RoleNames.AKTYOR: "🎭 Aktyor",
         RoleNames.JIN: "🧞 Jin",
         RoleNames.TAQLIDCHI: "🎭 Taqlidchi",
-        RoleNames.REVERSER: "🔄 Reverser",
     },
     "ru": {
         RoleNames.DON: "🤵🏻 Дон",
@@ -328,19 +335,13 @@ ROLE_NAMES_BY_LANG = {
         RoleNames.AFERIST: "🤹🏻 Аферист",
         RoleNames.GAZABDOR: "🧌 Каратель",
         RoleNames.SEHRGAR: "🧙‍ Волшебник",
-        RoleNames.JURNALIST: "👩🏼‍💻 Журналист",
-        RoleNames.SOTQIN: "🤓 Предатель",
-        RoleNames.AYGOQCHI: "🦇 Шпион",
         RoleNames.KONCHI: "👷🏻‍♂️ Шахтер",
         RoleNames.QAROQCHI: "⚔️ Грабитель",
-        RoleNames.HAMSHIRA: "👩🏻‍⚕️ Медсестра",
         RoleNames.QORIQCHI: "🛡 Телохранитель",
-        RoleNames.XOYIN: "👺 Отступник",
         RoleNames.ZANJIR: "⛓ Связной",
         RoleNames.AKTYOR: "🎭 Актер",
         RoleNames.JIN: "🧞 Джинн",
         RoleNames.TAQLIDCHI: "🎭 Мимик",
-        RoleNames.REVERSER: "🔄 Реверсер",
     },
     "en": {
         RoleNames.DON: "🤵🏻 Don",
@@ -362,19 +363,13 @@ ROLE_NAMES_BY_LANG = {
         RoleNames.AFERIST: "🤹🏻 Trickster",
         RoleNames.GAZABDOR: "🧌 Avenger",
         RoleNames.SEHRGAR: "🧙‍ Sorcerer",
-        RoleNames.JURNALIST: "👩🏼‍💻 Journalist",
-        RoleNames.SOTQIN: "🤓 Traitor",
-        RoleNames.AYGOQCHI: "🦇 Spy",
         RoleNames.KONCHI: "👷🏻‍♂️ Miner",
         RoleNames.QAROQCHI: "⚔️ Robber",
-        RoleNames.HAMSHIRA: "👩🏻‍⚕️ Nurse",
         RoleNames.QORIQCHI: "🛡 Bodyguard",
-        RoleNames.XOYIN: "👺 Renegade",
         RoleNames.ZANJIR: "⛓ Linker",
         RoleNames.AKTYOR: "🎭 Actor",
         RoleNames.JIN: "🧞 Genie",
         RoleNames.TAQLIDCHI: "🎭 Mimic",
-        RoleNames.REVERSER: "🔄 Reverser",
     },
     "tr": {
         RoleNames.DON: "🤵🏻 Don",
@@ -396,19 +391,13 @@ ROLE_NAMES_BY_LANG = {
         RoleNames.AFERIST: "🤹🏻 Sahtekar",
         RoleNames.GAZABDOR: "🧌 Cezalandırıcı",
         RoleNames.SEHRGAR: "🧙‍ Büyücü",
-        RoleNames.JURNALIST: "👩🏼‍💻 Gazeteci",
-        RoleNames.SOTQIN: "🤓 Hain",
-        RoleNames.AYGOQCHI: "🦇 Ajan",
         RoleNames.KONCHI: "👷🏻‍♂️ Madenci",
         RoleNames.QAROQCHI: "⚔️ Soyguncu",
-        RoleNames.HAMSHIRA: "👩🏻‍⚕️ Hemşire",
         RoleNames.QORIQCHI: "🛡 Koruma",
-        RoleNames.XOYIN: "👺 İsyankar",
         RoleNames.ZANJIR: "⛓ Zincirci",
         RoleNames.AKTYOR: "🎭 Aktör",
         RoleNames.JIN: "🧞 Cin",
         RoleNames.TAQLIDCHI: "🎭 Taklitçi",
-        RoleNames.REVERSER: "🔄 Reverser",
     },
     "kk": {
         RoleNames.DON: "🤵🏻 Дон",
@@ -430,19 +419,13 @@ ROLE_NAMES_BY_LANG = {
         RoleNames.AFERIST: "🤹🏻 Аферист",
         RoleNames.GAZABDOR: "🧌 Жазалаушы",
         RoleNames.SEHRGAR: "🧙‍ Сиқыршы",
-        RoleNames.JURNALIST: "👩🏼‍💻 Журналист",
-        RoleNames.SOTQIN: "🤓 Сатқын",
-        RoleNames.AYGOQCHI: "🦇 Тыңшы",
         RoleNames.KONCHI: "👷🏻‍♂️ Шахтер",
         RoleNames.QAROQCHI: "⚔️ Қарақшы",
-        RoleNames.HAMSHIRA: "👩🏻‍⚕️ Медбике",
         RoleNames.QORIQCHI: "🛡 Оққағар",
-        RoleNames.XOYIN: "👺 Бүлікші",
         RoleNames.ZANJIR: "⛓ Байланыстырушы",
         RoleNames.AKTYOR: "🎭 Актер",
         RoleNames.JIN: "🧞 Жын",
         RoleNames.TAQLIDCHI: "🎭 Еліктеуші",
-        RoleNames.REVERSER: "🔄 Реверсер",
     }
 }
 

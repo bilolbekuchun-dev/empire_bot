@@ -21,7 +21,6 @@ ROLE_WEIGHTS = {
     "Doktor": 6,
     "Ovchi": 6,
     "Bori": 6,
-    "Aygoqchi": 6,
     "Qasoskor": 6,
     "G'azabkor": 6,
     "Aktyor": 7,
@@ -32,8 +31,6 @@ ROLE_WEIGHTS = {
 
     # Oddiy rollar (yuqori ehtimollik)
     "Serjant": 12,
-    "Sotqin": 12,
-    "Hamshira": 12,
     "Konchi": 12,
     "Omadli": 12,
     "Fuqaro": 15

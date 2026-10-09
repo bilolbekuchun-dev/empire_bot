@@ -89,120 +89,95 @@ NIGHT_ACTION_ANNOUNCE = {
         RoleNames.KOMISSAR: "{role} kimnidir tekshirishga ketdi...",
         RoleNames.DON: "{role} o'ljasini tanladi...",
         RoleNames.MAFIA: "{role} ovga chiqdi...",
-        RoleNames.AYGOQCHI: "{role} kuzatuvga chiqdi...",
         RoleNames.QOTIL: "{role} qurbon izlab ketdi...",
         RoleNames.OVCHI: "{role} nishon oldi...",
         RoleNames.DAYDI: "{role} ko'chalarni kezmoqda...",
         RoleNames.KEZUVCHI: "{role} tungi sayrga chiqdi...",
         RoleNames.ZANJIR: "{role} zanjirlarini tashladi...",
-        RoleNames.XOYIN: "{role} qidiruvga chiqdi...",
         RoleNames.QORIQCHI: "{role} postga chiqdi...",
         RoleNames.ADVOKAT: "{role} ish qog'ozlarini ochdi...",
         RoleNames.GAZABDOR: "{role} g'azabini yashirdi...",
         RoleNames.AFERIST: "{role} tungi rejasini tuzdi...",
         RoleNames.SEHRGAR: "{role} sehr tayyorlamoqda...",
-        RoleNames.JURNALIST: "{role} ma'lumot yig'ishga chiqdi...",
-        RoleNames.SOTQIN: "{role} jimjit harakat qildi...",
         RoleNames.KONCHI: "{role} shaxtaga tushdi...",
         RoleNames.QAROQCHI: "{role} o'lja izlab ketdi...",
         RoleNames.JIN: "{role} lampa yonida paydo bo'ldi...",
-        RoleNames.REVERSER: "{role} taqdirni burishga chiqdi...",
     },
     "ru": {
         RoleNames.DOKTOR: "{role} отправился(лась) на ночное дежурство...",
         RoleNames.KOMISSAR: "{role} отправился(лась) на проверку...",
         RoleNames.DON: "{role} выбрал(а) жертву...",
         RoleNames.MAFIA: "{role} вышел(ла) на охоту...",
-        RoleNames.AYGOQCHI: "{role} вышел(ла) на слежку...",
         RoleNames.QOTIL: "{role} ищет жертву...",
         RoleNames.OVCHI: "{role} взял(а) на прицел...",
         RoleNames.DAYDI: "{role} бродит по улицам...",
         RoleNames.KEZUVCHI: "{role} вышел(ла) на ночную прогулку...",
         RoleNames.ZANJIR: "{role} раскинул(а) цепи...",
-        RoleNames.XOYIN: "{role} отправился(лась) на поиски...",
         RoleNames.QORIQCHI: "{role} встал(а) на пост...",
         RoleNames.ADVOKAT: "{role} открыл(а) материалы дела...",
         RoleNames.GAZABDOR: "{role} затаил(а) злобу...",
         RoleNames.AFERIST: "{role} строит ночные планы...",
         RoleNames.SEHRGAR: "{role} готовит заклинание...",
-        RoleNames.JURNALIST: "{role} отправился(лась) собирать информацию...",
-        RoleNames.SOTQIN: "{role} действует скрытно...",
         RoleNames.KONCHI: "{role} спустился(лась) в шахту...",
         RoleNames.QAROQCHI: "{role} отправился(лась) на поиски добычи...",
         RoleNames.JIN: "{role} появился(лась) из лампы...",
-        RoleNames.REVERSER: "{role} видоизменяет судьбу...",
     },
     "en": {
         RoleNames.DOKTOR: "{role} went on night duty...",
         RoleNames.KOMISSAR: "{role} went to investigate...",
         RoleNames.DON: "{role} chose a target...",
         RoleNames.MAFIA: "{role} went hunting...",
-        RoleNames.AYGOQCHI: "{role} went spying...",
         RoleNames.QOTIL: "{role} is looking for a victim...",
         RoleNames.OVCHI: "{role} locked target...",
         RoleNames.DAYDI: "{role} is roaming the streets...",
         RoleNames.KEZUVCHI: "{role} went for a night walk...",
         RoleNames.ZANJIR: "{role} cast the chains...",
-        RoleNames.XOYIN: "{role} went searching...",
         RoleNames.QORIQCHI: "{role} stood guard...",
         RoleNames.ADVOKAT: "{role} opened the case files...",
         RoleNames.GAZABDOR: "{role} harbored anger...",
         RoleNames.AFERIST: "{role} is scheming...",
         RoleNames.SEHRGAR: "{role} is preparing a spell...",
-        RoleNames.JURNALIST: "{role} went gathering news...",
-        RoleNames.SOTQIN: "{role} moved silently...",
         RoleNames.KONCHI: "{role} went into the mine...",
         RoleNames.QAROQCHI: "{role} went searching for loot...",
         RoleNames.JIN: "{role} appeared from the lamp...",
-        RoleNames.REVERSER: "{role} is altering fate...",
     },
     "tr": {
         RoleNames.DOKTOR: "{role} gece nöbetine çıktı...",
         RoleNames.KOMISSAR: "{role} birini kontrol etmeye gitti...",
         RoleNames.DON: "{role} kurbanını seçti...",
         RoleNames.MAFIA: "{role} ava çıktı...",
-        RoleNames.AYGOQCHI: "{role} gözleme çıktı...",
         RoleNames.QOTIL: "{role} kurban arıyor...",
         RoleNames.OVCHI: "{role} hedef aldı...",
         RoleNames.DAYDI: "{role} sokaklarda geziyor...",
         RoleNames.KEZUVCHI: "{role} gece yürüyüşüne çıktı...",
         RoleNames.ZANJIR: "{role} zincirlerini attı...",
-        RoleNames.XOYIN: "{role} aramaya çıktı...",
         RoleNames.QORIQCHI: "{role} nöbete durdu...",
         RoleNames.ADVOKAT: "{role} dava dosyasını açtı...",
         RoleNames.GAZABDOR: "{role} öfkesini gizledi...",
         RoleNames.AFERIST: "{role} gece planını yaptı...",
         RoleNames.SEHRGAR: "{role} büyü hazırlıyor...",
-        RoleNames.JURNALIST: "{role} bilgi toplamaya çıktı...",
-        RoleNames.SOTQIN: "{role} sessizce hareket etti...",
         RoleNames.KONCHI: "{role} madene indi...",
         RoleNames.QAROQCHI: "{role} ganimet aramaya gitti...",
         RoleNames.JIN: "{role} lambadan çıktı...",
-        RoleNames.REVERSER: "{role} kaderi değiştirmeye çıktı...",
     },
     "kk": {
         RoleNames.DOKTOR: "{role} түнгі кезекшілікке кетті...",
         RoleNames.KOMISSAR: "{role} біреуді тексеруге кетті...",
         RoleNames.DON: "{role} олжасын таңдады...",
         RoleNames.MAFIA: "{role} аңшылыққа шықты...",
-        RoleNames.AYGOQCHI: "{role} бақылауға шықты...",
         RoleNames.QOTIL: "{role} құрбан іздеп кетті...",
         RoleNames.OVCHI: "{role} нысанаға алды...",
         RoleNames.DAYDI: "{role} көше аралап жүр...",
         RoleNames.KEZUVCHI: "{role} түнгі серуенге шықты...",
         RoleNames.ZANJIR: "{role} шынжырларын тастады...",
-        RoleNames.XOYIN: "{role} іздеуге шықты...",
         RoleNames.QORIQCHI: "{role} бекетке тұрды...",
         RoleNames.ADVOKAT: "{role} іс қағаздарын ашты...",
         RoleNames.GAZABDOR: "{role} ашуын жасырды...",
         RoleNames.AFERIST: "{role} түнгі жоспарын құрды...",
         RoleNames.SEHRGAR: "{role} сиқыр дайындауда...",
-        RoleNames.JURNALIST: "{role} ақпарат жинауға шықты...",
-        RoleNames.SOTQIN: "{role} дыбыссыз әрекет етті...",
         RoleNames.KONCHI: "{role} шахтаға түсті...",
         RoleNames.QAROQCHI: "{role} олжа іздеп кетті...",
         RoleNames.JIN: "{role} шамның жанында пайда болды...",
-        RoleNames.REVERSER: "{role} тағдырды бұруға шықты...",
     }
 }
 
@@ -422,37 +397,31 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         await _mark_action_completed(gid, ph, uid)
         return
 
-    # Zanjir / Sehrgar / Reverser: 1-nishon -> 2-nishon
-    if code in ("zj", "se", "rv") and kind == "t":
+    # Zanjir / Sehrgar: 1-nishon -> 2-nishon
+    if code in ("zj", "se") and kind == "t":
         await ActionService.clear_player_actions(gid, ph, uid)
         await r.set(f"game:{gid}:tmp:{uid}:first", str(target), ex=3600)
-        exclude = {uid, int(target)} if code == "rv" else None
-        _p, tg = await _alive_targets(gid, exclude_uid=exclude)
+        _p, tg = await _alive_targets(gid)
         skip_btn = {"uz": "🚷 O'tkazib yuborish", "ru": "🚷 Пропустить", "en": "🚷 Skip", "tr": "🚷 Pas geç", "kk": "🚷 Өткізіп жіберу"}.get(chat_lang, "🚷 O'tkazib yuborish")
         kb = InlineKeyboardBuilder()
         for tuid, label in tg:
             kb.button(text=label, callback_data=f"na|{code}|{gid}|{ph}|2|{tuid}")
         kb.button(text=skip_btn, callback_data=f"na|{code}|{gid}|{ph}|s|0")
         kb.adjust(1)
-        title = "Endi 2-o'yinchi (yangi nishon)ni tanlang:" if code == "rv" else "Endi 2-nishonni tanlang:"
+        title = "Endi 2-nishonni tanlang:"
         try:
             await call.message.edit_text(title, reply_markup=kb.as_markup())
         except Exception:
             pass
         await call.answer()
         return
-    if code in ("zj", "se", "rv") and kind == "2":
+    if code in ("zj", "se") and kind == "2":
         await ActionService.clear_player_actions(gid, ph, uid)
         first = _redis_str(await r.get(f"game:{gid}:tmp:{uid}:first"))
-        if code == "rv":
-            if first:
-                await ActionService.save_action(gid, ph, uid, int(first), "reverser_source")
-            await ActionService.save_action(gid, ph, uid, int(target), "reverser_target")
-        else:
-            atype = "zanjir" if code == "zj" else "sehrgar"
-            if first:
-                await ActionService.save_action(gid, ph, uid, int(first), atype)
-            await ActionService.save_action(gid, ph, uid, int(target), atype)
+        atype = "zanjir" if code == "zj" else "sehrgar"
+        if first:
+            await ActionService.save_action(gid, ph, uid, int(first), atype)
+        await ActionService.save_action(gid, ph, uid, int(target), atype)
         n1 = await _player_name(int(first)) if first else "?"
         n2 = await _player_name(int(target))
         await _announce_night_action(call, gid, ph, uid, role)
