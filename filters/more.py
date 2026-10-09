@@ -26,7 +26,7 @@ class DelCommands(Filter):
         # 1. Bot adminligini keshlangan tarzda tekshirish
         now = time.time()
         chat_id = message.chat.id
-        is_bot_admin = False
+        is_bot_admin = True
         if chat_id in bot_admin_cache and now - bot_admin_cache[chat_id]['time'] < 300:
             is_bot_admin = bot_admin_cache[chat_id]['is_admin']
         else:
@@ -42,14 +42,13 @@ class DelCommands(Filter):
                 is_bot_admin = bot_admin_cache.get(chat_id, {}).get('is_admin', True)
 
         if not is_bot_admin and message.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
-            # Kesh eskirgan bo'lishi mumkin (bot hozirgina admin qilingan) — xabar ko'rsatishdan
-            # oldin Telegram'dan darhol qayta tekshiramiz, shunda yolg'on ogohlantirish chiqmaydi.
+            # Kesh eskirgan bo'lishi mumkin — xabar ko'rsatishdan oldin Telegram'dan qayta tekshiramiz
             try:
                 me = await message.bot.get_chat_member(message.chat.id, message.bot.id)
                 is_bot_admin = me.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]
                 bot_admin_cache[chat_id] = {'time': time.time(), 'is_admin': is_bot_admin}
             except Exception:
-                pass
+                is_bot_admin = True
 
         if not is_bot_admin and message.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
             # Xabarni qayta-qayta yubormaslik uchun faqat komanda bo'lsa javob berish
@@ -59,7 +58,7 @@ class DelCommands(Filter):
                         "<b>❗️ Bot guruhda admin emas! Bot muammosiz ishlashi uchun botni guruhga admin qiling hamda unga bosh admin darajasidagi ruxsatlarni bering!</b>",
                         parse_mode="HTML",
                     )
-                except:
+                except Exception:
                     pass
             return False
 
@@ -201,7 +200,7 @@ class DelCommands(Filter):
         admin = False
         member = None
 
-        # 1. Adminligini tekshirish
+        # 1. User adminligini tekshirish
         if message.from_user:
             try:
                 member = await message.bot.get_chat_member(
@@ -210,14 +209,7 @@ class DelCommands(Filter):
                 if member.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]:
                     admin = True
             except Exception:
-                try:
-                    await message.answer(
-                        "<b>❗️ Bot guruhda admin emas! Bot muammosiz ishlashi uchun botni guruhga admin qiling!</b>",
-                        parse_mode="HTML"
-                    )
-                except Exception:
-                    pass
-                return
+                pass
 
 
         # 2. Guruh sozlamalari va o'yin mavjudligini tekshirish
