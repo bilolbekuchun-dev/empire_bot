@@ -127,10 +127,6 @@ async def f(call: CallbackQuery, bot:Bot, state: FSMContext):
 async def f(call: CallbackQuery, bot:Bot, state: FSMContext):
     await night_actions.qoriqchi_action_handler(call, bot, state)
 
-@router.callback_query(F.data.startswith(RoleNames.XOYIN))
-async def f(call: CallbackQuery, bot:Bot, state: FSMContext):
-    await night_actions.xoyin_action_handler(call, bot, state)
-
 @router.callback_query(F.data.startswith(RoleNames.ZANJIR))
 async def f(call: CallbackQuery, bot:Bot, state: FSMContext):
     await night_actions.zanjir_action_handler(call, bot, state)
@@ -188,21 +184,9 @@ async def f(call: CallbackQuery, bot: Bot, state: FSMContext):
 async def f(call: CallbackQuery, bot: Bot, state: FSMContext):
     await night_actions.sehrgar_night_action_handler(call, bot, state)
 
-@router.callback_query(F.data.startswith(RoleNames.JURNALIST))
-async def f(call: CallbackQuery, bot: Bot, state: FSMContext):
-    await night_actions.jurnalist_action_handler(call, bot, state)
-
-@router.callback_query(F.data.startswith(RoleNames.SOTQIN))
-async def f(call: CallbackQuery, bot: Bot, state: FSMContext):
-    await night_actions.sotqin_action_handler(call, bot, state)
-
 @router.callback_query(F.data.startswith("karta_"))
 async def f(call: CallbackQuery, bot: Bot, state: FSMContext):
     await day_actions.select_card_handler(call=call, bot=bot, state=state)
-
-@router.callback_query(F.data.startswith(RoleNames.AYGOQCHI))
-async def f(call: CallbackQuery, bot: Bot, state: FSMContext):
-    await night_actions.aygoqchi_action_handler(call=call, state=state, bot=bot)
 
 @router.callback_query(F.data.startswith(RoleNames.KONCHI))
 async def f(call: CallbackQuery, bot: Bot, state: FSMContext):

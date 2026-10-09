@@ -44,34 +44,24 @@ class RoleConfiguration:
         (19, RoleNames.OMADLI),
         # 20 kishi (Sehrgar erta chiqadi)
         (20, RoleNames.SEHRGAR),
-        # 21 kishi (Ayg'oqchi)
-        (21, RoleNames.AYGOQCHI),
-        # 22 kishi (Bo'ri erta chiqadi)
-        (22, RoleNames.BORI),
-        # 23 kishi
-        (23, RoleNames.JANOB),
-        # 24 kishi (G'azabkor erta chiqadi)
-        (24, RoleNames.GAZABDOR),
-        # 25 kishi (Aferist erta chiqadi)
-        (25, RoleNames.AFERIST),
-        # 26 kishi (Qo'riqchi)
-        (26, RoleNames.QORIQCHI),
+        # 21 kishi (Bo'ri erta chiqadi)
+        (21, RoleNames.BORI),
+        # 22 kishi
+        (22, RoleNames.JANOB),
+        # 23 kishi (G'azabkor erta chiqadi)
+        (23, RoleNames.GAZABDOR),
+        # 24 kishi (Aferist erta chiqadi)
+        (24, RoleNames.AFERIST),
+        # 25 kishi (Qo'riqchi)
+        (25, RoleNames.QORIQCHI),
+        # 26 kishi
+        (26, RoleNames.MAFIA),
         # 27 kishi
-        (27, RoleNames.MAFIA),
-        # 28 kishi (Hamshira)
-        (28, RoleNames.HAMSHIRA),
+        (27, RoleNames.SUIDSID),
+        # 28 kishi
+        (28, RoleNames.MAFIA),
         # 29 kishi
-        (29, RoleNames.JURNALIST),
-        # 30 kishi
-        (30, RoleNames.SOTQIN),
-        # 31 kishi
-        (31, RoleNames.SUIDSID),
-        # 32 kishi
-        (32, RoleNames.XOYIN),
-        # 33 kishi
-        (33, RoleNames.MAFIA),
-        # 34 kishi
-        (34, RoleNames.QASOSKOR),
+        (29, RoleNames.QASOSKOR),
         # 35 kishi
         (35, RoleNames.BORI),
         # 36 kishi

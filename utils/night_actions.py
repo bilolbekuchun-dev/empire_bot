@@ -39,9 +39,6 @@ async def maf_action_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
 async def qoriqchi_action_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
     await _register_action(call, "qoriqchi", "🛡 Qo'riqchi: Qo'riqlash nishoni qabul qilindi!")
 
-async def xoyin_action_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
-    await _register_action(call, "xoyin", "👺 Xoyin: Tanlov qabul qilindi!")
-
 async def zanjir_action_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
     await _register_action(call, "zanjir", "⛓ Zanjir harakati qabul qilindi!")
 
@@ -76,15 +73,6 @@ async def sehr_action_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
 
 async def sehrgar_night_action_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
     await _register_action(call, "sehrgar", "🧙‍ Sehrgar: Sehr qabul qilindi!")
-
-async def jurnalist_action_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
-    await _register_action(call, "jurnalist", "👩🏼‍💻 Jurnalist: Ma'lumot yig'ish qabul qilindi!")
-
-async def sotqin_action_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
-    await _register_action(call, "sotqin", "🤓 Sotqin: Tanlov qabul qilindi!")
-
-async def aygoqchi_action_handler(call: CallbackQuery, state: FSMContext, bot: Bot = None):
-    await _register_action(call, "aygoqchi", "🦇 Ayg'oqchi: Kuzatish qabul qilindi!")
 
 async def konchi_action_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
     await _register_action(call, "konchi", "👷🏻‍♂️ Konchi: Kon qazish qabul qilindi!")
