@@ -183,6 +183,9 @@ async def execute_night_phase_redis(
         except Exception:
             pass
 
+    # Kichik kutish (grace period) - oxirgi soniyadagi harakatlar saqlanishiga imkon berish
+    await asyncio.sleep(2)
+
     game_state = await game_repo.load_game(game_id)
     if not game_state or not game_state.is_active:
         return
