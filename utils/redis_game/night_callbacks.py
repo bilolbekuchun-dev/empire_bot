@@ -545,6 +545,26 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         await _mark_action_completed(gid, ph, uid)
         return
 
+async def _notify_mafia_team_vote(bot: Bot, gid: int, voter_uid: int, target_uid: int):
+    try:
+        from utils.redis_game.night_engine import MAFIA_ROLES
+        players = await player_repo.get_alive_players(gid)
+        mafia_team = [p for p in players if p.role in MAFIA_ROLES]
+
+        voter_name = await _player_name(voter_uid)
+        target_name = await _player_name(target_uid)
+
+        vote_msg = f"<b>{voter_name}</b> - <b>{target_name}</b> ga ovoz berdi"
+
+        for m_player in mafia_team:
+            try:
+                await bot.send_message(m_player.user_id, vote_msg, parse_mode="HTML")
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
     # Oddiy nishonli harakat
     if kind == "t":
         atype = ROLE_ACTION_TYPE.get(role, "action")
@@ -554,6 +574,10 @@ async def night_action_cb(call: CallbackQuery, bot=None):
             choice = f"Kon {int(target)}"
         else:
             choice = await _player_name(int(target))
+
+        if role in (RoleNames.DON, RoleNames.MAFIA):
+            await _notify_mafia_team_vote(call.bot, gid, uid, int(target))
+
         await _announce_night_action(call, gid, ph, uid, role)
         await _confirm_choice(call, role, choice, lang=chat_lang, gid=gid)
         await _mark_action_completed(gid, ph, uid)
