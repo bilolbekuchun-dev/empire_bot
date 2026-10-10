@@ -207,9 +207,10 @@ async def say_last_word_handler(message: Message, state: FSMContext):
     # 1. Avval Redis game tekshiramiz:
     try:
         from utils.redis_game.services.player_service import player_service
-        from utils.redis_game.repositories.game_repository import game_repo
-        from utils.redis_game.repositories.player_repository import player_repo
-        from utils.telegram_utils import safe_send_message
+        from utils.redis_game.game_models_crud import game_repo
+        from utils.redis_game.repositories.player_repository import player_repository as player_repo
+        from utils.game_logic import safe_send_message
+        from datetime import datetime, timezone
 
         redis_res = await player_service.find_player_dead_last_word_game(user_id)
         if redis_res:
@@ -219,22 +220,36 @@ async def say_last_word_handler(message: Message, state: FSMContext):
                 player_state.is_sayed_last_word = True
                 await player_repo.save_player(player_state)
 
+                is_expired = False
+                if player_state.deaded_at:
+                    now = datetime.now(timezone.utc)
+                    dt = player_state.deaded_at
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=timezone.utc)
+                    if (now - dt).total_seconds() > 120:
+                        is_expired = True
+
+                if is_expired:
+                    await message.answer("Siz oxirgi so'zingizni aytishga ulgurmadingz🥲")
+                    return
+
                 msg_text = (
                     f"<b>O'limidan oldin kimdir, {sender_mention} ning qichqirganini eshitdi:</b>\n\n"
                     f"💬 <i>\"{message.html_text}\"</i>"
                 )
                 await safe_send_message(message.bot, game_state.chat_id, msg_text, parse_mode="HTML")
-                await message.answer("✅ So‘nggi so‘zingiz guruhga yuborildi.")
+                await message.answer("Oxirgi habaringiz guruhga yetkazildi!")
                 return
     except Exception as e:
         print(f"⚠️ say_last_word_handler redis error: {e}")
 
     # 2. Eski DB o'yini:
+    from datetime import datetime, timezone
     user = await User.filter(user_id=user_id).first()
     if not user:
         return
     player = await GamePlayer.filter(user=user, is_alive=False).last()
-    if not player:
+    if not player or player.is_sayed_last_word:
         return
     await player.fetch_related("game")
     game = player.game
@@ -243,6 +258,16 @@ async def say_last_word_handler(message: Message, state: FSMContext):
 
     player.is_sayed_last_word = True
     await player.save()
+
+    if player.deaded_at:
+        now = datetime.now(timezone.utc)
+        dt = player.deaded_at
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        if (now - dt).total_seconds() > 120:
+            await message.answer("Siz oxirgi so'zingizni aytishga ulgurmadingz🥲")
+            return
+
     await game.fetch_related("chat")
 
     await safe_send_message(message.bot, 
@@ -250,7 +275,7 @@ async def say_last_word_handler(message: Message, state: FSMContext):
         f"<b>O'limidan oldin kimdir, {user.mention} ning qichqirganini eshitdi:</b>\n\n💬 <i>\"{message.html_text}\"</i>",
         parse_mode="HTML"
     )
-    await message.answer("✅ So‘nggi so‘zingiz guruhga yuborildi.")
+    await message.answer("Oxirgi habaringiz guruhga yetkazildi!")
 
 async def select_card_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
     colors_dict = TeamCOlors.all_colors_dict()

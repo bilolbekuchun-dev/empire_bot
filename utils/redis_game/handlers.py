@@ -148,6 +148,19 @@ async def _join_game_handler_redis_core(message: Message, bot: Bot, state: FSMCo
             "mention": message.from_user.mention_html()
         }
     )
+
+    if "para" in game_state.mode:
+        from models.user import Paralar
+        u_para = await Paralar.filter(user1=user).first() or await Paralar.filter(user2=user).first()
+        if not u_para:
+            try:
+                await bot.send_message(
+                    message.from_user.id,
+                    "Sizda para yo'q! Para o'yinga qo'shilish uchun avval kim bilandir para bo'lishingiz kerak."
+                )
+            except Exception:
+                await message.answer("Sizda para yo'q! Para o'yinga qo'shilish uchun avval kim bilandir para bo'lishingiz kerak.")
+            return
     
     profile, _ = await Profile.get_or_create(
         user=user,
@@ -761,6 +774,13 @@ async def _start_game_handler_redis_impl(message: Message, bot: Bot, state):
         # Remove players without pairs
         for user_id in players_to_remove:
             await player_repo.delete_player(active_game_id, user_id)
+            try:
+                await bot.send_message(
+                    user_id,
+                    "Sizning parangiz Para o'yinga qo'shilmagani uchun siz ham qatnasha olmaysiz!"
+                )
+            except Exception:
+                pass
         
         # Recheck player count
         players = await player_repo.get_alive_players(active_game_id)

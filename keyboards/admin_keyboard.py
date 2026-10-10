@@ -7,8 +7,11 @@ from utils.premium_emojis import (
     get_item_display
 )
 
-def admin_emoji_main_menu() -> InlineKeyboardMarkup:
+async def admin_emoji_main_menu() -> InlineKeyboardMarkup:
     """Asosiy Premium Emoji Admin Panel menyusi"""
+    from utils.webapp_config import get_webapp_button_text
+    webapp_btn_text = await get_webapp_button_text()
+
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text="🎭 Rollar emojilari", callback_data="adm_emj_roles_menu"),
@@ -19,6 +22,9 @@ def admin_emoji_main_menu() -> InlineKeyboardMarkup:
     builder.row(
         InlineKeyboardButton(text=f"💎 Olmos ({d_display})", callback_data="adm_emj_currency_diamond"),
         InlineKeyboardButton(text=f"💵 Dollar ({m_display})", callback_data="adm_emj_currency_dollar")
+    )
+    builder.row(
+        InlineKeyboardButton(text=webapp_btn_text, callback_data="adm_toggle_webapp")
     )
     builder.row(
         InlineKeyboardButton(text="💾 BARCHA EMOJILARNI BAZAGA SAQLASH", callback_data="adm_emj_save_to_db")
@@ -165,7 +171,30 @@ def admin_main_menu() -> InlineKeyboardMarkup:
     builder.button(text="📢 Xabar yuborish", callback_data="adm_broadcast")
     builder.button(text="📜 Loglar", callback_data="adm_logs")
     builder.button(text="🎨 Emojilar", callback_data="adm_emj_main")
+    builder.button(text="🤡 Mem panel", callback_data="adm_meme_main")
     builder.adjust(2)
+    return builder.as_markup()
+
+def admin_meme_menu(enabled: bool, has_text: bool = False, has_sticker: bool = False) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    status_text = "🔴 O'chirish" if enabled else "🟢 Yoqish"
+    builder.row(
+        InlineKeyboardButton(text=f"Holat: {status_text}", callback_data="adm_meme_toggle")
+    )
+    builder.row(
+        InlineKeyboardButton(text="✏️ Matnni sozlash", callback_data="adm_meme_set_text"),
+        InlineKeyboardButton(text="🎭 Stiker/Rasm sozlash", callback_data="adm_meme_set_sticker")
+    )
+    extra_row = []
+    if has_text:
+        extra_row.append(InlineKeyboardButton(text="🔄 Matnni tiklash", callback_data="adm_meme_reset_text"))
+    if has_sticker:
+        extra_row.append(InlineKeyboardButton(text="🗑 Stikerni o'chirish", callback_data="adm_meme_del_sticker"))
+    if extra_row:
+        builder.row(*extra_row)
+    builder.row(
+        InlineKeyboardButton(text="🔙 Admin panel", callback_data="adm_emj_main")
+    )
     return builder.as_markup()
 
 def admin_users_menu_kb() -> InlineKeyboardMarkup:

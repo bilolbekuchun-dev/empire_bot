@@ -77,7 +77,7 @@ async def f(message: Message, bot: Bot):
     await others.get_profile(bot, message)
 
 @router.message(Command("money", ignore_case=True))
-@router.message(F.text.func(lambda text: bool(text and (text.lower().startswith("/money ") or text.lower().startswith("/money@") or text.lower() == "/money"))))
+@router.message(F.text.func(lambda text: bool(text and (text.lower().startswith(("/money ", "/money\n", "/money\t", "/money@")) or text.lower() == "/money"))))
 async def f(message: Message, bot: Bot):
     await others.transfer_funds_handler(message=message, bot=bot)
 
@@ -86,7 +86,7 @@ async def f(message: Message, bot: Bot):
     await others.role_names_handler(message=message)
 
 @router.message(Command("give", ignore_case=True))
-@router.message(F.text.func(lambda text: bool(text and (text.lower().startswith("/give ") or text.lower().startswith("/give@") or text.lower() == "/give"))))
+@router.message(F.text.func(lambda text: bool(text and (text.lower().startswith(("/give ", "/give\n", "/give\t", "/give@")) or text.lower() == "/give"))))
 async def f(message: Message, bot: Bot):
     await others.transfer_funds_handler(message=message, bot=bot)
 

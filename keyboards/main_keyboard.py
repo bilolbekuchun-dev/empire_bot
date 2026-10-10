@@ -74,8 +74,12 @@ def get_start_markup(lang: str = "uz"):
         "kk": "📡 Канал"
     }
 
+    from config import IS_WEBAPP_ACTIVE
     b = InlineKeyboardBuilder()
-    b.button(text=texts_cabinet.get(c, texts_cabinet["uz"]), web_app=WebAppInfo(url=w_url))
+    if getattr(config, "IS_WEBAPP_ACTIVE", False):
+        b.button(text=texts_cabinet.get(c, texts_cabinet["uz"]), web_app=WebAppInfo(url=w_url))
+    else:
+        b.button(text=texts_cabinet.get(c, texts_cabinet["uz"]), callback_data="my_profile")
     b.button(text=texts_airdrop.get(c, texts_airdrop["uz"]), callback_data="refresh_airdrop_menu")
     b.button(text=texts_add_group.get(c, texts_add_group["uz"]), url=f"{b_url}?startgroup=true")
     b.button(text=texts_prem_groups.get(c, texts_prem_groups["uz"]), callback_data="prem_groups_start")

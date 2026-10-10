@@ -96,6 +96,68 @@ async def _alive_players_text(players: list, *, dawn: bool = False, lang: str = 
     return "\n".join(lines)
 
 
+async def check_paralar_lst_redis(game_id: str, paralar: list, bot: Bot, chat: Chat):
+    """
+    Para turnir rejimida: agar juftlikdan birontasi o'yindan chiqqan (o'lgan) bo'lsa,
+    uning parasi ham o'yindan chiqariladi.
+    """
+    if not paralar:
+        return
+
+    game_state = await game_repo.load_game(game_id)
+    if not game_state or not game_state.is_active:
+        return
+
+    from utils.redis_game.repositories.player_repository import player_repository as player_repo
+    from utils.game_logic import safe_send_message
+    from utils.i18n import get_chat_lang
+
+    chat_lang = await get_chat_lang(chat.chat_id)
+
+    changed = True
+    while changed:
+        changed = False
+        all_players = await player_repo.get_all_players(game_id)
+        player_map = {p.user_id: p for p in all_players}
+
+        user_ids = list(player_map.keys())
+        users = {}
+        if user_ids:
+            db_users = await User.filter(user_id__in=user_ids)
+            for u in db_users:
+                users[u.user_id] = u
+
+        for u1_id, u2_id in paralar:
+            p1 = player_map.get(u1_id)
+            p2 = player_map.get(u2_id)
+            if not p1 or not p2:
+                continue
+
+            dead_player = None
+            alive_partner = None
+
+            if not p1.is_alive and p2.is_alive:
+                dead_player, alive_partner = p1, p2
+            elif not p2.is_alive and p1.is_alive:
+                dead_player, alive_partner = p2, p1
+
+            if dead_player and alive_partner:
+                alive_partner.is_alive = False
+                await player_repo.save_player(alive_partner)
+                changed = True
+
+                dead_mention = _player_mention_label(dead_player.user_id, users.get(dead_player.user_id), dead_player)
+                alive_mention = _player_mention_label(alive_partner.user_id, users.get(alive_partner.user_id), alive_partner)
+                dead_role = role_display(dead_player.role, lang=chat_lang)
+                alive_role = role_display(alive_partner.role, lang=chat_lang)
+
+                text = f"{dead_role} {dead_mention} o'yindan chiqgani sabab uning parasi {alive_role} {alive_mention} ham o'yindan chiqdi!"
+                try:
+                    await safe_send_message(bot, chat.chat_id, text, parse_mode="HTML")
+                except Exception as e:
+                    print(f"Para o'lim xabarini yuborishda xato: {e}")
+
+
 async def execute_night_phase_redis(
     game_id: str,
     night_number: int,
@@ -120,7 +182,7 @@ async def execute_night_phase_redis(
     )
     
     if paralar and "para" in (await game_repo.load_game(game_id)).mode:
-        pass
+        await check_paralar_lst_redis(game_id, paralar, bot, chat)
     
     try:
         from utils.redis_game.presentation import send_night_presentation
@@ -195,6 +257,9 @@ async def execute_night_phase_redis(
         await process_night_results(int(game_id), night_number, players, bot, chat)
     except Exception as e:
         print(f"Tungi natijalarni qo'llashda xato: {e}")
+
+    if paralar and "para" in (await game_repo.load_game(game_id)).mode:
+        await check_paralar_lst_redis(game_id, paralar, bot, chat)
     
     night_phase.is_end = True
 
@@ -235,7 +300,7 @@ async def execute_day_phase_redis(
         print(f"Tunda o'lganlar xabarini yuborishda xato: {e}")
 
     if paralar and "para" in (await game_repo.load_game(game_id)).mode:
-        pass
+        await check_paralar_lst_redis(game_id, paralar, bot, chat)
     
     more_set, _ = await GroupMoreSet.get_or_create(chat_id=chat.chat_id)
     weapons_set, _ = await GameSetWeapons.get_or_create(chat_id=chat.chat_id)
@@ -287,6 +352,15 @@ async def execute_day_phase_redis(
         disable_web_page_preview=True
     )
 
+    try:
+        g_st = await game_repo.load_game(game_id)
+        if g_st:
+            g_st.phase = "day"
+            await game_repo.save_game(g_st)
+        await r.set(f"game:{game_id}:day_num", str(day_number), ex=86400)
+    except Exception as e:
+        print(f"Error setting day phase/day_num: {e}")
+
     # Ovoz berish tugmalarini yuborish
     try:
         from utils.redis_game.night_engine import send_day_votes
@@ -305,15 +379,11 @@ async def execute_day_phase_redis(
     
     # Check paralar
     if paralar and "para" in (await game_repo.load_game(game_id)).mode:
-        # TODO: check_paralar_lst_redis
-        pass
+        await check_paralar_lst_redis(game_id, paralar, bot, chat)
     
     # Wait for voting
     await asyncio.sleep(game_times.vote_time)
-    
-    # Kichik kutish (grace period) - oxirgi soniyadagi harakatlar saqlanishiga imkon berish
-    await asyncio.sleep(2)
-    
+
     # Check if game is still active
     game_state = await game_repo.load_game(game_id)
     if not game_state or not game_state.is_active:
@@ -328,6 +398,9 @@ async def execute_day_phase_redis(
         )
     except Exception as e:
         print(f"Ovozlarni qayta ishlashda xato: {e}")
+    
+    if paralar and "para" in (await game_repo.load_game(game_id)).mode:
+        await check_paralar_lst_redis(game_id, paralar, bot, chat)
     
     # Mark day phase as ended
     day_phase.is_end = True
