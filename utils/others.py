@@ -1571,41 +1571,75 @@ async def send_split_winners_list(
                     pass
 
 # Do'kon va Valyutalar
+
+# Do'kon narxlari
+SHOP_ITEM_PRICES = {
+    "himoya": {"currency": "dollar", "price": 100, "field": "himoya"},
+    "hujjat": {"currency": "dollar", "price": 100, "field": "hujjat"},
+    "osish_himoya": {"currency": "diamond", "price": 5, "field": "osishdan_himoya"},
+    "miltiq": {"currency": "diamond", "price": 5, "field": "miltiq"},
+    "dori_himoya": {"currency": "dollar", "price": 100, "field": "doridan_himoya"},
+    "maska": {"currency": "dollar", "price": 100, "field": "maska"},
+    "qotildan_himoya": {"currency": "diamond", "price": 5, "field": "qotildan_himoya"},
+    "slip_himoya": {"currency": "diamond", "price": 5, "field": "slip_himoya"},
+    "geroydan_himoya": {"currency": "diamond", "price": 5, "field": "geroy_himoya"},
+    "geroy": {"currency": "diamond", "price": 90, "field": "_geroy"},
+}
+SEND_PROFILE_PRICE = 5  # 💎
+GEROY_PRICE = 90  # 💎
+
 async def show_shop(call: CallbackQuery):
+    from utils.webapp_config import is_webapp_active
+    from keyboards.user_keyboards import shop_keyboard
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     from aiogram.types import WebAppInfo
     from config import WEBAPP_URL
-    from models.user import User
-    from utils.i18n import clean_lang, PROFILE_LABELS
 
-    user = await User.filter(user_id=call.from_user.id).first()
-    lang = clean_lang(user.lang if user else "uz")
-    lbls = PROFILE_LABELS.get(lang, PROFILE_LABELS["uz"])
-    btn_back = lbls.get("btn_back", "⬅️ Orqaga")
+    text = (
+        f"🥷 <b>Geroy</b> - Sizga o'yinda tong vaqtida ham otish imkonini beradi...\n\n"
+        f"🪤 <b>Sirpanishdan himoya</b> - Sizni konchi roldatigingizda sirpanib o'tishdan saqlab qoladi.\n\n"
+        f"🔰 <b>Geroydan himoya</b> - Sizga geroydan bo'lgan har qanday hujumdan omon qolish imkonini beradi."
+    )
 
-    shop_texts = {
-        "uz": "🛒 <b>Do'kon bo'limi</b>\n\nBarcha anjomlar, himoyalar va olmoslarni sotib olish WebApp ilovamizda mavjud!",
-        "ru": "🛒 <b>Раздел магазина</b>\n\nВсе предметы, защиты и алмазы доступны для покупки в нашем WebApp приложении!",
-        "en": "🛒 <b>Shop Section</b>\n\nAll items, protections, and diamonds are available in our WebApp application!",
-        "tr": "🛒 <b>Mağaza Bölümü</b>\n\nTüm eşyalar, korumalar ve elmaslar WebApp uygulamamızda mevcuttur!"
-    }
-    btn_shop_text = {
-        "uz": "🌐 Do'konni ochish (WebApp)",
-        "ru": "🌐 Открыть магазин (WebApp)",
-        "en": "🌐 Open Shop (WebApp)",
-        "tr": "🌐 Mağazayı Aç (WebApp)"
-    }
+    kb = shop_keyboard(
+        himoya_price=100,
+        hujjat_price=100,
+        osish_himoya_price=5,
+        dori_himoya_price=100,
+        maska_price=100,
+        qotildan_himoya_price=5,
+        militiq_price=5,
+        geroy_price=GEROY_PRICE,
+        slip_himoya_price=5,
+        send_profile_price=SEND_PROFILE_PRICE,
+        geroydan_himoya_price=5,
+    )
 
-    text = shop_texts.get(lang, shop_texts["uz"])
-    kb = InlineKeyboardBuilder()
-    if WEBAPP_URL:
-        kb.button(text=btn_shop_text.get(lang, btn_shop_text["uz"]), web_app=WebAppInfo(url=WEBAPP_URL))
-    kb.button(text=btn_back, callback_data="back_profile")
-    kb.adjust(1)
+    if await is_webapp_active() and WEBAPP_URL:
+        builder = InlineKeyboardBuilder()
+        builder.button(text=f"🛡 Himoya - 100💵", callback_data="buy_himoya")
+        builder.button(text=f"📁 Hujjat - 100💵", callback_data="buy_hujjat")
+        builder.button(text=f"⚖️ Ovozdan himoya - 5💎", callback_data="buy_osish_himoya")
+        builder.button(text=f"🔫 Miltiq - 5💎", callback_data="buy_miltiq")
+        builder.button(text=f"💊 Doridan himoya - 100💵", callback_data="buy_dori_himoya")
+        builder.button(text=f"🎭 Maska - 100💵", callback_data="buy_maska")
+        builder.button(text=f"⛑️ Qotildan himoya 5💎", callback_data="buy_qotildan_himoya")
+        builder.button(text=f"🪤 Sirpanishdan himoya 5💎", callback_data="buy_slip_himoya")
+        builder.button(text=f"🔰 Geroydan himoya 5💎", callback_data="buy_geroydan_himoya")
+        builder.button(text=f"🔄 Profil almashish {SEND_PROFILE_PRICE}💎", callback_data="replace_profile")
+        builder.button(text=f"🥷 Geroy {GEROY_PRICE}💎", callback_data="buy_geroy")
+        builder.button(text="🗃 Sandiqlar", callback_data="open-sandiq")
+        builder.button(text="🃏 Faol rol", callback_data="active_role")
+        builder.button(text="🎨 VIP emoji o'zgartirish", callback_data="vip_emoji_change")
+        builder.button(text="🌐 WebApp do'kon", web_app=WebAppInfo(url=WEBAPP_URL))
+        builder.button(text="⬅️ Orqaga", callback_data="back_profile")
+        builder.adjust(2)
+        kb = builder.as_markup()
+
     try:
-        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+        await call.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
     except Exception:
-        await call.message.answer(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+        await call.message.answer(text, reply_markup=kb, parse_mode="HTML")
     await call.answer()
 
 async def buy_dollar_callback(call: CallbackQuery):
@@ -1615,7 +1649,60 @@ async def get_dollar_callback(call: CallbackQuery):
     await get_diamond_hamyonlar(call)
 
 async def buy_handler(call: CallbackQuery):
-    await call.answer("Xarid qabul qilindi!", show_alert=True)
+    from models.user import User, Profile
+    from models.game_data import Geroys
+
+    item_key = call.data.replace("buy_", "")
+
+    if item_key not in SHOP_ITEM_PRICES:
+        await call.answer("❌ Noto'g'ri buyum!", show_alert=True)
+        return
+
+    user = await User.filter(user_id=call.from_user.id).first()
+    if not user:
+        await call.answer("❌ Foydalanuvchi topilmadi!", show_alert=True)
+        return
+
+    profile, _ = await Profile.get_or_create(user=user, defaults={"dollar": 0, "diamond": 0})
+
+    cfg = SHOP_ITEM_PRICES[item_key]
+    currency = cfg["currency"]
+    price = cfg["price"]
+    field = cfg["field"]
+
+    # Geroy sotib olish alohida logika
+    if field == "_geroy":
+        existing_geroy = await Geroys.get_or_none(user=user)
+        if existing_geroy:
+            await call.answer("❌ Sizda allaqachon Geroy bor!", show_alert=True)
+            return
+        if profile.diamond < price:
+            await call.answer(f"❌ Sizda yetarli olmoslar yo'q! (Kerak: {price}💎, Sizda: {profile.diamond}💎)", show_alert=True)
+            return
+        profile.diamond -= price
+        await profile.save()
+        await Geroys.create(user=user, name=f"Geroy_{user.user_id}", ball=1100, level=1, himoya=10, patron=10)
+        await call.answer(f"✅ Geroy muvaffaqiyatli sotib olindi! (-{price}💎)", show_alert=True)
+        return
+
+    # Oddiy buyumlar uchun
+    if currency == "dollar":
+        if profile.dollar < price:
+            await call.answer(f"❌ Sizda yetarli dollar yo'q! (Kerak: {price}💵, Sizda: {profile.dollar}💵)", show_alert=True)
+            return
+        profile.dollar -= price
+    else:
+        if profile.diamond < price:
+            await call.answer(f"❌ Sizda yetarli olmos yo'q! (Kerak: {price}💎, Sizda: {profile.diamond}💎)", show_alert=True)
+            return
+        profile.diamond -= price
+
+    current_count = getattr(profile, field, 0)
+    setattr(profile, field, current_count + 1)
+    await profile.save()
+
+    currency_symbol = "💵" if currency == "dollar" else "💎"
+    await call.answer(f"✅ Muvaffaqiyatli sotib olindi! (-{price}{currency_symbol})", show_alert=True)
 
 async def open_protections_menu(call: CallbackQuery):
     from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -1980,25 +2067,7 @@ async def set_lang_callback(call: CallbackQuery, bot: Bot = None):
         except Exception as e:
             print(f"realtime group language refresh error: {e}")
 
-# Do'kon va Valyutalar
-async def show_shop(call: CallbackQuery):
-    from aiogram.utils.keyboard import InlineKeyboardBuilder
-    from aiogram.types import WebAppInfo
-    from config import WEBAPP_URL
-    text = (
-        "🛒 <b>Do'kon bo'limi</b>\n\n"
-        "Barcha anjomlar, himoyalar va olmoslarni sotib olish WebApp ilovamizda mavjud!"
-    )
-    kb = InlineKeyboardBuilder()
-    if WEBAPP_URL:
-        kb.button(text="🌐 Do'konni ochish (WebApp)", web_app=WebAppInfo(url=WEBAPP_URL))
-    kb.button(text="⬅️ Orqaga", callback_data="back_profile")
-    kb.adjust(1)
-    try:
-        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
-    except Exception:
-        await call.message.answer(text, reply_markup=kb.as_markup(), parse_mode="HTML")
-    await call.answer()
+
 
 async def get_dollar_callback(call: CallbackQuery):
     await get_diamond_hamyonlar(call)
