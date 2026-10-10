@@ -7,7 +7,7 @@ from models.game_data import Giveaway, Chat, GamePlayer, Game
 from config import ADMINS, DIAMOND_SHOP_USERNAME, SUPPORT_ADMIN, PRIMARY_ADMIN_IDS
 from keyboards.main_keyboard import get_start_markup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from utils.premium_emojis import get_diamond_display, get_dollar_display, role_display
+from utils.premium_emojis import get_diamond_display, get_dollar_display, role_display, get_vip_prefix
 
 # Emojilar va tg-emoji teglari
 EMOJI_QOTIL_HIMOYA = "<tg-emoji emoji-id='5411452114838761907'>🔪</tg-emoji> Qotildan himoya"
@@ -59,65 +59,88 @@ async def get_profile(bot: Bot, message: Message):
         message.from_user.full_name,
         message.from_user.mention_html()
     )
+    from utils.i18n import clean_lang, PROFILE_LABELS
+    lang = clean_lang(getattr(user, "lang", "uz"))
+    lbls = PROFILE_LABELS.get(lang, PROFILE_LABELS["uz"])
+
     vip_obj = await VipUser.get_or_none(user=user)
     is_vip = bool(vip_obj)
-    vip_status = f" ({vip_obj.emoji_char})" if (vip_obj and vip_obj.emoji_char) else ""
-    vip_text = f" ⭐ VIP{vip_status}" if is_vip else ""
+    vip_prefix = get_vip_prefix(vip_obj)
+    vip_text = f" ⭐ VIP {vip_prefix}".rstrip() if is_vip else ""
 
     from models.user import Paralar, ActiveRole
     from tortoise.expressions import Q
     para = await Paralar.filter(Q(user1=user) | Q(user2=user)).prefetch_related("user1", "user2").first()
 
+    none_val = lbls.get("none", "Yo'q")
+    none_str = f"<i>{none_val}</i>"
+
     if para:
         partner = para.user2 if para.user1_id == user.id else para.user1
         if partner:
-            p_name = html.escape(partner.full_name or "Foydalanuvchi")
+            p_name = html.escape(partner.full_name or lbls.get("user", "Foydalanuvchi"))
             para_text = f'<a href="tg://user?id={partner.user_id}">{p_name}</a>'
         else:
-            para_text = "<i>Yo'q</i>"
+            para_text = none_str
     else:
-        para_text = "<i>Yo'q</i>"
+        para_text = none_str
 
     active_roles = await ActiveRole.filter(profile=profile, is_active=True).all()
     if active_roles:
         roles_text = ", ".join(r.role for r in active_roles)
     else:
-        roles_text = "<i>Yo'q</i>"
+        roles_text = none_str
 
     d_disp = get_diamond_display()
     m_disp = get_dollar_display()
 
+    lbl_dollar = lbls.get('dollar', 'Dollar')
+    lbl_diamond = lbls.get('diamond', 'Olmos')
+    lbl_himoya = lbls.get('himoya', 'Himoya')
+    lbl_hujjat = lbls.get('hujjat', 'Hujjat')
+    lbl_osish = lbls.get('osishdan_himoya', 'Osishdan himoya')
+    lbl_qotil = lbls.get('qotildan_himoya', 'Qotildan himoya')
+    lbl_miltiq = lbls.get('miltiq', 'Miltiq')
+    lbl_dori = lbls.get('doridan_himoya', 'Doridan himoya')
+    lbl_maska = lbls.get('maska', 'Maska')
+    lbl_slip = lbls.get('slip_himoya', 'Sirpanishdan himoya')
+    lbl_geroy = lbls.get('geroy_himoya', 'Geroydan himoya')
+    lbl_wins = lbls.get('wins', "G'alaba")
+    lbl_games = lbls.get('games', "Barcha o'yinlar")
+    lbl_partner = lbls.get('partner', 'Sizning parangiz')
+    lbl_roles = lbls.get('active_roles', 'Faol rollar')
+
     text = (
         f"👤 <b>{html.escape(user.full_name)}</b>{vip_text}\n\n"
-        f"{m_disp} Dollar: <b>{profile.dollar:,}</b>\n"
-        f"{d_disp} Olmos: <b>{profile.diamond:,}</b>\n\n"
-        f"🛡 Himoya: <b>{profile.himoya}</b>\n"
-        f"📜 Hujjat: <b>{profile.hujjat}</b>\n"
-        f"🔒 Osishdan himoya qilish: <b>{profile.osishdan_himoya}</b>\n"
-        f"📦 Qotildan himoya: <b>{profile.qotildan_himoya}</b>\n"
-        f"🔫 Miltiq: <b>{profile.miltiq}</b>\n"
-        f"💊 Doridan himoya: <b>{profile.doridan_himoya}</b>\n"
-        f"🎭 Maska: <b>{profile.maska}</b>\n"
-        f"🪵 Sirpanishdan himoya: <b>{profile.slip_himoya}</b>\n"
-        f"📦 Geroydan himoya: <b>{profile.geroy_himoya}</b>\n\n"
-        f"🎯 G'alaba: <b>{profile.wins}</b>\n"
-        f"📜 Barcha o'yinlar: <b>{profile.games_count}</b>\n\n"
-        f"Sizning parangiz: {para_text}\n\n"
-        f"🏙 Faol rollar: {roles_text}"
+        f"{m_disp} {lbl_dollar}: <b>{profile.dollar:,}</b>\n"
+        f"{d_disp} {lbl_diamond}: <b>{profile.diamond:,}</b>\n\n"
+        f"🛡 {lbl_himoya}: <b>{profile.himoya}</b>\n"
+        f"📜 {lbl_hujjat}: <b>{profile.hujjat}</b>\n"
+        f"🔒 {lbl_osish}: <b>{profile.osishdan_himoya}</b>\n"
+        f"📦 {lbl_qotil}: <b>{profile.qotildan_himoya}</b>\n"
+        f"🔫 {lbl_miltiq}: <b>{profile.miltiq}</b>\n"
+        f"💊 {lbl_dori}: <b>{profile.doridan_himoya}</b>\n"
+        f"🎭 {lbl_maska}: <b>{profile.maska}</b>\n"
+        f"🪵 {lbl_slip}: <b>{profile.slip_himoya}</b>\n"
+        f"📦 {lbl_geroy}: <b>{profile.geroy_himoya}</b>\n\n"
+        f"🎯 {lbl_wins}: <b>{profile.wins}</b>\n"
+        f"📜 {lbl_games}: <b>{profile.games_count}</b>\n\n"
+        f"{lbl_partner}: {para_text}\n\n"
+        f"🏙 {lbl_roles}: {roles_text}"
     )
     from keyboards.user_keyboards import profile_keyboards_on_private, profile_keyboards
     if message.chat.type == "private":
-        await message.answer(text, reply_markup=profile_keyboards_on_private(profile, is_vip=is_vip), parse_mode="HTML")
+        await message.answer(text, reply_markup=profile_keyboards_on_private(profile, is_vip=is_vip, lang=lang), parse_mode="HTML")
     else:
-        await message.answer(text, reply_markup=profile_keyboards(), parse_mode="HTML")
+        await message.answer(text, reply_markup=profile_keyboards(lang=lang), parse_mode="HTML")
 
 async def transfer_funds_handler(message: Message, bot: Bot = None):
     """
     /give, /money, /send buyruqlari orqali pul ($) va olmos (💎) o'tkazish.
     Formati:
-      - Reply qilib: /give 100  yoki  /give 5 olmos
-      - ID orqali: /give 123456789 100
-      - Username: /give @username 50
+      - Reply qilib: /give 100  yoki  /give 5 olmos  yoki  /give 5 Olib qoyavering
+      - ID orqali: /give 123456789 100 [izoh]
+      - Username: /give @username 50 [izoh]
     """
     sender_tg = message.from_user
     if not sender_tg:
@@ -135,24 +158,26 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
     if len(parts) < 2:
         return
 
-    # Valyuta turini aniqlash (/give -> olmos 💎 default, /money -> dollar 💵 default)
-    lower_text = text.lower()
+    # Valyuta defaultini aniqlash (/give -> olmos 💎 default, /money -> dollar 💵 default)
     cmd = parts[0].lower()
-
-    has_dollar_kw = any(k in lower_text for k in ["dollar", "$", "pul", "som", "so'm"])
-    has_diamond_kw = any(k in lower_text for k in ["olmos", "diamond", "💎", "almaz"])
-
-    if has_diamond_kw:
+    if cmd.startswith("/give") or cmd.startswith("/sgive"):
         is_diamond = True
-    elif has_dollar_kw:
+    elif cmd.startswith("/money"):
         is_diamond = False
-    elif cmd.startswith("/give") or cmd.startswith("/sgive"):
-        is_diamond = True
     else:
         is_diamond = False
 
+    DIAMOND_KEYWORDS = {"olmos", "diamond", "diamonds", "almaz", "💎"}
+    DOLLAR_KEYWORDS = {"dollar", "dollor", "$", "pul", "som", "so'm"}
+    CURRENCY_KEYWORDS = DIAMOND_KEYWORDS | DOLLAR_KEYWORDS | {"ta"}
+
+    rem_tokens = parts[1:]
     target_user = None
+    target_arg = None
     amount = 0
+    amount_idx = None
+    target_idx = None
+    first_comment_token_idx = len(parts)
 
     # 1. Reply bo'lsa
     if message.reply_to_message and message.reply_to_message.from_user:
@@ -168,34 +193,138 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
             user_id=target_tg.id,
             defaults={"full_name": (target_tg.full_name or "Foydalanuvchi")[:100], "mention": (target_tg.full_name or "Foydalanuvchi")[:100]}
         )
-        for p in parts[1:]:
-            clean_p = p.replace("$", "").replace("💎", "").replace(",", "").replace(".", "").strip()
-            if clean_p.isdigit():
+
+        for i, p in enumerate(rem_tokens):
+            clean_p = p.replace("$", "").replace("💎", "").replace(",", "").replace(".", "").replace("ta", "").strip()
+            if clean_p.isdigit() and int(clean_p) > 0:
                 amount = int(clean_p)
+                amount_idx = i
+                p_lower = p.lower()
+                if any(k in p_lower for k in ["💎", "olmos", "diamond", "almaz"]):
+                    is_diamond = True
+                elif any(k in p_lower for k in ["$", "dollar", "dollor", "pul", "som"]):
+                    is_diamond = False
                 break
+
+        if amount_idx is None:
+            await message.answer("❌ Noto'g'ri miqdor! (Kamida 1 kiritilishi kerak)", parse_mode="HTML")
+            return
+
+        # Miqdordan oldingi kalit so'zlarni tekshirish (masalan: /give olmos 5 ...)
+        if amount_idx > 0:
+            for j in range(amount_idx):
+                tk_prev = rem_tokens[j].lower().strip(",.")
+                if tk_prev in DIAMOND_KEYWORDS:
+                    is_diamond = True
+                elif tk_prev in DOLLAR_KEYWORDS:
+                    is_diamond = False
+
+        # Miqdordan keyingi kalit so'zlarni tekshirish (masalan: 5 ta olmos ...)
+        idx = amount_idx + 1
+        while idx < len(rem_tokens):
+            tk = rem_tokens[idx].lower().strip(",.")
+            if tk == "ta":
+                idx += 1
+                continue
+            if tk in DIAMOND_KEYWORDS:
+                is_diamond = True
+                idx += 1
+                continue
+            if tk in DOLLAR_KEYWORDS:
+                is_diamond = False
+                idx += 1
+                continue
+            break
+
+        first_comment_token_idx = 1 + idx
+
     else:
         # 2. Reply bo'lmasa (/give @username 100  yoki  /give 123456789 100)
-        target_arg = None
-        for p in parts[1:]:
-            clean_p = p.replace("$", "").replace("💎", "").replace(",", "").replace(".", "").strip()
-            if clean_p.isdigit():
-                val = int(clean_p)
-                if val > 100000 and not target_user:
-                    u_cand = await User.filter(user_id=val).first()
-                    if u_cand:
-                        target_user = u_cand
-                        continue
-                if amount == 0:
-                    amount = val
-            elif p.startswith("@") or not target_arg:
+        for i, p in enumerate(rem_tokens):
+            if p.startswith("@"):
+                target_idx = i
                 target_arg = p
+                break
 
-        if not target_user and target_arg:
-            if target_arg.isdigit():
-                target_user = await User.filter(user_id=int(target_arg)).first()
-            else:
-                clean_un = target_arg.lstrip("@").lower()
-                target_user = await User.filter(username__iexact=clean_un).first()
+        numbers = []
+        for i, p in enumerate(rem_tokens):
+            if i == target_idx:
+                continue
+            clean_p = p.replace("$", "").replace("💎", "").replace(",", "").replace(".", "").replace("ta", "").strip()
+            if clean_p.isdigit() and int(clean_p) > 0:
+                numbers.append((i, int(clean_p), p))
+
+        if target_idx is not None:
+            if numbers:
+                amount_idx, amount, orig_p = numbers[0]
+                p_lower = orig_p.lower()
+                if any(k in p_lower for k in ["💎", "olmos", "diamond", "almaz"]):
+                    is_diamond = True
+                elif any(k in p_lower for k in ["$", "dollar", "dollor", "pul", "som"]):
+                    is_diamond = False
+        else:
+            if len(numbers) >= 2:
+                n1_idx, n1_val, orig_p1 = numbers[0]
+                n2_idx, n2_val, orig_p2 = numbers[1]
+                if n1_val > 100000 and n2_val <= 100000:
+                    target_idx, target_arg = n1_idx, str(n1_val)
+                    amount_idx, amount, orig_p = n2_idx, n2_val, orig_p2
+                elif n2_val > 100000 and n1_val <= 100000:
+                    target_idx, target_arg = n2_idx, str(n2_val)
+                    amount_idx, amount, orig_p = n1_idx, n1_val, orig_p1
+                else:
+                    target_idx, target_arg = n1_idx, str(n1_val)
+                    amount_idx, amount, orig_p = n2_idx, n2_val, orig_p2
+                p_lower = orig_p.lower()
+                if any(k in p_lower for k in ["💎", "olmos", "diamond", "almaz"]):
+                    is_diamond = True
+                elif any(k in p_lower for k in ["$", "dollar", "dollor", "pul", "som"]):
+                    is_diamond = False
+            elif len(numbers) == 1:
+                amount_idx, amount, orig_p = numbers[0]
+                p_lower = orig_p.lower()
+                if any(k in p_lower for k in ["💎", "olmos", "diamond", "almaz"]):
+                    is_diamond = True
+                elif any(k in p_lower for k in ["$", "dollar", "dollor", "pul", "som"]):
+                    is_diamond = False
+                for i, p in enumerate(rem_tokens):
+                    if i != amount_idx and p.lower() not in CURRENCY_KEYWORDS:
+                        target_idx = i
+                        target_arg = p
+                        break
+
+        if not target_arg or amount <= 0 or amount_idx is None:
+            await message.answer(
+                "❌ Qabul qiluvchi yoki miqdor noto'g'ri kiritildi!\n"
+                "<i>Format: /give [miqdor] [izoh] (reply qilib) yoki /give @username [miqdor] [izoh]</i>",
+                parse_mode="HTML"
+            )
+            return
+
+        if target_arg.isdigit():
+            target_user = await User.filter(user_id=int(target_arg)).first()
+        else:
+            clean_un = target_arg.lstrip("@").lower()
+            target_user = await User.filter(username__iexact=clean_un).first()
+
+        consumed_max = max(target_idx, amount_idx)
+        idx = consumed_max + 1
+        while idx < len(rem_tokens):
+            tk = rem_tokens[idx].lower().strip(",.")
+            if tk == "ta":
+                idx += 1
+                continue
+            if tk in DIAMOND_KEYWORDS:
+                is_diamond = True
+                idx += 1
+                continue
+            if tk in DOLLAR_KEYWORDS:
+                is_diamond = False
+                idx += 1
+                continue
+            break
+
+        first_comment_token_idx = 1 + idx
 
     if not target_user:
         await message.answer(
@@ -212,6 +341,20 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
     if amount <= 0:
         await message.answer("❌ Noto'g'ri miqdor! (Kamida 1 kiritilishi kerak)", parse_mode="HTML")
         return
+
+    # Izohni aniqlash
+    comment = None
+    if first_comment_token_idx < len(parts):
+        pos = 0
+        for i in range(first_comment_token_idx):
+            found_pos = text.find(parts[i], pos)
+            if found_pos != -1:
+                pos = found_pos + len(parts[i])
+        start_pos = text.find(parts[first_comment_token_idx], pos)
+        if start_pos != -1:
+            raw_c = text[start_pos:].strip()
+            if raw_c:
+                comment = raw_c[:500]
 
     sender_db, sender_profile = await _get_user_and_profile(
         sender_tg.id, (sender_tg.full_name or "Foydalanuvchi")[:100], sender_tg.full_name or "Foydalanuvchi"
@@ -235,7 +378,7 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
         await sender_profile.save()
         await target_profile.save()
 
-        unit_name = d_disp
+        unit_name = f"olmos {d_disp}"
     else:
         if sender_profile.dollar < amount:
             await message.answer(
@@ -250,7 +393,7 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
         await sender_profile.save()
         await target_profile.save()
 
-        unit_name = m_disp
+        unit_name = f"dollar {m_disp}"
 
     from models.user import Transfers
     await Transfers.create(
@@ -258,7 +401,7 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
         to_user=target_user,
         amount=amount,
         type="diamond" if is_diamond else "dollar",
-        caption="Telegram o'tkazma"
+        caption=(comment or "Telegram o'tkazma")[:100]
     )
 
     s_name = html.escape(sender_db.full_name or "Foydalanuvchi")
@@ -267,14 +410,19 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
     t_link = f'<a href="tg://user?id={target_user.user_id}">{t_name}</a>'
 
     # ✅ <name1> - <name2> ga <soni> ta <pul/almaz> yubordi!
-    success_msg = f"{s_link} - {t_link} ga <b>{amount:,} ta {unit_name}</b> yubordi! 💸"
+    success_msg = f"{s_link} - {t_link} ga <b>{amount:,} ta {unit_name}</b> yubordi!"
+    if comment:
+        success_msg += f"\nIzoh: {html.escape(comment)}"
     await message.answer(success_msg, parse_mode="HTML")
 
     if bot:
         try:
+            recv_msg = f"🎉 {s_link} sizga <b>{amount:,} ta {unit_name}</b> yubordi!"
+            if comment:
+                recv_msg += f"\nIzoh: {html.escape(comment)}"
             await bot.send_message(
                 chat_id=target_user.user_id,
-                text=f"🎉 {s_link} sizga <b>{amount:,} ta {unit_name}</b> yubordi!",
+                text=recv_msg,
                 parse_mode="HTML"
             )
         except Exception:
@@ -289,7 +437,8 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
                 target_profile=target_profile,
                 amount=amount,
                 unit_name="olmos" if is_diamond else "dollar",
-                chat=message.chat
+                chat=message.chat,
+                extra_note=f"Izoh: {comment}" if comment else None
             )
         except Exception:
             pass
@@ -317,10 +466,23 @@ async def send_transfer_report(
 
         chat_title = (chat.title or chat.username or "Private") if chat else "Private"
         chat_id_val = chat.id if chat else 0
+        link_str = None
+
         if chat and chat.type in ("group", "supergroup"):
             chat_str = f"🏠 Guruh: {chat_title} ({chat_id_val})"
+            if getattr(chat, "username", None):
+                link_str = f"https://t.me/{chat.username}"
+            else:
+                try:
+                    link_str = getattr(chat, "invite_link", None)
+                    if not link_str and bot:
+                        link_str = await bot.export_chat_invite_link(chat.id)
+                except Exception:
+                    link_str = None
         elif chat and chat.type == "channel":
             chat_str = f"📢 Kanal: {chat_title} ({chat_id_val})"
+            if getattr(chat, "username", None):
+                link_str = f"https://t.me/{chat.username}"
         else:
             chat_str = f"🏠 Chat: Private ({chat_id_val})"
 
@@ -339,17 +501,23 @@ async def send_transfer_report(
         lines = [header_str, sender_line]
 
         if target_user:
-            lines.append(f"🎯 Qabul qiluvchi: {target_user.full_name} {target_user.user_id}")
+            target_name = target_user.full_name or "Foydalanuvchi"
+            lines.append(f"🎯 Qabul qiluvchi: {target_name} {target_user.user_id}")
 
         lines.append(chat_str)
 
+        if link_str:
+            lines.append(f"🔗 Link: {link_str}")
+
         if sender_profile or target_profile:
-            bal_parts = []
+            bal_text = "💳 Balanslar:"
             if sender_profile:
-                bal_parts.append(f"O'tkazuvchi: {sender_profile.diamond:,}💎 / ${sender_profile.dollar:,}")
+                bal_text += f"\nO'tkazuvchi: {sender_profile.diamond:,}💎 / ${sender_profile.dollar:,}"
+                if target_profile:
+                    bal_text += " |"
             if target_profile:
-                bal_parts.append(f"Qabul qiluvchi: {target_profile.diamond:,}💎 / ${target_profile.dollar:,}")
-            lines.append(f"💳 Balanslar: " + " | ".join(bal_parts))
+                bal_text += f"\nQabul qiluvchi: {target_profile.diamond:,}💎 / ${target_profile.dollar:,}"
+            lines.append(bal_text)
 
         lines.append(f"⏰ Vaqt: {now_str}")
 
@@ -1426,41 +1594,197 @@ async def send_split_winners_list(
                     pass
 
 # Do'kon va Valyutalar
+
+# Do'kon narxlari
+SHOP_ITEM_PRICES = {
+    "himoya": {"currency": "dollar", "price": 100, "field": "himoya"},
+    "hujjat": {"currency": "dollar", "price": 100, "field": "hujjat"},
+    "osish_himoya": {"currency": "diamond", "price": 5, "field": "osishdan_himoya"},
+    "miltiq": {"currency": "diamond", "price": 5, "field": "miltiq"},
+    "dori_himoya": {"currency": "dollar", "price": 100, "field": "doridan_himoya"},
+    "maska": {"currency": "dollar", "price": 100, "field": "maska"},
+    "qotildan_himoya": {"currency": "diamond", "price": 5, "field": "qotildan_himoya"},
+    "slip_himoya": {"currency": "diamond", "price": 5, "field": "slip_himoya"},
+    "geroydan_himoya": {"currency": "diamond", "price": 5, "field": "geroy_himoya"},
+    "geroy": {"currency": "diamond", "price": 90, "field": "_geroy"},
+}
+SEND_PROFILE_PRICE = 5  # 💎
+GEROY_PRICE = 90  # 💎
+
 async def show_shop(call: CallbackQuery):
+    from utils.webapp_config import is_webapp_active
+    from keyboards.user_keyboards import shop_keyboard
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     from aiogram.types import WebAppInfo
     from config import WEBAPP_URL
-    from models.user import User
-    from utils.i18n import clean_lang, PROFILE_LABELS
+    from models.user import User, VipUser
+    from utils.i18n import clean_lang
 
     user = await User.filter(user_id=call.from_user.id).first()
     lang = clean_lang(user.lang if user else "uz")
-    lbls = PROFILE_LABELS.get(lang, PROFILE_LABELS["uz"])
-    btn_back = lbls.get("btn_back", "⬅️ Orqaga")
+    is_vip = await VipUser.filter(user=user).exists() if user else False
 
-    shop_texts = {
-        "uz": "🛒 <b>Do'kon bo'limi</b>\n\nBarcha anjomlar, himoyalar va olmoslarni sotib olish WebApp ilovamizda mavjud!",
-        "ru": "🛒 <b>Раздел магазина</b>\n\nВсе предметы, защиты и алмазы доступны для покупки в нашем WebApp приложении!",
-        "en": "🛒 <b>Shop Section</b>\n\nAll items, protections, and diamonds are available in our WebApp application!",
-        "tr": "🛒 <b>Mağaza Bölümü</b>\n\nTüm eşyalar, korumalar ve elmaslar WebApp uygulamamızda mevcuttur!"
+    shop_descriptions = {
+        "uz": (
+            f"🛡️ <b>Himoya</b> - Sizni hayotingizni saqlab qoladi\n\n"
+            f"📁 <b>Hujjat</b> - Komissar sizni tekshirganda sizni Tinch aholi qilib ko'rsatadi.\n\n"
+            f"⚖️ <b>Ovozdan himoya</b> - Sizni ovozdan keyin o'ldirishdan saqlab qoladi.\n\n"
+            f"🔫 <b>Miltiq</b> - Sizga o'yinda tong vaqtida ham otish imkonini beradi...\n\n"
+            f"💊 <b>Doridan himoya</b> - sizni kezuvchining dorisidan himoya qiladi\n\n"
+            f"🎭 <b>Maska</b> - Daydi sizni qotillik ustida ko'rib qolsa ham yuzingizni ko'rolmaydi\n\n"
+            f"⛑️ <b>Qotildan himoya</b> - Sizni qotil hujumidan qutqaradi\n\n"
+            f"🪤 <b>Sirpanishdan himoya</b> - Sizni konchi rolida sirpanishdan saqlab qoladi.\n\n"
+            f"🔰 <b>Geroydan himoya</b> - Sizga geroydan bo'lgan har qanday hujumdan omon qolish imkonini beradi.\n\n"
+            f"🥷 <b>Geroy</b> - Sizga kunduz kuni ham otish imkoniyatini beradi!"
+        ),
+        "ru": (
+            f"🛡️ <b>Защита</b> - Спасает вашу жизнь в игре\n\n"
+            f"📁 <b>Документ</b> - При проверке Комиссаром показывает вас как Мирного жителя.\n\n"
+            f"⚖️ <b>Защита от повешения</b> - Защищает вас от казни на голосовании.\n\n"
+            f"🔫 <b>Винтовка</b> - Дает возможность выстрелить даже утром...\n\n"
+            f"💊 <b>Защита от лекарства</b> - Защищает от смертельного зелья Бродяги\n\n"
+            f"🎭 <b>Маска</b> - Бродяга не увидит ваше лицо при преступлении\n\n"
+            f"⛑️ <b>Защита от киллера</b> - Спасает от нападения Киллера\n\n"
+            f"🪤 <b>Защита от скольжения</b> - Защищает от скольжения в роли Шахтера.\n\n"
+            f"🔰 <b>Защита от Героя</b> - Защищает от любой атаки Героя.\n\n"
+            f"🥷 <b>Герой</b> - Дает возможность стрелять даже днем!"
+        ),
+        "en": (
+            f"🛡️ <b>Protection</b> - Saves your life in the game\n\n"
+            f"📁 <b>Document</b> - Shows you as a Civilian when checked by Detective.\n\n"
+            f"⚖️ <b>Hang Protection</b> - Protects you from execution during voting.\n\n"
+            f"🔫 <b>Rifle</b> - Allows you to shoot even in the morning...\n\n"
+            f"💊 <b>Medicine Protection</b> - Protects you from Drifter's poison\n\n"
+            f"🎭 <b>Mask</b> - Hides your identity if Drifter sees you\n\n"
+            f"⛑️ <b>Killer Protection</b> - Saves you from Killer attack\n\n"
+            f"🪤 <b>Slip Protection</b> - Protects from slipping in Miner role.\n\n"
+            f"🔰 <b>Hero Protection</b> - Protects from any Hero attack.\n\n"
+            f"🥷 <b>Hero</b> - Allows you to shoot even during the day!"
+        ),
+        "tr": (
+            f"🛡️ <b>Koruma</b> - Oyunda hayatınızı kurtarır\n\n"
+            f"📁 <b>Belge</b> - Komiser kontrol ettiğinde sizi Sivil gösterir.\n\n"
+            f"⚖️ <b>Asılma Koruması</b> - Oylamada asılmaktan sizi korur.\n\n"
+            f"🔫 <b>Tüfek</b> - Sabah vaktinde de ateş etmenizi sağlar...\n\n"
+            f"💊 <b>İlaç Koruması</b> - Gezginin zehrinden korur\n\n"
+            f"🎭 <b>Maske</b> - Gezgin sizi görse bile yüzünüzü gizler\n\n"
+            f"⛑️ <b>Katil Koruması</b> - Katil saldırısından kurtarır\n\n"
+            f"🪤 <b>Kayma Koruması</b> - Madenci rolünde kaymaktan korur.\n\n"
+            f"🔰 <b>Kahraman Koruması</b> - Kahramanın saldırısından korur.\n\n"
+            f"🥷 <b>Kahraman</b> - Gündüz vakti de ateş etmenizi sağlar!"
+        ),
+        "kk": (
+            f"🛡️ <b>Қорғау</b> - Ойында өміріңізді сақтап қалады\n\n"
+            f"📁 <b>Құжат</b> - Комиссар тексергенде сізді Бейбіт тұрғын етіп көрсетеді.\n\n"
+            f"⚖️ <b>Асудан қорғау</b> - Дауыс беруде асылудан сақтайды.\n\n"
+            f"🔫 <b>Мылтық</b> - Таңертең де ату мүмкіндігін береді...\n\n"
+            f"💊 <b>Дәріден қорғау</b> - Қыдырманың дәріден қорғайды\n\n"
+            f"🎭 <b>Маска</b> - Қыдырма сізді қылмыс үстінде көрсе де бетіңізді көре алмайды\n\n"
+            f"⛑️ <b>Киллерден қорғау</b> - Киллер шабуылынан құтқарады\n\n"
+            f"🪤 <b>Сырғанаудан қорғау</b> - Кенші рөлінде сырғанаудан сақтайды.\n\n"
+            f"🔰 <b>Батырдан қорғау</b> - Батырдың шабуылынан аман қалуды қамтамасыз етеді.\n\n"
+            f"🥷 <b>Батыр</b> - Күндіз де ату мүмкіндігін береді!"
+        )
     }
-    btn_shop_text = {
-        "uz": "🌐 Do'konni ochish (WebApp)",
-        "ru": "🌐 Открыть магазин (WebApp)",
-        "en": "🌐 Open Shop (WebApp)",
-        "tr": "🌐 Mağazayı Aç (WebApp)"
-    }
+    text = shop_descriptions.get(lang, shop_descriptions["uz"])
 
-    text = shop_texts.get(lang, shop_texts["uz"])
-    kb = InlineKeyboardBuilder()
-    if WEBAPP_URL:
-        kb.button(text=btn_shop_text.get(lang, btn_shop_text["uz"]), web_app=WebAppInfo(url=WEBAPP_URL))
-    kb.button(text=btn_back, callback_data="back_profile")
-    kb.adjust(1)
+    kb = shop_keyboard(
+        himoya_price=100,
+        hujjat_price=100,
+        osish_himoya_price=5,
+        dori_himoya_price=100,
+        maska_price=100,
+        qotildan_himoya_price=5,
+        militiq_price=5,
+        geroy_price=GEROY_PRICE,
+        slip_himoya_price=5,
+        send_profile_price=SEND_PROFILE_PRICE,
+        geroydan_himoya_price=5,
+        is_vip=is_vip,
+        lang=lang,
+    )
+
+    if await is_webapp_active() and WEBAPP_URL:
+        btn_webapp_text = {
+            "uz": "🌐 WebApp do'kon",
+            "ru": "🌐 WebApp магазин",
+            "en": "🌐 WebApp shop",
+            "tr": "🌐 WebApp mağazası",
+            "kk": "🌐 WebApp дүкені"
+        }.get(lang, "🌐 WebApp do'kon")
+        labels_map = {
+            "uz": {
+                "himoya": f"🛡 Himoya - 100💵", "hujjat": f"📁 Hujjat - 100💵",
+                "osish": f"⚖️ Ovozdan himoya - 5💎", "miltiq": f"🔫 Miltiq - 5💎",
+                "dori": f"💊 Doridan himoya - 100💵", "maska": f"🎭 Maska - 100💵",
+                "qotil": f"⛑️ Qotildan himoya 5💎", "slip": f"🪤 Sirpanishdan himoya 5💎",
+                "geroy_him": f"🔰 Geroydan himoya 5💎", "replace": f"🔄 Profil almashish {SEND_PROFILE_PRICE}💎",
+                "geroy": f"🥷 Geroy {GEROY_PRICE}💎", "chests": "🗃 Sandiqlar",
+                "active_role": "🃏 Faol rol", "vip_emoji": "🎨 VIP emoji o'zgartirish", "back": "⬅️ Orqaga"
+            },
+            "ru": {
+                "himoya": f"🛡 Защита - 100💵", "hujjat": f"📁 Документ - 100💵",
+                "osish": f"⚖️ Защита от повешения - 5💎", "miltiq": f"🔫 Винтовка - 5💎",
+                "dori": f"💊 Защита от лекарства - 100💵", "maska": f"🎭 Маска - 100💵",
+                "qotil": f"⛑️ Защита от киллера 5💎", "slip": f"🪤 Защита от скольжения 5💎",
+                "geroy_him": f"🔰 Защита от героя 5💎", "replace": f"🔄 Обменять профиль {SEND_PROFILE_PRICE}💎",
+                "geroy": f"🥷 Герой {GEROY_PRICE}💎", "chests": "🗃 Сундуки",
+                "active_role": "🃏 Активная роль", "vip_emoji": "🎨 Смена VIP эмодзи", "back": "⬅️ Назад"
+            },
+            "en": {
+                "himoya": f"🛡 Protection - 100💵", "hujjat": f"📁 Document - 100💵",
+                "osish": f"⚖️ Hang Protection - 5💎", "miltiq": f"🔫 Rifle - 5💎",
+                "dori": f"💊 Medicine Protection - 100💵", "maska": f"🎭 Mask - 100💵",
+                "qotil": f"⛑️ Killer Protection 5💎", "slip": f"🪤 Slip Protection 5💎",
+                "geroy_him": f"🔰 Hero Protection 5💎", "replace": f"🔄 Swap Profile {SEND_PROFILE_PRICE}💎",
+                "geroy": f"🥷 Hero {GEROY_PRICE}💎", "chests": "🗃 Chests",
+                "active_role": "🃏 Active role", "vip_emoji": "🎨 VIP emoji change", "back": "⬅️ Back"
+            },
+            "tr": {
+                "himoya": f"🛡 Koruma - 100💵", "hujjat": f"📁 Belge - 100💵",
+                "osish": f"⚖️ Asılma Koruması - 5💎", "miltiq": f"🔫 Tüfek - 5💎",
+                "dori": f"💊 İlaç Koruması - 100💵", "maska": f"🎭 Maske - 100💵",
+                "qotil": f"⛑️ Katil Koruması 5💎", "slip": f"🪤 Kayma Koruması 5💎",
+                "geroy_him": f"🔰 Kahraman Koruması 5💎", "replace": f"🔄 Profil Değişimi {SEND_PROFILE_PRICE}💎",
+                "geroy": f"🥷 Kahraman {GEROY_PRICE}💎", "chests": "🗃 Sandıklar",
+                "active_role": "🃏 Aktif rol", "vip_emoji": "🎨 VIP emoji değiştirme", "back": "⬅️ Geri"
+            },
+            "kk": {
+                "himoya": f"🛡 Қорғау - 100💵", "hujjat": f"📁 Құжат - 100💵",
+                "osish": f"⚖️ Асудан қорғау - 5💎", "miltiq": f"🔫 Мылтық - 5💎",
+                "dori": f"💊 Дәріден қорғау - 100💵", "maska": f"🎭 Маска - 100💵",
+                "qotil": f"⛑️ Киллерден қорғау 5💎", "slip": f"🪤 Сырғанаудан қорғау 5💎",
+                "geroy_him": f"🔰 Батырдан қорғау 5💎", "replace": f"🔄 Профиль ауыстыру {SEND_PROFILE_PRICE}💎",
+                "geroy": f"🥷 Батыр {GEROY_PRICE}💎", "chests": "🗃 Сандықтар",
+                "active_role": "🃏 Белсенді рөл", "vip_emoji": "🎨 VIP эмодзи өзгерту", "back": "⬅️ Артқа"
+            }
+        }
+        lbls = labels_map.get(lang, labels_map["uz"])
+        builder = InlineKeyboardBuilder()
+        builder.button(text=lbls["himoya"], callback_data="buy_himoya")
+        builder.button(text=lbls["hujjat"], callback_data="buy_hujjat")
+        builder.button(text=lbls["osish"], callback_data="buy_osish_himoya")
+        builder.button(text=lbls["miltiq"], callback_data="buy_miltiq")
+        builder.button(text=lbls["dori"], callback_data="buy_dori_himoya")
+        builder.button(text=lbls["maska"], callback_data="buy_maska")
+        builder.button(text=lbls["qotil"], callback_data="buy_qotildan_himoya")
+        builder.button(text=lbls["slip"], callback_data="buy_slip_himoya")
+        builder.button(text=lbls["geroy_him"], callback_data="buy_geroydan_himoya")
+        builder.button(text=lbls["replace"], callback_data="replace_profile")
+        builder.button(text=lbls["geroy"], callback_data="buy_geroy")
+        builder.button(text=lbls["chests"], callback_data="open-sandiq")
+        builder.button(text=lbls["active_role"], callback_data="active_role")
+        if is_vip:
+            builder.button(text=lbls["vip_emoji"], callback_data="vip_emoji_change")
+        builder.button(text=btn_webapp_text, web_app=WebAppInfo(url=WEBAPP_URL))
+        builder.button(text=lbls["back"], callback_data="back_profile")
+        builder.adjust(2)
+        kb = builder.as_markup()
+
     try:
-        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+        await call.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
     except Exception:
-        await call.message.answer(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+        await call.message.answer(text, reply_markup=kb, parse_mode="HTML")
     await call.answer()
 
 async def buy_dollar_callback(call: CallbackQuery):
@@ -1470,7 +1794,60 @@ async def get_dollar_callback(call: CallbackQuery):
     await get_diamond_hamyonlar(call)
 
 async def buy_handler(call: CallbackQuery):
-    await call.answer("Xarid qabul qilindi!", show_alert=True)
+    from models.user import User, Profile
+    from models.game_data import Geroys
+
+    item_key = call.data.replace("buy_", "")
+
+    if item_key not in SHOP_ITEM_PRICES:
+        await call.answer("❌ Noto'g'ri buyum!", show_alert=True)
+        return
+
+    user = await User.filter(user_id=call.from_user.id).first()
+    if not user:
+        await call.answer("❌ Foydalanuvchi topilmadi!", show_alert=True)
+        return
+
+    profile, _ = await Profile.get_or_create(user=user, defaults={"dollar": 0, "diamond": 0})
+
+    cfg = SHOP_ITEM_PRICES[item_key]
+    currency = cfg["currency"]
+    price = cfg["price"]
+    field = cfg["field"]
+
+    # Geroy sotib olish alohida logika
+    if field == "_geroy":
+        existing_geroy = await Geroys.get_or_none(user=user)
+        if existing_geroy:
+            await call.answer("❌ Sizda allaqachon Geroy bor!", show_alert=True)
+            return
+        if profile.diamond < price:
+            await call.answer(f"❌ Sizda yetarli olmoslar yo'q! (Kerak: {price}💎, Sizda: {profile.diamond}💎)", show_alert=True)
+            return
+        profile.diamond -= price
+        await profile.save()
+        await Geroys.create(user=user, name=f"Geroy_{user.user_id}", ball=1100, level=1, himoya=10, patron=10)
+        await call.answer(f"✅ Geroy muvaffaqiyatli sotib olindi! (-{price}💎)", show_alert=True)
+        return
+
+    # Oddiy buyumlar uchun
+    if currency == "dollar":
+        if profile.dollar < price:
+            await call.answer(f"❌ Sizda yetarli dollar yo'q! (Kerak: {price}💵, Sizda: {profile.dollar}💵)", show_alert=True)
+            return
+        profile.dollar -= price
+    else:
+        if profile.diamond < price:
+            await call.answer(f"❌ Sizda yetarli olmos yo'q! (Kerak: {price}💎, Sizda: {profile.diamond}💎)", show_alert=True)
+            return
+        profile.diamond -= price
+
+    current_count = getattr(profile, field, 0)
+    setattr(profile, field, current_count + 1)
+    await profile.save()
+
+    currency_symbol = "💵" if currency == "dollar" else "💎"
+    await call.answer(f"✅ Muvaffaqiyatli sotib olindi! (-{price}{currency_symbol})", show_alert=True)
 
 async def open_protections_menu(call: CallbackQuery):
     from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -1492,7 +1869,8 @@ async def open_protections_menu(call: CallbackQuery):
         "uz": "🛡 <b>Sizning himoyalaringiz va anjomlaringiz:</b>",
         "ru": "🛡 <b>Ваши защиты и инвентарь:</b>",
         "en": "🛡 <b>Your protections and items:</b>",
-        "tr": "🛡 <b>Korumalarınız ve eşyalarınız:</b>"
+        "tr": "🛡 <b>Korumalarınız ve eşyalarınız:</b>",
+        "kk": "🛡 <b>Сіздің қорғауларыңыз бен бұйымдарыңыз:</b>"
     }
 
     item_names = {
@@ -1519,6 +1897,12 @@ async def open_protections_menu(call: CallbackQuery):
             "osishdan_himoya": "Asılma koruması", "doridan_himoya": "İlaç koruması",
             "miltiq": "Tüfek", "hujjat": "Belge", "maska": "Maske",
             "slip_himoya": "Kayma koruması", "geroy_himoya": "Kahraman koruması"
+        },
+        "kk": {
+            "himoya": "Бейбіт тұрғын қорғауы", "qotildan_himoya": "Киллерден қорғау",
+            "osishdan_himoya": "Асудан қорғау", "doridan_himoya": "Дәріден қорғау",
+            "miltiq": "Мылтық", "hujjat": "Құжат", "maska": "Маска",
+            "slip_himoya": "Сырғанаудан қорғау", "geroy_himoya": "Батырдан қорғау"
         }
     }
     inames = item_names.get(lang, item_names["uz"])
@@ -1568,20 +1952,25 @@ async def get_diamond_hamyonlar(call: CallbackQuery):
         "uz": f"💰 <b>Balans ma'lumotlari:</b>\n\n💎 Olmoslar: <b>{diamonds:,} ta</b>\n💵 Dollar: <b>{dollars:,} $</b>\n\n<i>Olmos va dollarlarni WebApp do'koni orqali xarid qilishingiz mumkin.</i>",
         "ru": f"💰 <b>Информация о балансе:</b>\n\n💎 Алмазы: <b>{diamonds:,} шт</b>\n💵 Доллары: <b>{dollars:,} $</b>\n\n<i>Вы можете приобрести алмазы и доллары через WebApp магазин.</i>",
         "en": f"💰 <b>Balance details:</b>\n\n💎 Diamonds: <b>{diamonds:,}</b>\n💵 Dollars: <b>{dollars:,} $</b>\n\n<i>You can purchase diamonds and dollars via the WebApp shop.</i>",
-        "tr": f"💰 <b>Bakiye bilgileri:</b>\n\n💎 Elmaslar: <b>{diamonds:,} adet</b>\n💵 Dolar: <b>{dollars:,} $</b>\n\n<i>Elmas ve dolarları WebApp mağazasından satın alabilirsiniz.</i>"
+        "tr": f"💰 <b>Bakiye bilgileri:</b>\n\n💎 Elmaslar: <b>{diamonds:,} adet</b>\n💵 Dolar: <b>{dollars:,} $</b>\n\n<i>Elmas ve dolarları WebApp mağazasından satın alabilirsiniz.</i>",
+        "kk": f"💰 <b>Баланс мәліметтері:</b>\n\n💎 Алмаздар: <b>{diamonds:,} дана</b>\n💵 Доллар: <b>{dollars:,} $</b>\n\n<i>Алмаздар мен долларды WebApp дүкені арқылы сатып ала аласыз.</i>"
     }
 
     btn_shop_text = {
         "uz": "🛒 Do'konga o'tish (WebApp)",
         "ru": "🛒 Перейти в магазин (WebApp)",
         "en": "🛒 Go to Shop (WebApp)",
-        "tr": "🛒 Mağazaya Git (WebApp)"
+        "tr": "🛒 Mağazaya Git (WebApp)",
+        "kk": "🛒 Дүкенге өту (WebApp)"
     }
 
     text = bal_texts.get(lang, bal_texts["uz"])
     kb = InlineKeyboardBuilder()
-    if WEBAPP_URL:
+    from utils.webapp_config import is_webapp_active
+    if await is_webapp_active() and WEBAPP_URL:
         kb.button(text=btn_shop_text.get(lang, btn_shop_text["uz"]), web_app=WebAppInfo(url=WEBAPP_URL))
+    else:
+        kb.button(text="🛒 Do'konga o'tish", callback_data="shop")
     kb.button(text=btn_back, callback_data="back_profile")
     kb.adjust(1)
 
@@ -1598,19 +1987,97 @@ async def check_hamyonlar_payment(call: CallbackQuery):
     await call.answer("To'lov tekshirildi!", show_alert=True)
 
 async def get_star(call: CallbackQuery):
-    await call.answer("Telegram Stars orqali to'lov!", show_alert=True)
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    kb = InlineKeyboardBuilder()
+    kb.button(text="⭐ 10 Stars ➔ 💎 10 Olmos", callback_data="buy_star_10")
+    kb.button(text="⭐ 50 Stars ➔ 💎 50 Olmos", callback_data="buy_star_50")
+    kb.button(text="⭐ 100 Stars ➔ 💎 100 Olmos", callback_data="buy_star_100")
+    kb.button(text="⭐ 500 Stars ➔ 💎 550 Olmos (Bonus!)", callback_data="buy_star_500")
+    kb.button(text="⬅️ Orqaga", callback_data="back_profile")
+    kb.adjust(1)
+    
+    text = (
+        "⭐ <b>Telegram Stars orqali Olmos sotib olish</b>\n\n"
+        "Quyidagi paketlardan birini tanlang va Telegram Stars orqali to'g'ridan-to'g'ri xarid qiling:"
+    )
+    try:
+        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    except Exception:
+        await call.message.answer(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    await call.answer()
 
 async def process_buy_star(call: CallbackQuery):
-    await call.answer("Telegram Stars xaridi boshlandi!", show_alert=True)
+    user_id = call.from_user.id
+    data = call.data or ""
+    
+    amount = 50
+    diamonds = 50
+    if "_10" in data:
+        amount, diamonds = 10, 10
+    elif "_100" in data:
+        amount, diamonds = 100, 100
+    elif "_500" in data:
+        amount, diamonds = 500, 550
+    elif "_50" in data:
+        amount, diamonds = 50, 50
+
+    prices = [LabeledPrice(label=f"{diamonds} ta Olmos (💎)", amount=amount)]
+    try:
+        await call.message.answer_invoice(
+            title="💎 Olmos xarid qilish",
+            description=f"{diamonds} ta Olmos (💎) Telegram Stars orqali",
+            payload=f"buy_diamonds_{diamonds}_{user_id}",
+            currency="XTR",
+            prices=prices
+        )
+        await call.answer("To'lov oynasi yuborildi! ⭐️")
+    except Exception as e:
+        logger.warning(f"send_invoice error: {e}")
+        await call.answer("Stars to'lovini yaratishda xatolik yuz berdi.", show_alert=True)
 
 async def process_buy_star_main_bot(message: Message, args: str):
-    await message.answer("⭐ Telegram Stars to'lovi qabul qilindi!", parse_mode="HTML")
+    await message.answer("⭐ Telegram Stars to'lovi xizmati faol!", parse_mode="HTML")
 
 async def pre_checkout_handler(pre_checkout_query: PreCheckoutQuery):
-    pass
+    try:
+        await pre_checkout_query.answer(ok=True)
+    except Exception as e:
+        logger.warning(f"pre_checkout_handler error: {e}")
 
 async def success_payment_handler(message: Message):
-    await message.answer("🎉 To'lov muvaffaqiyatli amalga oshirildi!")
+    sp = message.successful_payment
+    if not sp:
+        return
+    
+    payload = sp.invoice_payload or ""
+    stars_paid = sp.total_amount
+    user_id = message.from_user.id
+    
+    from models.user import User, Profile
+    user = await User.get_or_none(user_id=user_id)
+    if not user:
+        return
+    profile = await Profile.get_or_none(user=user)
+    if not profile:
+        return
+        
+    added_diamonds = stars_paid
+    if "buy_diamonds_" in payload:
+        try:
+            parts = payload.split("_")
+            added_diamonds = int(parts[2])
+        except Exception:
+            added_diamonds = stars_paid
+
+    profile.diamond += added_diamonds
+    await profile.save()
+    
+    await message.answer(
+        f"🎉 <b>To'lov muvaffaqiyatli amalga oshirildi!</b>\n\n"
+        f"⭐ Siz <b>{stars_paid} Telegram Stars</b> evaziga <b>💎 {added_diamonds} olmos</b> qabul qildingiz!\n"
+        f"Jami olmoslaringiz: <b>💎 {profile.diamond} ta</b>",
+        parse_mode="HTML"
+    )
 
 async def get_active_role(call: CallbackQuery):
     await call.answer("Faol rol ma'lumoti", show_alert=True)
@@ -1758,24 +2225,8 @@ async def set_lang_callback(call: CallbackQuery, bot: Bot = None):
             print(f"realtime group language refresh error: {e}")
 
 # Do'kon va Valyutalar
-async def show_shop(call: CallbackQuery):
-    from aiogram.utils.keyboard import InlineKeyboardBuilder
-    from aiogram.types import WebAppInfo
-    from config import WEBAPP_URL
-    text = (
-        "🛒 <b>Do'kon bo'limi</b>\n\n"
-        "Barcha anjomlar, himoyalar va olmoslarni sotib olish WebApp ilovamizda mavjud!"
-    )
-    kb = InlineKeyboardBuilder()
-    if WEBAPP_URL:
-        kb.button(text="🌐 Do'konni ochish (WebApp)", web_app=WebAppInfo(url=WEBAPP_URL))
-    kb.button(text="⬅️ Orqaga", callback_data="back_profile")
-    kb.adjust(1)
-    try:
-        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
-    except Exception:
-        await call.message.answer(text, reply_markup=kb.as_markup(), parse_mode="HTML")
-    await call.answer()
+async def show_shop_webapp(call: CallbackQuery):
+    await show_shop(call)
 
 async def get_dollar_callback(call: CallbackQuery):
     await get_diamond_hamyonlar(call)
@@ -1812,7 +2263,8 @@ async def open_protections_menu(call: CallbackQuery):
         await call.message.answer(text, reply_markup=kb.as_markup(), parse_mode="HTML")
     await call.answer()
 
-async def get_diamond_hamyonlar(call: CallbackQuery):
+async def get_diamond_hamyonlar_webapp(call: CallbackQuery):
+    from utils.webapp_config import is_webapp_active
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     from aiogram.types import WebAppInfo
     from config import WEBAPP_URL
@@ -1826,12 +2278,13 @@ async def get_diamond_hamyonlar(call: CallbackQuery):
     text = (
         "💰 <b>Balans ma'lumotlari:</b>\n\n"
         f"💎 Olmoslar: <b>{diamonds:,} ta</b>\n"
-        f"💵 Dollar: <b>{dollars:,} $</b>\n\n"
-        "<i>Olmos va dollarlarni WebApp do'koni orqali xarid qilishingiz mumkin.</i>"
+        f"💵 Dollar: <b>{dollars:,} $</b>\n"
     )
     kb = InlineKeyboardBuilder()
-    if WEBAPP_URL:
+    if await is_webapp_active() and WEBAPP_URL:
         kb.button(text="🛒 Do'konga o'tish (WebApp)", web_app=WebAppInfo(url=WEBAPP_URL))
+    else:
+        kb.button(text="🛒 Do'konga o'tish", callback_data="shop")
     kb.button(text="⬅️ Orqaga", callback_data="back_profile")
     kb.adjust(1)
 

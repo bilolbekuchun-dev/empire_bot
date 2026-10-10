@@ -108,6 +108,7 @@ class RoleConfiguration:
 
     @classmethod
     def get_roles_for_mode(cls, mode: str, player_count: int) -> List[str]:
+        from config import is_role_enabled
         role_config = None
         for mode_key, config in cls.MODE_MAP.items():
             if mode.startswith(mode_key):
@@ -120,7 +121,8 @@ class RoleConfiguration:
         roles = []
         for min_players, role in role_config:
             if player_count >= min_players:
-                roles.append(role)
+                if is_role_enabled(role):
+                    roles.append(role)
         
         return roles
 

@@ -48,18 +48,21 @@ class RoleNames:
 
     @classmethod
     def all(cls):
-        return [
-            # Tinchlar (13)
+        from config import is_role_enabled
+        all_roles = [
+            # Tinchlar
             cls.KOMISSAR, cls.SERJANT, cls.FUQARO, cls.DOKTOR, cls.HAMSHIRA,
             cls.DAYDI, cls.KEZUVCHI, cls.OMADLI, cls.JANOB, cls.SOTQIN,
             cls.XOYIN, cls.QORIQCHI, cls.ZANJIR,
-            # Mafia (6)
+            # Mafia
             cls.DON, cls.MAFIA, cls.ADVOKAT, cls.OVCHI, cls.JURNALIST, cls.AYGOQCHI,
-            # Yakkalar (13)
+            # Yakkalar
             cls.QOTIL, cls.BORI, cls.AFERIST, cls.GAZABDOR, cls.SEHRGAR,
             cls.SUIDSID, cls.QASOSKOR, cls.QAROQCHI, cls.AKTYOR, cls.JIN, cls.KONCHI,
             cls.TAQLIDCHI, cls.REVERSER
         ]
+        return [r for r in all_roles if is_role_enabled(r)]
+
     @classmethod
     def get_by_role(cls, clean_name: str) -> str:
         mapping = {

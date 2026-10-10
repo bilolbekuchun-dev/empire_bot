@@ -1680,7 +1680,8 @@ body.vip-active .hist-row {
 
 @media (max-width: 760px) {
     .shell { flex-direction: column; }
-    .content { padding: 16px 14px 96px; }
+    .content { padding: 16px 14px calc(130px + env(safe-area-inset-bottom, 20px)); }
+    .view { padding-bottom: 20px; }
 
     .grid-3, .grid-4 { grid-template-columns: 1fr 1fr; }
     .roles-grid { grid-template-columns: 1fr 1fr; }

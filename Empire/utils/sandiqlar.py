@@ -12,6 +12,7 @@ import asyncio
 from config import ADMINS, CHANNEL_USERNAME, CHANNEL_ID, DIAMOND_SHOP_USERNAME
 from utils.api_cliients import get_dollar_rate
 from utils.role_names import RoleNames
+from utils.premium_emojis import get_vip_prefix, build_vip_prefix
 from datetime import timedelta, datetime, timezone
 from aiogram.enums import ChatMemberStatus
 from config import INFO_GROUP
@@ -130,7 +131,7 @@ async def start_vip_emoji_change_call(call: CallbackQuery, state: FSMContext):
     await state.set_state(VipEmojiState.waiting_for_emoji)
     await call.answer()
     
-    cur_text = f"<b>{vip_user.emoji_char}</b>" if vip_user.emoji_char else "<i>O'rnatilmagan</i>"
+    cur_text = get_vip_prefix(vip_user).strip() if (vip_user and (vip_user.emoji_id or vip_user.emoji_char)) else "<i>O'rnatilmagan</i>"
     
     kb = InlineKeyboardBuilder()
     if vip_user.emoji_char:

@@ -148,6 +148,19 @@ async def _join_game_handler_redis_core(message: Message, bot: Bot, state: FSMCo
             "mention": message.from_user.mention_html()
         }
     )
+
+    if "para" in game_state.mode:
+        from models.user import Paralar
+        u_para = await Paralar.filter(user1=user).first() or await Paralar.filter(user2=user).first()
+        if not u_para:
+            try:
+                await bot.send_message(
+                    message.from_user.id,
+                    "Sizda para yo'q! Para o'yinga qo'shilish uchun avval kim bilandir para bo'lishingiz kerak."
+                )
+            except Exception:
+                await message.answer("Sizda para yo'q! Para o'yinga qo'shilish uchun avval kim bilandir para bo'lishingiz kerak.")
+            return
     
     profile, _ = await Profile.get_or_create(
         user=user,
@@ -351,6 +364,7 @@ async def update_players_list_redis(game_id: str, bot: Bot, new_msg: bool = Fals
     
     # VS game: group by teams
     from models.user import VipUser
+    from utils.premium_emojis import get_vip_prefix
     if ":vsgame" in game_state.mode:
         colors_dict = TeamColors.all_colors_dict() if hasattr(TeamColors, 'all_colors_dict') else {}
         teams = {}
@@ -359,7 +373,7 @@ async def update_players_list_redis(game_id: str, bot: Bot, new_msg: bool = Fals
                 teams[player.team] = []
             user = await User.get_or_none(user_id=player.user_id)
             vip = await VipUser.get_or_none(user=user) if user else None
-            vip_prefix = f"{vip.emoji_char} " if (vip and vip.emoji_char) else ""
+            vip_prefix = get_vip_prefix(vip)
             clean_name = html.escape((user.full_name if user and user.full_name else player.first_name) or "O'yinchi")
             mention = f"{vip_prefix}<a href='tg://user?id={player.user_id}'>{clean_name}</a>"
             teams[player.team].append(mention)
@@ -376,7 +390,7 @@ async def update_players_list_redis(game_id: str, bot: Bot, new_msg: bool = Fals
         for player in players:
             user = await User.get_or_none(user_id=player.user_id)
             vip = await VipUser.get_or_none(user=user) if user else None
-            vip_prefix = f"{vip.emoji_char} " if (vip and vip.emoji_char) else ""
+            vip_prefix = get_vip_prefix(vip)
             clean_name = html.escape((user.full_name if user and user.full_name else player.first_name) or "O'yinchi")
             mention = f"{vip_prefix}<a href='tg://user?id={player.user_id}'>{clean_name}</a>"
             player_mentions.append(mention)
@@ -761,6 +775,13 @@ async def _start_game_handler_redis_impl(message: Message, bot: Bot, state):
         # Remove players without pairs
         for user_id in players_to_remove:
             await player_repo.delete_player(active_game_id, user_id)
+            try:
+                await bot.send_message(
+                    user_id,
+                    "Sizning parangiz Para o'yinga qo'shilmagani uchun siz ham qatnasha olmaysiz!"
+                )
+            except Exception:
+                pass
         
         # Recheck player count
         players = await player_repo.get_alive_players(active_game_id)

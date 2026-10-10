@@ -40,9 +40,13 @@ ROLE_WEIGHTS = {
 }
 
 def spin_role() -> str:
-    """Weighted random selection orqali rol tanlaydi"""
-    roles = list(ROLE_WEIGHTS.keys())
-    weights = list(ROLE_WEIGHTS.values())
+    """Weighted random selection orqali rol tanlaydi (faqat faol rollar)"""
+    from config import is_role_enabled
+    valid_items = [(r, w) for r, w in ROLE_WEIGHTS.items() if is_role_enabled(r)]
+    if not valid_items:
+        valid_items = [("Fuqaro", 15)]
+    roles = [item[0] for item in valid_items]
+    weights = [item[1] for item in valid_items]
     selected_role = random.choices(roles, weights=weights, k=1)[0]
     return selected_role
 

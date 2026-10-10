@@ -22,6 +22,7 @@ TELEGRAM_USERBOT_SESSION = os.path.join(os.path.dirname(__file__), "userbot_sess
 
 BOT_URL = os.getenv("BOT_URL", "https://t.me/test_empire_bot")
 WEBAPP_URL = os.getenv("WEBAPP_URL", "https://empiremafiaweb.netlify.app")
+IS_WEBAPP_ACTIVE = False  # WebApp vaqtincha o'chirilgan (Admin paneldan va configdan boshqariladi)
 PORT = os.getenv("PORT")
 
 MAX_PLAYERS = 45
@@ -74,22 +75,56 @@ GEROY_SHOP_SYSTEM_USER_ID = int(os.getenv("GEROY_SHOP_SYSTEM_USER_ID", "77700000
 REDIS_GAME_ENABLED = True
 
 
+# Rollarni o'yinga qo'shish / arxivlash sozlamasi (True = faol, False = arxivda / nofaol)
+ROLE_TOGGLES = {
+    # Hozirda nofaol (arxivlangan) rollar:
+    "Xoyin": False,
+    "Ayg'oqchi": False,
+    "Reverser": False,
+    "Hamshira": False,
+    "Jurnalist": False,
+    "Sotqin": False,
+    "Joker": False,
+    "Admiral": False,
+    "Kimyogar": False,
+    "Rais": False,
+    "Minior": False,
+    "Robin Gud": False,
+    "Fotoparatchi": False,
+    "Zombi": False,
+    "Labarant": False,
+    "Koldun": False,
+    "Qorbobo": False,
+    "Tulki": False,
+    "Savdogar": False,
+}
+
+def is_role_enabled(role_name: str) -> bool:
+    """Rolning faollik holatini tekshirish. Config faylida False qilinsa arxivda turadi va o'yinga chiqmaydi."""
+    if not role_name:
+        return False
+    clean = str(role_name).strip()
+    for prefix in ["🤵🏻", "🤵🏼", "🕵🏼", "👨🏼‍⚕️", "👮🏼", "👨🏼", "🧙‍♂️", "💃", "👨🏼‍💼", "🤦🏼", "🤞🏼", "🎖", "🐺", "🔪", "🥷", "🧨", "🤹🏻", "🧌", "🧙‍", "👩🏼‍💻", "🤓", "🛡", "👺", "⛓", "🎭", "🧞", "👷🏻‍♂️", "🦇", "⚔️", "👩🏻‍⚕️", "🤡", "🧑🏻‍✈️", "👨‍🔬", "💰", "☠️", "🏹", "📸", "🧟", "👩‍⚕️", "⚡️", "🎅🏻", "🦊", "🏪", "🔄"]:
+        clean = clean.replace(prefix, "").strip()
+    
+    return ROLE_TOGGLES.get(clean, True)
+
+
 tinch_rollar = [
     RoleNames.KOMISSAR, RoleNames.SERJANT, RoleNames.DAYDI,
     RoleNames.DOKTOR, RoleNames.KEZUVCHI, RoleNames.FUQARO,
-    RoleNames.HAMSHIRA, RoleNames.SOTQIN, RoleNames.JANOB,
-    RoleNames.OMADLI, RoleNames.XOYIN, RoleNames.QORIQCHI,
+    RoleNames.JANOB, RoleNames.OMADLI, RoleNames.QORIQCHI,
     RoleNames.ZANJIR, RoleNames.QASOSKOR
 ]
 
 mafia_rollar = [
     RoleNames.DON, RoleNames.MAFIA, RoleNames.ADVOKAT,
-    RoleNames.OVCHI, RoleNames.JURNALIST, RoleNames.AYGOQCHI
+    RoleNames.OVCHI
 ]
 
 yakka_rollar = [
     RoleNames.AFERIST, RoleNames.BORI, RoleNames.GAZABDOR,
     RoleNames.QOTIL, RoleNames.SEHRGAR, RoleNames.SUIDSID,
     RoleNames.QAROQCHI, RoleNames.AKTYOR, RoleNames.JIN, RoleNames.KONCHI,
-    RoleNames.TAQLIDCHI, RoleNames.REVERSER
+    RoleNames.TAQLIDCHI
 ]

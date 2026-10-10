@@ -41,27 +41,38 @@ def protection_toggle_keyboard(profile: Profile):
     markup.adjust(2)
     return markup.as_markup()
 
-def profile_keyboards_on_private(profile: Profile, is_vip: bool = False):
+def profile_keyboards_on_private(profile: Profile, is_vip: bool = False, lang: str = "uz"):
     markup = InlineKeyboardBuilder()
     dia_id = get_custom_emoji_id("currency", "diamond")
     dollar_id = get_custom_emoji_id("currency", "dollar")
     
-    markup.button(text="🛡 Himoyalar", callback_data="open_protections")
-    markup.button(text="Do'kon", callback_data="shop", icon_custom_emoji_id="5373052667671093676")
-    markup.button(text="Mening param", callback_data="my_para_menu", icon_custom_emoji_id="5402100905883488232")
+    from utils.i18n import clean_lang, PROFILE_LABELS
+    l = clean_lang(lang)
+    lbls = PROFILE_LABELS.get(l, PROFILE_LABELS["uz"])
+
+    markup.button(text=lbls.get("btn_protections", "🛡 Himoyalar"), callback_data="open_protections")
+    markup.button(text=lbls.get("btn_shop", "Do'kon"), callback_data="shop", icon_custom_emoji_id="5373052667671093676")
+    markup.button(text=lbls.get("btn_para", "Mening param"), callback_data="my_para_menu", icon_custom_emoji_id="5402100905883488232")
     if is_vip:
-        markup.button(text="✨ Statusni o'zgartirish", callback_data="vip_emoji_self_change")
+        status_text = {
+            "uz": "✨ Statusni o'zgartirish",
+            "ru": "✨ Изменить статус",
+            "en": "✨ Change status",
+            "tr": "✨ Durumu değiştir",
+            "kk": "✨ Мәртебені өзгерту"
+        }.get(l, "✨ Statusni o'zgartirish")
+        markup.button(text=status_text, callback_data="vip_emoji_self_change")
     if dia_id:
-        markup.button(text="Xarid qilish", callback_data="get_diamond_hamyonlar", icon_custom_emoji_id=dia_id)
+        markup.button(text=lbls.get("btn_buy", "Xarid qilish"), callback_data="get_diamond_hamyonlar", icon_custom_emoji_id=dia_id)
     else:
-        markup.button(text="💎 Xarid qilish", callback_data="get_diamond_hamyonlar")
+        markup.button(text=lbls.get("btn_buy_diamond", "💎 Xarid qilish"), callback_data="get_diamond_hamyonlar")
     if dollar_id:
-        markup.button(text="Xarid qilish", callback_data="get_dollar", icon_custom_emoji_id=dollar_id)
+        markup.button(text=lbls.get("btn_buy", "Xarid qilish"), callback_data="get_dollar", icon_custom_emoji_id=dollar_id)
     else:
-        markup.button(text="💵 Xarid qilish", callback_data="get_dollar")
-    markup.button(text="🥷 Mening geroyim", callback_data="my_geroy")
-    markup.button(text="🎲 Premium guruhlar", callback_data="prem_groups")
-    markup.button(text="Yangiliklar", url=f"https://t.me/{CHANNEL_USERNAME[1:]}")
+        markup.button(text=lbls.get("btn_buy_dollar", "💵 Xarid qilish"), callback_data="get_dollar")
+    markup.button(text=lbls.get("btn_hero", "🥷 Mening geroyim"), callback_data="my_geroy")
+    markup.button(text=lbls.get("btn_prem_groups", "🎲 Premium guruhlar"), callback_data="prem_groups")
+    markup.button(text=lbls.get("btn_news", "Yangiliklar"), url=f"https://t.me/{CHANNEL_USERNAME[1:]}")
     markup.adjust(1, 2, (3 if is_vip else 2), 2, 1, 2)
     return markup.as_markup()
 
@@ -70,45 +81,142 @@ def blocking_users(user1_id, user2_id):
     m.button(text="Ikkalasini ham bloklash", callback_data=f"block_{user1_id}_{user2_id}")
     return m.as_markup()
 
-def profile_keyboards():
+def profile_keyboards(lang: str = "uz"):
     markup = InlineKeyboardBuilder()
     dia_id = get_custom_emoji_id("currency", "diamond")
     dollar_id = get_custom_emoji_id("currency", "dollar")
     
-    markup.button(text="Do'kon", callback_data="shop", icon_custom_emoji_id="5373052667671093676")
-    markup.button(text="Mening param", callback_data="my_para_menu", icon_custom_emoji_id="5402100905883488232")
+    from utils.i18n import clean_lang, PROFILE_LABELS
+    l = clean_lang(lang)
+    lbls = PROFILE_LABELS.get(l, PROFILE_LABELS["uz"])
+
+    markup.button(text=lbls.get("btn_shop", "Do'kon"), callback_data="shop", icon_custom_emoji_id="5373052667671093676")
+    markup.button(text=lbls.get("btn_para", "Mening param"), callback_data="my_para_menu", icon_custom_emoji_id="5402100905883488232")
     if dollar_id:
-        markup.button(text="Xarid qilish", callback_data="get_dollar", icon_custom_emoji_id=dollar_id)
+        markup.button(text=lbls.get("btn_buy", "Xarid qilish"), callback_data="get_dollar", icon_custom_emoji_id=dollar_id)
     else:
-        markup.button(text="💵 Xarid qilish", callback_data="get_dollar")
+        markup.button(text=lbls.get("btn_buy_dollar", "💵 Xarid qilish"), callback_data="get_dollar")
     if dia_id:
-        markup.button(text="Xarid qilish", callback_data="get_diamond_hamyonlar", icon_custom_emoji_id=dia_id)
+        markup.button(text=lbls.get("btn_buy", "Xarid qilish"), callback_data="get_diamond_hamyonlar", icon_custom_emoji_id=dia_id)
     else:
-        markup.button(text="💎 Xarid qilish", callback_data="get_diamond_hamyonlar")
-    markup.button(text="🎲 Premium guruhlar", callback_data="prem_groups")
-    markup.button(text="Yangiliklar", url=f"https://t.me/{CHANNEL_USERNAME[1:]}")
+        markup.button(text=lbls.get("btn_buy_diamond", "💎 Xarid qilish"), callback_data="get_diamond_hamyonlar")
+    markup.button(text=lbls.get("btn_prem_groups", "🎲 Premium guruhlar"), callback_data="prem_groups")
+    markup.button(text=lbls.get("btn_news", "Yangiliklar"), url=f"https://t.me/{CHANNEL_USERNAME[1:]}")
     
     markup.adjust(2, 2, 2)
     return markup.as_markup()
 
-def shop_keyboard(himoya_price, hujjat_price, osish_himoya_price, dori_himoya_price, maska_price, qotildan_himoya_price, militiq_price, geroy_price, slip_himoya_price, send_profile_price, geroydan_himoya_price):
+def shop_keyboard(himoya_price, hujjat_price, osish_himoya_price, dori_himoya_price, maska_price, qotildan_himoya_price, militiq_price, geroy_price, slip_himoya_price, send_profile_price, geroydan_himoya_price, is_vip: bool = False, lang: str = "uz"):
     builder = InlineKeyboardBuilder()
 
-    builder.button(text=f"🛡 Himoya - {himoya_price}💵", callback_data="buy_himoya")
-    builder.button(text=f"📁 Hujjat - {hujjat_price}💵", callback_data="buy_hujjat")
-    builder.button(text=f"⚖️ Ovozdan himoya - {osish_himoya_price}💎", callback_data="buy_osish_himoya")
-    builder.button(text=f"🔫 Miltiq - {militiq_price}💎", callback_data="buy_miltiq")
-    builder.button(text=f"💊 Doridan himoya - {dori_himoya_price}💵", callback_data="buy_dori_himoya")
-    builder.button(text=f"🎭 Maska - {maska_price}💵", callback_data="buy_maska")
-    builder.button(text=f"⛑️ Qotildan himoya {qotildan_himoya_price}💎", callback_data="buy_qotildan_himoya")
-    builder.button(text=f"🪤 Sirpanishdan himoya {slip_himoya_price}💎", callback_data="buy_slip_himoya")
-    builder.button(text=f"🔰 Geroydan himoya {geroydan_himoya_price}💎", callback_data="buy_geroydan_himoya")
-    builder.button(text=f"🔄 Profil almashish {send_profile_price}💎", callback_data="replace_profile")
-    builder.button(text=f"🥷 Geroy {geroy_price}💎", callback_data="buy_geroy")
-    builder.button(text="🗃 Sandiqlar", callback_data="open-sandiq")
-    builder.button(text=f"🃏 Faol rol", callback_data="active_role")
-    builder.button(text="🎨 VIP emoji o'zgartirish", callback_data="vip_emoji_change")
-    builder.button(text="⬅️ Orqaga", callback_data="back_profile")
+    from utils.i18n import clean_lang
+    l = clean_lang(lang)
+
+    labels_map = {
+        "uz": {
+            "himoya": f"🛡 Himoya - {himoya_price}💵",
+            "hujjat": f"📁 Hujjat - {hujjat_price}💵",
+            "osish": f"⚖️ Ovozdan himoya - {osish_himoya_price}💎",
+            "miltiq": f"🔫 Miltiq - {militiq_price}💎",
+            "dori": f"💊 Doridan himoya - {dori_himoya_price}💵",
+            "maska": f"🎭 Maska - {maska_price}💵",
+            "qotil": f"⛑️ Qotildan himoya {qotildan_himoya_price}💎",
+            "slip": f"🪤 Sirpanishdan himoya {slip_himoya_price}💎",
+            "geroy_him": f"🔰 Geroydan himoya {geroydan_himoya_price}💎",
+            "replace": f"🔄 Profil almashish {send_profile_price}💎",
+            "geroy": f"🥷 Geroy {geroy_price}💎",
+            "chests": "🗃 Sandiqlar",
+            "active_role": "🃏 Faol rol",
+            "vip_emoji": "🎨 VIP emoji o'zgartirish",
+            "back": "⬅️ Orqaga"
+        },
+        "ru": {
+            "himoya": f"🛡 Защита - {himoya_price}💵",
+            "hujjat": f"📁 Документ - {hujjat_price}💵",
+            "osish": f"⚖️ Защита от повешения - {osish_himoya_price}💎",
+            "miltiq": f"🔫 Винтовка - {militiq_price}💎",
+            "dori": f"💊 Защита от лекарства - {dori_himoya_price}💵",
+            "maska": f"🎭 Маска - {maska_price}💵",
+            "qotil": f"⛑️ Защита от киллера {qotildan_himoya_price}💎",
+            "slip": f"🪤 Защита от скольжения {slip_himoya_price}💎",
+            "geroy_him": f"🔰 Защита от героя {geroydan_himoya_price}💎",
+            "replace": f"🔄 Обменять профиль {send_profile_price}💎",
+            "geroy": f"🥷 Герой {geroy_price}💎",
+            "chests": "🗃 Сундуки",
+            "active_role": "🃏 Активная роль",
+            "vip_emoji": "🎨 Смена VIP эмодзи",
+            "back": "⬅️ Назад"
+        },
+        "en": {
+            "himoya": f"🛡 Protection - {himoya_price}💵",
+            "hujjat": f"📁 Document - {hujjat_price}💵",
+            "osish": f"⚖️ Hang Protection - {osish_himoya_price}💎",
+            "miltiq": f"🔫 Rifle - {militiq_price}💎",
+            "dori": f"💊 Medicine Protection - {dori_himoya_price}💵",
+            "maska": f"🎭 Mask - {maska_price}💵",
+            "qotil": f"⛑️ Killer Protection {qotildan_himoya_price}💎",
+            "slip": f"🪤 Slip Protection {slip_himoya_price}💎",
+            "geroy_him": f"🔰 Hero Protection {geroydan_himoya_price}💎",
+            "replace": f"🔄 Swap Profile {send_profile_price}💎",
+            "geroy": f"🥷 Hero {geroy_price}💎",
+            "chests": "🗃 Chests",
+            "active_role": "🃏 Active role",
+            "vip_emoji": "🎨 VIP emoji change",
+            "back": "⬅️ Back"
+        },
+        "tr": {
+            "himoya": f"🛡 Koruma - {himoya_price}💵",
+            "hujjat": f"📁 Belge - {hujjat_price}💵",
+            "osish": f"⚖️ Asılma Koruması - {osish_himoya_price}💎",
+            "miltiq": f"🔫 Tüfek - {militiq_price}💎",
+            "dori": f"💊 İlaç Koruması - {dori_himoya_price}💵",
+            "maska": f"🎭 Maske - {maska_price}💵",
+            "qotil": f"⛑️ Katil Koruması {qotildan_himoya_price}💎",
+            "slip": f"🪤 Kayma Koruması {slip_himoya_price}💎",
+            "geroy_him": f"🔰 Kahraman Koruması {geroydan_himoya_price}💎",
+            "replace": f"🔄 Profil Değişimi {send_profile_price}💎",
+            "geroy": f"🥷 Kahraman {geroy_price}💎",
+            "chests": "🗃 Sandıklar",
+            "active_role": "🃏 Aktif rol",
+            "vip_emoji": "🎨 VIP emoji değiştirme",
+            "back": "⬅️ Geri"
+        },
+        "kk": {
+            "himoya": f"🛡 Қорғау - {himoya_price}💵",
+            "hujjat": f"📁 Құжат - {hujjat_price}💵",
+            "osish": f"⚖️ Асудан қорғау - {osish_himoya_price}💎",
+            "miltiq": f"🔫 Мылтық - {militiq_price}💎",
+            "dori": f"💊 Дәріден қорғау - {dori_himoya_price}💵",
+            "maska": f"🎭 Маска - {maska_price}💵",
+            "qotil": f"⛑️ Киллерден қорғау {qotildan_himoya_price}💎",
+            "slip": f"🪤 Сырғанаудан қорғау {slip_himoya_price}💎",
+            "geroy_him": f"🔰 Батырдан қорғау {geroydan_himoya_price}💎",
+            "replace": f"🔄 Профиль ауыстыру {send_profile_price}💎",
+            "geroy": f"🥷 Батыр {geroy_price}💎",
+            "chests": "🗃 Сандықтар",
+            "active_role": "🃏 Белсенді рөл",
+            "vip_emoji": "🎨 VIP эмодзи өзгерту",
+            "back": "⬅️ Артқа"
+        }
+    }
+    lbls = labels_map.get(l, labels_map["uz"])
+
+    builder.button(text=lbls["himoya"], callback_data="buy_himoya")
+    builder.button(text=lbls["hujjat"], callback_data="buy_hujjat")
+    builder.button(text=lbls["osish"], callback_data="buy_osish_himoya")
+    builder.button(text=lbls["miltiq"], callback_data="buy_miltiq")
+    builder.button(text=lbls["dori"], callback_data="buy_dori_himoya")
+    builder.button(text=lbls["maska"], callback_data="buy_maska")
+    builder.button(text=lbls["qotil"], callback_data="buy_qotildan_himoya")
+    builder.button(text=lbls["slip"], callback_data="buy_slip_himoya")
+    builder.button(text=lbls["geroy_him"], callback_data="buy_geroydan_himoya")
+    builder.button(text=lbls["replace"], callback_data="replace_profile")
+    builder.button(text=lbls["geroy"], callback_data="buy_geroy")
+    builder.button(text=lbls["chests"], callback_data="open-sandiq")
+    builder.button(text=lbls["active_role"], callback_data="active_role")
+    if is_vip:
+        builder.button(text=lbls["vip_emoji"], callback_data="vip_emoji_change")
+    builder.button(text=lbls["back"], callback_data="back_profile")
     builder.adjust(2)
 
     return builder.as_markup()

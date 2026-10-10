@@ -12,7 +12,7 @@ from utils.redis_game.repositories.game_repository import game_repository as gam
 from utils.redis_game.repositories.player_repository import player_repository as player_repo
 from utils.database import redis_client as _redis
 from utils.role_names import RoleNames
-from utils.premium_emojis import role_display
+from utils.premium_emojis import role_display, get_vip_prefix
 from collections import defaultdict
 from config import tinch_rollar as tinchlar, mafia_rollar as mafialar, yakka_rollar as yakkalar
 
@@ -355,19 +355,38 @@ async def _player_mentions(user_ids: list) -> dict:
     ids = list({int(u) for u in user_ids if u is not None})
     if not ids:
         return result
+    from models.user import VipUser
     users = await User.filter(user_id__in=ids)
+    vip_map = {}
+    for vip in await VipUser.filter(user__user_id__in=ids):
+        vip_map[vip.user_id] = vip
     for u in users:
         name = html.escape(u.full_name or u.username or str(u.user_id))
-        result[u.user_id] = f'<a href="tg://user?id={u.user_id}">{name}</a>'
+        vip_prefix = get_vip_prefix(vip_map.get(u.user_id))
+        result[u.user_id] = f'{vip_prefix}<a href="tg://user?id={u.user_id}">{name}</a>'
     for uid in ids:
         result.setdefault(uid, f'<a href="tg://user?id={uid}">{uid}</a>')
     return result
 
 
+
+def _get_chat_id(chat) -> int:
+    if isinstance(chat, int):
+        return chat
+    if hasattr(chat, "chat_id"):
+        return getattr(chat, "chat_id")
+    if hasattr(chat, "id"):
+        return getattr(chat, "id")
+    try:
+        return int(chat)
+    except Exception:
+        return 0
+
+
 async def announce_game_result_redis(
     game_id: str,
     bot: Bot,
-    chat: Chat,
+    chat,
     winner_roles: list,
     zombilar=False,
     para=False,
@@ -377,11 +396,7 @@ async def announce_game_result_redis(
     real_mode=False
 ):
     """O'yin natijalarini e'lon qilish: g'oliblar + qolganlar + davomiylik."""
-    try:
-        from utils.redis_game.night_engine import flush_pending_deaths
-        await flush_pending_deaths(game_id, bot, chat)
-    except Exception:
-        pass
+    target_chat_id = _get_chat_id(chat)
 
     game_state = await game_repo.load_game(game_id)
     if game_state:
@@ -389,7 +404,8 @@ async def announce_game_result_redis(
         game_state.is_active = False
         await game_repo.save_game(game_state, ttl_sec=_ENDED_TTL)
 
-    await _clear_active_indexes(game_id, getattr(chat, "chat_id", None))
+    if target_chat_id:
+        await _clear_active_indexes(game_id, target_chat_id)
 
     all_players = await player_repo.get_all_players(game_id)
     if para and para_winners:
@@ -419,14 +435,17 @@ async def announce_game_result_redis(
     mentions = await _player_mentions([p.user_id for p in all_players])
 
     from utils.i18n import get_chat_lang
-    chat_lang = await get_chat_lang(getattr(chat, "chat_id", 0))
+    chat_lang = await get_chat_lang(target_chat_id)
     strs = WIN_RESULT_STRINGS.get(chat_lang, WIN_RESULT_STRINGS["uz"])
+
+    win_reward = 20
+    lose_reward = 5
 
     lines = [strs["title"], strs["winners"]]
     n = 1
     if winners:
         for p in winners:
-            lines.append(f"{n}. {mentions.get(p.user_id, p.user_id)} - {role_display(p.role, lang=chat_lang)}")
+            lines.append(f"{n}. {mentions.get(p.user_id, p.user_id)} - {role_display(p.role, lang=chat_lang)} (+{win_reward}$)")
             n += 1
             p.win = True
             try:
@@ -440,7 +459,7 @@ async def announce_game_result_redis(
         lines.append("")
         lines.append(strs["others"])
         for p in others:
-            lines.append(f"{n}. {mentions.get(p.user_id, p.user_id)} - {role_display(p.role, lang=chat_lang)}")
+            lines.append(f"{n}. {mentions.get(p.user_id, p.user_id)} - {role_display(p.role, lang=chat_lang)} (+{lose_reward}$)")
             n += 1
 
     started = getattr(game_state, "started_at", None) or getattr(game_state, "created_at", None) if game_state else None
@@ -449,25 +468,30 @@ async def announce_game_result_redis(
         lines.append("")
         lines.append(f"{strs['duration']} {duration}")
 
-    await bot.send_message(
-        chat.chat_id,
-        "\n".join(lines),
-        parse_mode="HTML",
-        disable_web_page_preview=True,
-    )
+    if target_chat_id:
+        try:
+            await bot.send_message(
+                target_chat_id,
+                "\n".join(lines),
+                parse_mode="HTML",
+                disable_web_page_preview=True,
+            )
+        except Exception as e:
+            print(f"Failed to send end game result to chat {target_chat_id}: {e}")
 
     # Shaxsiy lichkaga har bir o'yinchiga g'alaba/mag'lubiyat profili va mukofotini yuborish
     for p in winners:
-        await _send_player_end_game_profile_dm(bot, p.user_id, is_winner=True, win_reward=15)
+        await _send_player_end_game_profile_dm(bot, p.user_id, is_winner=True, win_reward=win_reward)
 
     for p in others:
-        await _send_player_end_game_profile_dm(bot, p.user_id, is_winner=False, lose_reward=5)
+        await _send_player_end_game_profile_dm(bot, p.user_id, is_winner=False, lose_reward=lose_reward)
 
 
-async def _send_player_end_game_profile_dm(bot: Bot, uid: int, is_winner: bool, win_reward: int = 15, lose_reward: int = 5):
+async def _send_player_end_game_profile_dm(bot: Bot, uid: int, is_winner: bool, win_reward: int = 20, lose_reward: int = 5):
     try:
         from models.user import User, Profile, Paralar, ActiveRole, VipUser
         from utils.i18n import get_chat_lang, clean_lang
+        from utils.premium_emojis import get_diamond_display, get_dollar_display, role_display
         from keyboards.user_keyboards import profile_keyboards_on_private
 
         p_lang = clean_lang(await get_chat_lang(uid))
@@ -480,21 +504,28 @@ async def _send_player_end_game_profile_dm(bot: Bot, uid: int, is_winner: bool, 
 
         # Update profile stats
         profile.dollar += reward
+        profile.games_count += 1
         if is_winner:
             profile.wins += 1
         await profile.save()
 
+        # VIP status
+        vip_obj = await VipUser.get_or_none(user=user)
+        is_vip = bool(vip_obj)
+        vip_prefix = get_vip_prefix(vip_obj)
+        vip_text = f" ⭐ VIP {vip_prefix}".rstrip() if is_vip else ""
+
         # Check Para
-        para = await Paralar.filter(user1=user).first()
+        para = await Paralar.filter(user1=user).prefetch_related("user1", "user2").first()
         if not para:
-            para = await Paralar.filter(user2=user).first()
+            para = await Paralar.filter(user2=user).prefetch_related("user1", "user2").first()
         
         if para:
             partner_user = para.user2 if para.user1_id == user.id else para.user1
             partner_name = html.escape(partner_user.full_name or partner_user.username or str(partner_user.user_id))
             para_str = f'<a href="tg://user?id={partner_user.user_id}">{partner_name}</a>'
         else:
-            para_str = {"uz": "Yo'q", "ru": "Нет", "en": "None", "tr": "Yok", "kk": "Жоқ"}.get(p_lang, "Yo'q")
+            para_str = {"uz": "<i>Yo'q</i>", "ru": "<i>Нет</i>", "en": "<i>None</i>", "tr": "<i>Yok</i>", "kk": "<i>Жоқ</i>"}.get(p_lang, "<i>Yo'q</i>")
 
         # Check Active Roles
         active_roles_list = await ActiveRole.filter(profile=profile, is_active=True).all()
@@ -502,88 +533,51 @@ async def _send_player_end_game_profile_dm(bot: Bot, uid: int, is_winner: bool, 
             roles_names = [role_display(r.role, lang=p_lang) for r in active_roles_list]
             active_roles_str = ", ".join(roles_names)
         else:
-            active_roles_str = {"uz": "Yo'q", "ru": "Нет", "en": "None", "tr": "Yok", "kk": "Жоқ"}.get(p_lang, "Yo'q")
+            active_roles_str = {"uz": "<i>Yo'q</i>", "ru": "<i>Нет</i>", "en": "<i>None</i>", "tr": "<i>Yok</i>", "kk": "<i>Жоқ</i>"}.get(p_lang, "<i>Yo'q</i>")
 
         if is_winner:
             headers = {
-                "uz": f"🏆 <b>O'yin tugadi!</b>\n✅ <b>Siz g'alaba qozondingiz! G'alaba uchun {reward} 💵 berildi!</b>",
-                "ru": f"🏆 <b>Игра окончена!</b>\n✅ <b>Вы выиграли! За победу получено {reward} 💵!</b>",
-                "en": f"🏆 <b>Game over!</b>\n✅ <b>You won! Received {reward} 💵 for victory!</b>",
-                "tr": f"🏆 <b>Oyun bitti!</b>\n✅ <b>Kazandınız! Zafer için {reward} 💵 alındı!</b>",
-                "kk": f"🏆 <b>Ойын аяқталды!</b>\n✅ <b>Сіз жеңдіңіз! Жеңіс үшін {reward} 💵 берілді!</b>"
+                "uz": f"🏆 <b>O'yin tugadi!</b>\n✅ <b>Yutganingiz uchun sizga {reward}$ pul va 0 olmos berildi!</b>",
+                "ru": f"🏆 <b>Игра окончена!</b>\n✅ <b>За победу вам выдано {reward}$ и 0 алмазов!</b>",
+                "en": f"🏆 <b>Game over!</b>\n✅ <b>You won! Received {reward}$ and 0 diamonds!</b>",
+                "tr": f"🏆 <b>Oyun bitti!</b>\n✅ <b>Kazandığınız için size {reward}$ ve 0 elmas verildi!</b>",
+                "kk": f"🏆 <b>Ойын аяқталды!</b>\n✅ <b>Жеңгеніңіз үшін сізге {reward}$ және 0 алмас берілді!</b>"
             }
         else:
             headers = {
-                "uz": f"💀 <b>O'yin tugadi!</b>\n❌ <b>Siz mag'lub bo'ldingiz! Mag'lubiyat uchun {reward} 💵 berildi!</b>",
-                "ru": f"💀 <b>Игра окончена!</b>\n❌ <b>Вы проиграли! За участие получено {reward} 💵!</b>",
-                "en": f"💀 <b>Game over!</b>\n❌ <b>You lost! Received {reward} 💵 for participation!</b>",
-                "tr": f"💀 <b>Oyun bitti!</b>\n❌ <b>Kaybettiniz! Katılım için {reward} 💵 alındı!</b>",
-                "kk": f"💀 <b>Ойын аяқталды!</b>\n❌ <b>Сіз жеңілдіңіз! Қатысу үшін {reward} 💵 берілді!</b>"
+                "uz": f"💀 <b>O'yin tugadi!</b>\n❌ <b>Mag'lubiyatingiz uchun sizga {reward}$ pul va 0 olmos berildi!</b>",
+                "ru": f"💀 <b>Игра окончена!</b>\n❌ <b>Вам выдано {reward}$ и 0 алмазов!</b>",
+                "en": f"💀 <b>Game over!</b>\n❌ <b>Received {reward}$ and 0 diamonds!</b>",
+                "tr": f"💀 <b>Oyun bitti!</b>\n❌ <b>Size {reward}$ ve 0 elmas verildi!</b>",
+                "kk": f"💀 <b>Ойын аяқталды!</b>\n❌ <b>Сізге {reward}$ және 0 алмас берілді!</b>"
             }
 
-        labels = {
-            "uz": {
-                "dollar": "Dollar", "diamond": "Olmos", "himoya": "Himoya", "hujjat": "Hujjat",
-                "osish": "Osishdan himoya qilish", "qotil": "Qotildan himoya", "miltiq": "Miltiq",
-                "dori": "Doridan himoya", "maska": "Maska", "slip": "Sirpanishdan himoya",
-                "geroy": "Geroydan himoya", "wins": "G'alaba", "games": "Barcha o'yinlar",
-                "para": "Sizning parangiz", "active": "Faol rollar"
-            },
-            "ru": {
-                "dollar": "Доллары", "diamond": "Алмазы", "himoya": "Защита", "hujjat": "Документ",
-                "osish": "Защита от повешения", "qotil": "Защита от киллера", "miltiq": "Винтовка",
-                "dori": "Защита от лекарства", "maska": "Маска", "slip": "Защита от скольжения",
-                "geroy": "Защита от героя", "wins": "Победы", "games": "Все игры",
-                "para": "Ваша пара", "active": "Активные роли"
-            },
-            "en": {
-                "dollar": "Dollar", "diamond": "Diamonds", "himoya": "Protection", "hujjat": "Document",
-                "osish": "Hang protection", "qotil": "Killer protection", "miltiq": "Rifle",
-                "dori": "Medicine protection", "maska": "Mask", "slip": "Slip protection",
-                "geroy": "Hero protection", "wins": "Wins", "games": "All games",
-                "para": "Your partner", "active": "Active roles"
-            },
-            "tr": {
-                "dollar": "Dolar", "diamond": "Elmaslar", "himoya": "Koruma", "hujjat": "Belge",
-                "osish": "Asılma koruması", "qotil": "Katilden koruma", "miltiq": "Tüfek",
-                "dori": "İlaç koruması", "maska": "Maske", "slip": "Kayma koruması",
-                "geroy": "Kahraman koruması", "wins": "Galibiyetler", "games": "Tüm oyunlar",
-                "para": "Partneriniz", "active": "Aktif roller"
-            },
-            "kk": {
-                "dollar": "Доллар", "diamond": "Алмастар", "himoya": "Қорғау", "hujjat": "Құжат",
-                "osish": "Асылудан қорғау", "qotil": "Қанішерден қорғау", "miltiq": "Мылтық",
-                "dori": "Дәріден қорғау", "maska": "Маска", "slip": "Сырғанаудан қорғау",
-                "geroy": "Батырдан қорғау", "wins": "Жеңістер", "games": "Барлық ойындар",
-                "para": "Сіздің жұбыңыз", "active": "Белсенді рөлдер"
-            }
-        }
-        l = labels.get(p_lang, labels["uz"])
+        d_disp = get_diamond_display()
+        m_disp = get_dollar_display()
+
         user_name = html.escape(user.full_name or user.username or f"User_{uid}")
 
         card_text = (
             f"{headers.get(p_lang, headers['uz'])}\n\n"
-            f"👤 <b>{user_name}</b>\n\n"
-            f"💵 {l['dollar']}: <b>{profile.dollar:,}</b>\n"
-            f"💎 {l['diamond']}: <b>{profile.diamond:,}</b>\n\n"
-            f"🛡 {l['himoya']}: <b>{profile.himoya}</b>\n"
-            f"📜 {l['hujjat']}: <b>{profile.hujjat}</b>\n"
-            f"🔒 {l['osish']}: <b>{profile.osishdan_himoya}</b>\n"
-            f"📦 {l['qotil']}: <b>{profile.qotildan_himoya}</b>\n"
-            f"🔫 {l['miltiq']}: <b>{profile.miltiq}</b>\n"
-            f"💊 {l['dori']}: <b>{profile.doridan_himoya}</b>\n"
-            f"🎭 {l['maska']}: <b>{profile.maska}</b>\n"
-            f"📜 {l['slip']}: <b>{profile.slip_himoya}</b>\n"
-            f"📦 {l['geroy']}: <b>{profile.geroy_himoya}</b>\n\n"
-            f"🎯 {l['wins']}: <b>{profile.wins}</b>\n"
-            f"📜 {l['games']}: <b>{profile.games_count}</b>\n\n"
-            f"{l['para']}: {para_str}\n"
-            f"🏢 {l['active']}: {active_roles_str}"
+            f"👤 <b>{user_name}</b>{vip_text}\n\n"
+            f"{m_disp} Dollar: <b>{profile.dollar:,}</b>\n"
+            f"{d_disp} Olmos: <b>{profile.diamond:,}</b>\n\n"
+            f"🛡 Himoya: <b>{profile.himoya}</b>\n"
+            f"📜 Hujjat: <b>{profile.hujjat}</b>\n"
+            f"🔒 Osishdan himoya qilish: <b>{profile.osishdan_himoya}</b>\n"
+            f"📦 Qotildan himoya: <b>{profile.qotildan_himoya}</b>\n"
+            f"🔫 Miltiq: <b>{profile.miltiq}</b>\n"
+            f"💊 Doridan himoya: <b>{profile.doridan_himoya}</b>\n"
+            f"🎭 Maska: <b>{profile.maska}</b>\n"
+            f"📜 Sirpanishdan himoya: <b>{profile.slip_himoya}</b>\n"
+            f"📦 Geroydan himoya: <b>{profile.geroy_himoya}</b>\n\n"
+            f"🎯 G'alaba: <b>{profile.wins}</b>\n"
+            f"📜 Barcha o'yinlar: <b>{profile.games_count}</b>\n\n"
+            f"Sizning parangiz: {para_str}\n\n"
+            f"🏙 Faol rollar: {active_roles_str}"
         )
 
         try:
-            vip_obj = await VipUser.get_or_none(user=user)
-            is_vip = bool(vip_obj)
             await bot.send_message(uid, card_text, parse_mode="HTML", reply_markup=profile_keyboards_on_private(profile, is_vip=is_vip))
         except Exception:
             try:

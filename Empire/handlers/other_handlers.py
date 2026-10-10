@@ -77,7 +77,7 @@ async def f(message: Message, bot: Bot):
     await others.get_profile(bot, message)
 
 @router.message(Command("money", ignore_case=True))
-@router.message(F.text.func(lambda text: bool(text and (text.lower().startswith("/money ") or text.lower().startswith("/money@") or text.lower() == "/money"))))
+@router.message(F.text.func(lambda text: bool(text and (text.lower().startswith(("/money ", "/money\n", "/money\t", "/money@")) or text.lower() == "/money"))))
 async def f(message: Message, bot: Bot):
     await others.transfer_funds_handler(message=message, bot=bot)
 
@@ -86,7 +86,7 @@ async def f(message: Message, bot: Bot):
     await others.role_names_handler(message=message)
 
 @router.message(Command("give", ignore_case=True))
-@router.message(F.text.func(lambda text: bool(text and (text.lower().startswith("/give ") or text.lower().startswith("/give@") or text.lower() == "/give"))))
+@router.message(F.text.func(lambda text: bool(text and (text.lower().startswith(("/give ", "/give\n", "/give\t", "/give@")) or text.lower() == "/give"))))
 async def f(message: Message, bot: Bot):
     await others.transfer_funds_handler(message=message, bot=bot)
 
@@ -436,6 +436,33 @@ async def onboard_lang_cb(call: CallbackQuery, bot: Bot, state: FSMContext):
     await start.start_call_handler(call)
 
 
+@router.callback_query(F.data == "check_sub")
+async def check_sub_cb(call: CallbackQuery, bot: Bot):
+    from utils.subscription import get_unsubscribed_channels, build_sub_keyboard
+    from utils.i18n import clean_lang, SUB_REQUIRED_TEXT
+    from models.user import User
+    
+    user_id = call.from_user.id
+    user = await User.get_or_none(user_id=user_id)
+    lang = clean_lang(user.lang if user else "uz")
+    
+    unsubscribed = await get_unsubscribed_channels(bot, user_id)
+    if not unsubscribed:
+        try:
+            await call.answer("Siz barcha kanallarga obuna bo'ldingiz! ✅", show_alert=True)
+            await call.message.delete()
+        except Exception:
+            pass
+    else:
+        try:
+            await call.answer("Siz hali barcha kanallarga obuna bo'lmadingiz!", show_alert=True)
+            prompt = SUB_REQUIRED_TEXT.get(lang, SUB_REQUIRED_TEXT["uz"])
+            kb = build_sub_keyboard(unsubscribed, lang=lang)
+            await call.message.edit_text(prompt, reply_markup=kb, parse_mode="HTML")
+        except Exception:
+            pass
+
+
 from aiogram.filters import Filter
 
 class IsTeamPlayerFilter(Filter):
@@ -529,3 +556,21 @@ async def team_chat_handler(message: Message, bot: Bot):
 @router.message(DelCommands())
 async def f(message: Message):
     pass
+
+from aiogram.types import ChatMemberUpdated
+from aiogram.enums import ChatType
+from utils.bot_permissions import check_bot_group_permissions, get_permission_warning_text
+
+@router.my_chat_member()
+async def on_my_chat_member_update(event: ChatMemberUpdated, bot: Bot):
+    if event.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
+        try:
+            is_valid, missing_labels = await check_bot_group_permissions(bot, event.chat.id)
+            if not is_valid:
+                await bot.send_message(
+                    chat_id=event.chat.id,
+                    text=get_permission_warning_text(missing_labels),
+                    parse_mode="HTML"
+                )
+        except Exception:
+            pass
