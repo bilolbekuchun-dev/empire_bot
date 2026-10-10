@@ -41,7 +41,8 @@ async def _alive_players_text(players: list, *, dawn: bool = False, lang: str = 
         "tr": "<b>Hayatta kalan oyuncular:</b>"
     }
     lines = [headers.get(lang, headers["uz"])]
-    user_ids = [p.user_id for p in players if getattr(p, "user_id", None)]
+    alive_players = [p for p in players if getattr(p, "is_alive", True)]
+    user_ids = [p.user_id for p in alive_players if getattr(p, "user_id", None)]
     users = {}
     vips = {}
     if user_ids:
@@ -52,7 +53,7 @@ async def _alive_players_text(players: list, *, dawn: bool = False, lang: str = 
             vips[vip.user_id] = vip
 
     numbered = []
-    for idx, player in enumerate(players, 1):
+    for idx, player in enumerate(alive_players, 1):
         num = getattr(player, "maxsus_raqam", None) or idx
         numbered.append((int(num), player))
     numbered.sort(key=lambda x: x[0])
@@ -67,10 +68,10 @@ async def _alive_players_text(players: list, *, dawn: bool = False, lang: str = 
         return "\n".join(lines)
 
     tinch_set, mafia_set, yakka_set = set(tinch_rollar), set(mafia_rollar), set(yakka_rollar)
-    tinch = [p for p in players if p.role in tinch_set]
-    mafia = [p for p in players if p.role in mafia_set]
-    yakka = [p for p in players if p.role in yakka_set]
-    leftover = [p for p in players if p.role not in tinch_set | mafia_set | yakka_set]
+    tinch = [p for p in alive_players if p.role in tinch_set]
+    mafia = [p for p in alive_players if p.role in mafia_set]
+    yakka = [p for p in alive_players if p.role in yakka_set]
+    leftover = [p for p in alive_players if p.role not in tinch_set | mafia_set | yakka_set]
     yakka.extend(leftover)
 
     faction_labels = {
