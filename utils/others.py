@@ -115,9 +115,9 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
     """
     /give, /money, /send buyruqlari orqali pul ($) va olmos (💎) o'tkazish.
     Formati:
-      - Reply qilib: /give 100  yoki  /give 5 olmos
-      - ID orqali: /give 123456789 100
-      - Username: /give @username 50
+      - Reply qilib: /give 100  yoki  /give 5 olmos  yoki  /give 5 Olib qoyavering
+      - ID orqali: /give 123456789 100 [izoh]
+      - Username: /give @username 50 [izoh]
     """
     sender_tg = message.from_user
     if not sender_tg:
@@ -135,24 +135,26 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
     if len(parts) < 2:
         return
 
-    # Valyuta turini aniqlash (/give -> olmos 💎 default, /money -> dollar 💵 default)
-    lower_text = text.lower()
+    # Valyuta defaultini aniqlash (/give -> olmos 💎 default, /money -> dollar 💵 default)
     cmd = parts[0].lower()
-
-    has_dollar_kw = any(k in lower_text for k in ["dollar", "$", "pul", "som", "so'm"])
-    has_diamond_kw = any(k in lower_text for k in ["olmos", "diamond", "💎", "almaz"])
-
-    if has_diamond_kw:
+    if cmd.startswith("/give") or cmd.startswith("/sgive"):
         is_diamond = True
-    elif has_dollar_kw:
+    elif cmd.startswith("/money"):
         is_diamond = False
-    elif cmd.startswith("/give") or cmd.startswith("/sgive"):
-        is_diamond = True
     else:
         is_diamond = False
 
+    DIAMOND_KEYWORDS = {"olmos", "diamond", "diamonds", "almaz", "💎"}
+    DOLLAR_KEYWORDS = {"dollar", "dollor", "$", "pul", "som", "so'm"}
+    CURRENCY_KEYWORDS = DIAMOND_KEYWORDS | DOLLAR_KEYWORDS | {"ta"}
+
+    rem_tokens = parts[1:]
     target_user = None
+    target_arg = None
     amount = 0
+    amount_idx = None
+    target_idx = None
+    first_comment_token_idx = len(parts)
 
     # 1. Reply bo'lsa
     if message.reply_to_message and message.reply_to_message.from_user:
@@ -168,34 +170,138 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
             user_id=target_tg.id,
             defaults={"full_name": (target_tg.full_name or "Foydalanuvchi")[:100], "mention": (target_tg.full_name or "Foydalanuvchi")[:100]}
         )
-        for p in parts[1:]:
-            clean_p = p.replace("$", "").replace("💎", "").replace(",", "").replace(".", "").strip()
-            if clean_p.isdigit():
+
+        for i, p in enumerate(rem_tokens):
+            clean_p = p.replace("$", "").replace("💎", "").replace(",", "").replace(".", "").replace("ta", "").strip()
+            if clean_p.isdigit() and int(clean_p) > 0:
                 amount = int(clean_p)
+                amount_idx = i
+                p_lower = p.lower()
+                if any(k in p_lower for k in ["💎", "olmos", "diamond", "almaz"]):
+                    is_diamond = True
+                elif any(k in p_lower for k in ["$", "dollar", "dollor", "pul", "som"]):
+                    is_diamond = False
                 break
+
+        if amount_idx is None:
+            await message.answer("❌ Noto'g'ri miqdor! (Kamida 1 kiritilishi kerak)", parse_mode="HTML")
+            return
+
+        # Miqdordan oldingi kalit so'zlarni tekshirish (masalan: /give olmos 5 ...)
+        if amount_idx > 0:
+            for j in range(amount_idx):
+                tk_prev = rem_tokens[j].lower().strip(",.")
+                if tk_prev in DIAMOND_KEYWORDS:
+                    is_diamond = True
+                elif tk_prev in DOLLAR_KEYWORDS:
+                    is_diamond = False
+
+        # Miqdordan keyingi kalit so'zlarni tekshirish (masalan: 5 ta olmos ...)
+        idx = amount_idx + 1
+        while idx < len(rem_tokens):
+            tk = rem_tokens[idx].lower().strip(",.")
+            if tk == "ta":
+                idx += 1
+                continue
+            if tk in DIAMOND_KEYWORDS:
+                is_diamond = True
+                idx += 1
+                continue
+            if tk in DOLLAR_KEYWORDS:
+                is_diamond = False
+                idx += 1
+                continue
+            break
+
+        first_comment_token_idx = 1 + idx
+
     else:
         # 2. Reply bo'lmasa (/give @username 100  yoki  /give 123456789 100)
-        target_arg = None
-        for p in parts[1:]:
-            clean_p = p.replace("$", "").replace("💎", "").replace(",", "").replace(".", "").strip()
-            if clean_p.isdigit():
-                val = int(clean_p)
-                if val > 100000 and not target_user:
-                    u_cand = await User.filter(user_id=val).first()
-                    if u_cand:
-                        target_user = u_cand
-                        continue
-                if amount == 0:
-                    amount = val
-            elif p.startswith("@") or not target_arg:
+        for i, p in enumerate(rem_tokens):
+            if p.startswith("@"):
+                target_idx = i
                 target_arg = p
+                break
 
-        if not target_user and target_arg:
-            if target_arg.isdigit():
-                target_user = await User.filter(user_id=int(target_arg)).first()
-            else:
-                clean_un = target_arg.lstrip("@").lower()
-                target_user = await User.filter(username__iexact=clean_un).first()
+        numbers = []
+        for i, p in enumerate(rem_tokens):
+            if i == target_idx:
+                continue
+            clean_p = p.replace("$", "").replace("💎", "").replace(",", "").replace(".", "").replace("ta", "").strip()
+            if clean_p.isdigit() and int(clean_p) > 0:
+                numbers.append((i, int(clean_p), p))
+
+        if target_idx is not None:
+            if numbers:
+                amount_idx, amount, orig_p = numbers[0]
+                p_lower = orig_p.lower()
+                if any(k in p_lower for k in ["💎", "olmos", "diamond", "almaz"]):
+                    is_diamond = True
+                elif any(k in p_lower for k in ["$", "dollar", "dollor", "pul", "som"]):
+                    is_diamond = False
+        else:
+            if len(numbers) >= 2:
+                n1_idx, n1_val, orig_p1 = numbers[0]
+                n2_idx, n2_val, orig_p2 = numbers[1]
+                if n1_val > 100000 and n2_val <= 100000:
+                    target_idx, target_arg = n1_idx, str(n1_val)
+                    amount_idx, amount, orig_p = n2_idx, n2_val, orig_p2
+                elif n2_val > 100000 and n1_val <= 100000:
+                    target_idx, target_arg = n2_idx, str(n2_val)
+                    amount_idx, amount, orig_p = n1_idx, n1_val, orig_p1
+                else:
+                    target_idx, target_arg = n1_idx, str(n1_val)
+                    amount_idx, amount, orig_p = n2_idx, n2_val, orig_p2
+                p_lower = orig_p.lower()
+                if any(k in p_lower for k in ["💎", "olmos", "diamond", "almaz"]):
+                    is_diamond = True
+                elif any(k in p_lower for k in ["$", "dollar", "dollor", "pul", "som"]):
+                    is_diamond = False
+            elif len(numbers) == 1:
+                amount_idx, amount, orig_p = numbers[0]
+                p_lower = orig_p.lower()
+                if any(k in p_lower for k in ["💎", "olmos", "diamond", "almaz"]):
+                    is_diamond = True
+                elif any(k in p_lower for k in ["$", "dollar", "dollor", "pul", "som"]):
+                    is_diamond = False
+                for i, p in enumerate(rem_tokens):
+                    if i != amount_idx and p.lower() not in CURRENCY_KEYWORDS:
+                        target_idx = i
+                        target_arg = p
+                        break
+
+        if not target_arg or amount <= 0 or amount_idx is None:
+            await message.answer(
+                "❌ Qabul qiluvchi yoki miqdor noto'g'ri kiritildi!\n"
+                "<i>Format: /give [miqdor] [izoh] (reply qilib) yoki /give @username [miqdor] [izoh]</i>",
+                parse_mode="HTML"
+            )
+            return
+
+        if target_arg.isdigit():
+            target_user = await User.filter(user_id=int(target_arg)).first()
+        else:
+            clean_un = target_arg.lstrip("@").lower()
+            target_user = await User.filter(username__iexact=clean_un).first()
+
+        consumed_max = max(target_idx, amount_idx)
+        idx = consumed_max + 1
+        while idx < len(rem_tokens):
+            tk = rem_tokens[idx].lower().strip(",.")
+            if tk == "ta":
+                idx += 1
+                continue
+            if tk in DIAMOND_KEYWORDS:
+                is_diamond = True
+                idx += 1
+                continue
+            if tk in DOLLAR_KEYWORDS:
+                is_diamond = False
+                idx += 1
+                continue
+            break
+
+        first_comment_token_idx = 1 + idx
 
     if not target_user:
         await message.answer(
@@ -212,6 +318,20 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
     if amount <= 0:
         await message.answer("❌ Noto'g'ri miqdor! (Kamida 1 kiritilishi kerak)", parse_mode="HTML")
         return
+
+    # Izohni aniqlash
+    comment = None
+    if first_comment_token_idx < len(parts):
+        pos = 0
+        for i in range(first_comment_token_idx):
+            found_pos = text.find(parts[i], pos)
+            if found_pos != -1:
+                pos = found_pos + len(parts[i])
+        start_pos = text.find(parts[first_comment_token_idx], pos)
+        if start_pos != -1:
+            raw_c = text[start_pos:].strip()
+            if raw_c:
+                comment = raw_c[:500]
 
     sender_db, sender_profile = await _get_user_and_profile(
         sender_tg.id, (sender_tg.full_name or "Foydalanuvchi")[:100], sender_tg.full_name or "Foydalanuvchi"
@@ -235,7 +355,7 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
         await sender_profile.save()
         await target_profile.save()
 
-        unit_name = d_disp
+        unit_name = f"olmos {d_disp}"
     else:
         if sender_profile.dollar < amount:
             await message.answer(
@@ -250,7 +370,7 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
         await sender_profile.save()
         await target_profile.save()
 
-        unit_name = m_disp
+        unit_name = f"dollar {m_disp}"
 
     from models.user import Transfers
     await Transfers.create(
@@ -258,7 +378,7 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
         to_user=target_user,
         amount=amount,
         type="diamond" if is_diamond else "dollar",
-        caption="Telegram o'tkazma"
+        caption=(comment or "Telegram o'tkazma")[:100]
     )
 
     s_name = html.escape(sender_db.full_name or "Foydalanuvchi")
@@ -267,14 +387,19 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
     t_link = f'<a href="tg://user?id={target_user.user_id}">{t_name}</a>'
 
     # ✅ <name1> - <name2> ga <soni> ta <pul/almaz> yubordi!
-    success_msg = f"{s_link} - {t_link} ga <b>{amount:,} ta {unit_name}</b> yubordi! 💸"
+    success_msg = f"{s_link} - {t_link} ga <b>{amount:,} ta {unit_name}</b> yubordi!"
+    if comment:
+        success_msg += f"\nIzoh: {html.escape(comment)}"
     await message.answer(success_msg, parse_mode="HTML")
 
     if bot:
         try:
+            recv_msg = f"🎉 {s_link} sizga <b>{amount:,} ta {unit_name}</b> yubordi!"
+            if comment:
+                recv_msg += f"\nIzoh: {html.escape(comment)}"
             await bot.send_message(
                 chat_id=target_user.user_id,
-                text=f"🎉 {s_link} sizga <b>{amount:,} ta {unit_name}</b> yubordi!",
+                text=recv_msg,
                 parse_mode="HTML"
             )
         except Exception:
@@ -289,7 +414,8 @@ async def transfer_funds_handler(message: Message, bot: Bot = None):
                 target_profile=target_profile,
                 amount=amount,
                 unit_name="olmos" if is_diamond else "dollar",
-                chat=message.chat
+                chat=message.chat,
+                extra_note=f"Izoh: {comment}" if comment else None
             )
         except Exception:
             pass

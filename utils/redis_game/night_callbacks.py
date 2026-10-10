@@ -184,6 +184,9 @@ NIGHT_ACTION_ANNOUNCE = {
 
 async def _announce_night_action(call: CallbackQuery, gid: int, ph: int, uid: int, role: str, *, skipped: bool = False, kind: str = None) -> None:
     """Guruhga tungi harakat e'lonini bir marta yuborish (nishon ochilmaydi)."""
+    if role == RoleNames.MAFIA or ("mafia" in str(role).lower() and "don" not in str(role).lower()):
+        return
+
     key = f"game:{gid}:night:{ph}:announced:{uid}"
     try:
         if not await r.set(key, "1", nx=True, ex=7200):
@@ -571,16 +574,6 @@ async def _announce_day_vote(call: CallbackQuery, gid: int, uid: int, target_uid
         game_state = await game_repo.load_game(gid)
         if not game_state:
             return
-        day_raw = await r.get(f"game:{gid}:day_num")
-        day_num = int(day_raw) if day_raw is not None else 0
-
-        dup_key = f"game:{gid}:day:{day_num}:vote_announced:{uid}"
-        try:
-            first_time = await r.set(dup_key, "1", nx=True, ex=7200)
-            if not first_time:
-                return
-        except Exception:
-            pass
 
         voter = await _player_mention(uid)
         if skipped:
@@ -701,9 +694,13 @@ async def vote_like_cb(call: CallbackQuery, bot=None):
         return
 
     uid = call.from_user.id
+    if uid == tid:
+        await call.answer()
+        return
+
     player = await player_repo.load_player(gid, uid)
     if not player or not player.is_alive:
-        await call.answer("Siz ovoz bera olmaysiz.", show_alert=True)
+        await call.answer()
         return
 
     expected = await r.get(f"game:{gid}:phase:{day}:like_target")

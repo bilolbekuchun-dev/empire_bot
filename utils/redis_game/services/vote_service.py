@@ -33,6 +33,9 @@ class VoteService:
             str(voter_id),
             str(target_id)
         )
+        if target_id != 0:
+            first_key = f"game:{game_id}:phase:{phase_id}:target:{target_id}:first_voter"
+            await r.setnx(first_key, str(voter_id))
         
         return True
     

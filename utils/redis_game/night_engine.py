@@ -697,7 +697,7 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
         if len(top) == 1:
             family_target = top[0]
             family_killer = RoleNames.DON
-            family_actor_id = don_player.user_id if don_player else mafia_voters.get(top[0])
+            family_actor_id = don_actor_id if don_target else mafia_voters.get(top[0])
 
     protected |= set(jin_protect)
 
@@ -780,10 +780,16 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
                             protected.add(target)
                             is_saved = True
                             try:
-                                await _send_private(bot, target, f"🛡 <b>Qotildan himoyangiz</b> sizni tungi hujumdan saqlab qoldi! (Qolgani: {tp.qotildan_himoya} ta)")
+                                await _send_private(bot, target, f"🛡 <b>Qotildan himoyangiz</b> sizni Qotil hujumidan saqlab qoldi! (Qolgani: {tp.qotildan_himoya} ta)")
                             except Exception:
                                 pass
-                        elif killer in (RoleNames.DON, RoleNames.MAFIA) and tp.himoya > 0 and getattr(tp, "on_himoya", True):
+                            c_id = getattr(chat, 'chat_id', getattr(chat, 'id', None))
+                            if c_id:
+                                try:
+                                    await bot.send_message(c_id, "🛡 <b>Kimnidir himoyasi ishlab ketdi!</b>", parse_mode="HTML")
+                                except Exception:
+                                    pass
+                        elif killer and tp.himoya > 0 and getattr(tp, "on_himoya", True):
                             target_p = by_uid.get(target)
                             from config import tinch_rollar
                             if target_p and target_p.role in tinch_rollar:
@@ -791,10 +797,17 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
                                 await tp.save()
                                 protected.add(target)
                                 is_saved = True
+                                attacker_role_str = "Mafia" if killer in (RoleNames.DON, RoleNames.MAFIA) else role_display(killer)
                                 try:
-                                    await _send_private(bot, target, f"🛡 <b>Tinch aholi himoyangiz</b> sizni mafia hujumidan saqlab qoldi! (Qolgani: {tp.himoya} ta)")
+                                    await _send_private(bot, target, f"🛡 <b>Himoyangiz</b> sizni {attacker_role_str} hujumidan saqlab qoldi! (Qolgani: {tp.himoya} ta)")
                                 except Exception:
                                     pass
+                                c_id = getattr(chat, 'chat_id', getattr(chat, 'id', None))
+                                if c_id:
+                                    try:
+                                        await bot.send_message(c_id, "🛡 <b>Kimnidir himoyasi ishlab ketdi!</b>", parse_mode="HTML")
+                                    except Exception:
+                                        pass
             except Exception as e:
                 logger.warning(f"Error checking profile protections for target {target}: {e}")
 
@@ -807,14 +820,14 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
                     if killer not in kill_sources[target]:
                         kill_sources[target].append(killer)
 
-            # Qasoskor roli bo'lsa - hujum qilgan odamni qasosga yozib qo'yamiz
-            target_p = by_uid.get(target)
-            if target_p and target_p.role == RoleNames.QASOSKOR and attacker_id:
-                qasoskor_revenge_queue.append((attacker_id, target))
+                # Qasoskor roli bo'lsa - hujum qilgan odamni qasosga yozib qo'yamiz (faqat o'lganda!)
+                target_p = by_uid.get(target)
+                if target_p and target_p.role == RoleNames.QASOSKOR and attacker_id:
+                    qasoskor_revenge_queue.append((attacker_id, target))
 
     # --- Qasoskor qasosi: o'ziga hujum qilgan odamni o'ldiradi ---
     for attacker_id, qasoskor_id in qasoskor_revenge_queue:
-        if attacker_id and attacker_id not in healed and attacker_id not in protected:
+        if attacker_id:
             if attacker_id not in dead_uids:
                 dead_uids.append(attacker_id)
             if attacker_id not in kill_sources:
@@ -1128,12 +1141,12 @@ async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot,
 
     mention = _mention_html(victim.user_id, names)
     confirm_text = {
-        "uz": f"Rostdan ham {mention}ni osmoqchimisiz?",
+        "uz": f"Chindan ham {mention}ni osmoqchimisiz?",
         "ru": f"Вы действительно хотите повесить {mention}?",
         "en": f"Do you really want to lynch {mention}?",
         "tr": f"Gerçekten {mention} kişisini asmak istiyor musunuz?",
         "kk": f"Шынымен {mention} асуды қалайсыз ба?"
-    }.get(c_lang, f"Rostdan ham {mention}ni osmoqchimisiz?")
+    }.get(c_lang, f"Chindan ham {mention}ni osmoqchimisiz?")
 
     msg = await bot.send_message(
         chat.chat_id,
@@ -1156,9 +1169,6 @@ async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot,
         await bot.edit_message_reply_markup(chat.chat_id, msg.message_id, reply_markup=None)
     except Exception:
         pass
-
-    # Kichik kutish (grace period) - oxirgi soniyadagi harakatlar saqlanishiga imkon berish
-    await asyncio.sleep(2)
 
     tally = await VoteService.get_vote_like_results(game_id, day_num, victim.user_id)
     likes = tally.get("likes", 0)
@@ -1234,4 +1244,25 @@ async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot,
     except Exception:
         pass
     await _check_role_succession(by_uid, lang_map, bot)
+
+    # Qasoskor osilsa: eng birinchi ovoz bergan foydalanuvchi ham o'ladi
+    if victim.role == RoleNames.QASOSKOR:
+        try:
+            fv_raw = await r.get(f"game:{game_id}:phase:{day_num}:target:{victim.user_id}:first_voter")
+            if fv_raw:
+                first_voter_id = int(fv_raw.decode() if isinstance(fv_raw, bytes) else fv_raw)
+                first_voter_p = by_uid.get(first_voter_id)
+                if first_voter_p and first_voter_p.is_alive and first_voter_p.user_id != victim.user_id:
+                    first_voter_p.is_alive = False
+                    first_voter_p.deaded_at = datetime.now(timezone.utc)
+                    await player_repo.save_player(first_voter_p)
+
+                    fv_mention = _mention_html(first_voter_p.user_id, names)
+                    qasoskor_mention = _mention_html(victim.user_id, names)
+                    fv_role_str = role_display(first_voter_p.role, lang=c_lang)
+
+                    revenge_msg = f"{fv_role_str} {fv_mention} Qasoskor {qasoskor_mention}ga birinchi bo'lib ovoz bergani uchun uni ham jahannamga olib ketdi!"
+                    await bot.send_message(chat.chat_id, revenge_msg, parse_mode="HTML")
+        except Exception as e:
+            logger.warning(f"Error executing Qasoskor lynch revenge: {e}")
 

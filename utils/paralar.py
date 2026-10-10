@@ -137,6 +137,36 @@ async def del_my_para(message: Message):
 
     await para.delete()
 
+    # O'yin payti dpara qilsa: ikkala juftlik ham o'yindan chiqariladi
+    try:
+        from utils.redis_game.services.player_service import player_service
+        from utils.redis_game.repositories.player_repository import player_repository as player_repo
+        from utils.redis_game.game_models_crud import game_repo
+
+        for uid in (user.user_id, other_user.user_id):
+            game_res = await player_service.find_player_active_game(uid)
+            if game_res:
+                g_id, p_st = game_res
+                g_st = await game_repo.load_game(g_id)
+                if g_st and g_st.is_active:
+                    p1_st = await player_repo.load_player(g_id, user.user_id)
+                    p2_st = await player_repo.load_player(g_id, other_user.user_id)
+
+                    for p in (p1_st, p2_st):
+                        if p and p.is_alive:
+                            p.is_alive = False
+                            await player_repo.save_player(p)
+
+                    from models.game_data import Chat
+                    c_obj = await Chat.get_or_none(chat_id=g_st.chat_id)
+                    if c_obj:
+                        from utils.redis_game.game_phases import check_paralar_lst_redis
+                        paralar_lst = [(user.user_id, other_user.user_id)]
+                        await check_paralar_lst_redis(str(g_id), paralar_lst, message.bot, c_obj)
+                    break
+    except Exception as e:
+        print(f"dpara joyida o'yin o'limi bajarishda xato: {e}")
+
     await force_close_anon_chat(user.user_id, other_user.user_id, bot=message.bot)
 
     await _reply_user_public(
@@ -175,6 +205,56 @@ async def check_my_para(message: Message):
     other_name = html.escape(other_user.full_name or "Foydalanuvchi")
     other_link = f'<a href="tg://user?id={other_user.user_id}">{other_name}</a>'
     await _reply_user_public(message, f"Sizning parangiz: {other_link} <tg-emoji emoji-id='5402100905883488232'>💍</tg-emoji>", parse_mode="HTML")
+
+async def send_meme_to_user(bot: Bot, user_id: int, message: Message) -> bool:
+    """Mem panel yoqilgan bo'lsa, foydalanuvchiga stiker/media va matn yuboradi."""
+    from utils.database import redis_client as r
+    enabled_raw = await r.get("meme_panel:enabled")
+    if not enabled_raw:
+        return False
+    enabled_str = enabled_raw.decode() if isinstance(enabled_raw, bytes) else str(enabled_raw)
+    if enabled_str != "1":
+        return False
+
+    text_raw = await r.get("meme_panel:text")
+    if text_raw:
+        text = text_raw.decode() if isinstance(text_raw, bytes) else str(text_raw)
+    else:
+        text = "Birodar, o'zingni bos! 😂 Erkaklar bir-biri bilan para bo'la olmaydi."
+
+    sticker_raw = await r.get("meme_panel:sticker")
+    media_type_raw = await r.get("meme_panel:media_type")
+
+    sticker_file_id = sticker_raw.decode() if isinstance(sticker_raw, bytes) else (str(sticker_raw) if sticker_raw else None)
+    media_type = media_type_raw.decode() if isinstance(media_type_raw, bytes) else (str(media_type_raw) if media_type_raw else "sticker")
+
+    if sticker_file_id:
+        try:
+            if media_type == "sticker":
+                await bot.send_sticker(user_id, sticker=sticker_file_id)
+            elif media_type == "photo":
+                await bot.send_photo(user_id, photo=sticker_file_id)
+            elif media_type == "animation":
+                await bot.send_animation(user_id, animation=sticker_file_id)
+            elif media_type == "video":
+                await bot.send_video(user_id, video=sticker_file_id)
+            elif media_type == "video_note":
+                await bot.send_video_note(user_id, video_note=sticker_file_id)
+            else:
+                await bot.send_sticker(user_id, sticker=sticker_file_id)
+        except Exception as e:
+            print(f"Mem mediasi yuborishda xato: {e}")
+
+    try:
+        await bot.send_message(user_id, text, parse_mode="HTML")
+    except Exception as e:
+        print(f"Mem matnini lichkaga yuborishda xato: {e}")
+        try:
+            await message.reply(text, parse_mode="HTML")
+        except Exception:
+            pass
+
+    return True
 
 async def add_para_request(message: Message):
     user_id = None
@@ -216,6 +296,12 @@ async def add_para_request(message: Message):
     if not targ_user:
         await _reply_user_private(message, "Foydalanuvchi ma'lumotlar bazasidan topilmadi. Avval u botga /start bosishi kerak.")
         return
+
+    # Mem panel tekshiruvi: faqat ikkala foydalanuvchi ham erkak ('m') bo'lsa
+    if user.gender == "m" and targ_user.gender == "m":
+        meme_sent = await send_meme_to_user(message.bot, message.from_user.id, message)
+        if meme_sent:
+            return
 
     # User da para bor-yo'qligini tekshirish
     u_para = await Paralar.filter(user1=user).first() or await Paralar.filter(user2=user).first()

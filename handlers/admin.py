@@ -17,7 +17,7 @@ from keyboards.admin_keyboard import (
     admin_emoji_main_menu, admin_emoji_roles_categories_menu,
     admin_emoji_roles_list_menu, admin_emoji_weapons_list_menu,
     admin_emoji_item_actions_menu, admin_back_btn,
-    admin_emoji_reset_confirm_menu
+    admin_emoji_reset_confirm_menu, admin_meme_menu
 )
 from config import ADMINS, PRIMARY_ADMIN_ID, PRIMARY_ADMIN_IDS
 
@@ -56,7 +56,7 @@ async def admin_panel_cmd(message: Message, state: FSMContext, bot: Bot):
         return
     await state.clear()
     text = get_main_panel_text()
-    reply_markup = admin_emoji_main_menu()
+    reply_markup = await admin_emoji_main_menu()
 
     # Guruhda yoki kanalda yozilsa, panelni bot PM (lichka) iga yuboradi
     if message.chat.type != "private":
@@ -83,8 +83,21 @@ async def adm_emj_main_cb(call: CallbackQuery, state: FSMContext):
         return
     await state.clear()
     text = get_main_panel_text()
-    await call.message.edit_text(text, parse_mode="HTML", reply_markup=admin_emoji_main_menu())
+    await call.message.edit_text(text, parse_mode="HTML", reply_markup=await admin_emoji_main_menu())
     await call.answer()
+
+@router.callback_query(F.data == "adm_toggle_webapp")
+async def adm_toggle_webapp_cb(call: CallbackQuery):
+    if not await is_primary_admin(call.from_user.id):
+        return
+    from utils.webapp_config import is_webapp_active, set_webapp_active
+    curr = await is_webapp_active()
+    new_status = not curr
+    await set_webapp_active(new_status)
+    status_str = "🟢 Yoqildi! (Mini App ishlaydi)" if new_status else "🔴 O'chirildi! (Mini App yashirildi)"
+    await call.answer(f"WebApp holati: {status_str}", show_alert=True)
+    kb = await admin_emoji_main_menu()
+    await call.message.edit_reply_markup(reply_markup=kb)
 
 
 
@@ -374,7 +387,7 @@ async def adm_emj_reset_do_cb(call: CallbackQuery):
     reset_all_custom_emojis()
     await call.answer("🗑 Barcha maxsus premium emojilar tozalandi va standart holatga qaytarildi!", show_alert=True)
     text = get_main_panel_text()
-    await call.message.edit_text(text, parse_mode="HTML", reply_markup=admin_emoji_main_menu())
+    await call.message.edit_text(text, parse_mode="HTML", reply_markup=await admin_emoji_main_menu())
 
 @router.callback_query(F.data == "adm_emj_save_to_db")
 async def adm_emj_save_to_db_cb(call: CallbackQuery):
@@ -406,7 +419,7 @@ async def adm_emj_load_from_db_cb(call: CallbackQuery):
         await sync_emojis_from_db()
         await call.answer("🔄 Barcha premium emojilar bazadan qayta tiklandi va yangilandi!", show_alert=True)
         text = get_main_panel_text()
-        await call.message.edit_text(text, parse_mode="HTML", reply_markup=admin_emoji_main_menu())
+        await call.message.edit_text(text, parse_mode="HTML", reply_markup=await admin_emoji_main_menu())
     except Exception as e:
         await call.answer(f"❌ Tiklashda xatolik: {str(e)}", show_alert=True)
 
@@ -665,3 +678,184 @@ async def f_tchat(message: Message, bot: Bot):
 @router.message(Command("tchats"), F.chat.type == "private")
 async def f_tchats(message: Message, bot: Bot):
     await statistika.get_detailed_chat_stats(message=message, bot=bot)
+
+
+# ==========================================
+# 🤡 MEM PANEL BOSHQARUVI
+# ==========================================
+
+async def get_meme_panel_data():
+    from utils.database import redis_client as r
+    enabled_raw = await r.get("meme_panel:enabled")
+    enabled = (enabled_raw.decode() if isinstance(enabled_raw, bytes) else str(enabled_raw or "")) == "1"
+
+    text_raw = await r.get("meme_panel:text")
+    text = text_raw.decode() if isinstance(text_raw, bytes) else (str(text_raw) if text_raw else None)
+
+    sticker_raw = await r.get("meme_panel:sticker")
+    sticker = sticker_raw.decode() if isinstance(sticker_raw, bytes) else (str(sticker_raw) if sticker_raw else None)
+
+    media_type_raw = await r.get("meme_panel:media_type")
+    media_type = media_type_raw.decode() if isinstance(media_type_raw, bytes) else (str(media_type_raw) if media_type_raw else "stiker")
+
+    return enabled, text, sticker, media_type
+
+
+async def render_meme_panel_text() -> tuple[str, bool, bool, bool]:
+    enabled, text, sticker, media_type = await get_meme_panel_data()
+    status_str = "🟢 Yoqilgan (Erkaklar o'rtasida para so'rovi bloklanadi)" if enabled else "🔴 O'chiq (Standart rejim)"
+
+    disp_text = text if text else "<i>(Default: Birodar, o'zingni bos! 😂 Erkaklar bir-biri bilan para bo'la olmaydi.)</i>"
+    disp_sticker = f"<code>{sticker}</code> ({media_type})" if sticker else "<i>(O'rnatilmagan)</i>"
+
+    panel_text = (
+        "🤡 <b>MEM PANEL BOSHQARUVI</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"<b>Holat:</b> {status_str}\n\n"
+        f"📝 <b>Sozlangan matn:</b>\n{disp_text}\n\n"
+        f"🎭 <b>Sozlangan stiker/rasm:</b>\n{disp_sticker}\n"
+        "━━━━━━━━━━━━━━━━━━━━━━\n"
+        "<i>Kerakli amalni tanlang:</i>"
+    )
+    return panel_text, enabled, bool(text), bool(sticker)
+
+
+@router.callback_query(F.data == "adm_meme_main")
+async def adm_meme_main_cb(call: CallbackQuery, state: FSMContext):
+    if not await is_primary_admin(call.from_user.id):
+        return
+    await state.clear()
+    panel_text, enabled, has_text, has_sticker = await render_meme_panel_text()
+    kb = admin_meme_menu(enabled, has_text, has_sticker)
+    await call.message.edit_text(panel_text, parse_mode="HTML", reply_markup=kb)
+    await call.answer()
+
+
+@router.callback_query(F.data == "adm_meme_toggle")
+async def adm_meme_toggle_cb(call: CallbackQuery, state: FSMContext):
+    if not await is_primary_admin(call.from_user.id):
+        return
+    await state.clear()
+    from utils.database import redis_client as r
+    enabled_raw = await r.get("meme_panel:enabled")
+    cur_enabled = (enabled_raw.decode() if isinstance(enabled_raw, bytes) else str(enabled_raw or "")) == "1"
+    new_state = "0" if cur_enabled else "1"
+    await r.set("meme_panel:enabled", new_state)
+
+    panel_text, enabled, has_text, has_sticker = await render_meme_panel_text()
+    kb = admin_meme_menu(enabled, has_text, has_sticker)
+    await call.message.edit_text(panel_text, parse_mode="HTML", reply_markup=kb)
+    status_msg = "🟢 Yoqildi" if enabled else "🔴 O'chirildi"
+    await call.answer(f"Mem panel statusi: {status_msg}")
+
+
+@router.callback_query(F.data == "adm_meme_set_text")
+async def adm_meme_set_text_cb(call: CallbackQuery, state: FSMContext):
+    if not await is_primary_admin(call.from_user.id):
+        return
+    from states.admin_states import AdminMemeStates
+    await state.set_state(AdminMemeStates.waiting_for_text)
+    kb = admin_back_btn("adm_meme_main")
+    text = (
+        "✏️ <b>Yangi mem matnini yuboring:</b>\n\n"
+        "<i>Erkak kishi erkakka /para so'rov yuborganda ushbu matn lichkaga yuboriladi.</i>\n"
+        "<i>Masalan: Birodar, o'zingni bos! 😂 Erkaklar bir-biri bilan para bo'la olmaydi.</i>"
+    )
+    await call.message.edit_text(text, parse_mode="HTML", reply_markup=kb)
+    await call.answer()
+
+
+@router.message(AdminMemeStates.waiting_for_text)
+async def adm_meme_save_text(message: Message, state: FSMContext):
+    if not await is_primary_admin(message.from_user.id):
+        return
+    from utils.database import redis_client as r
+    await r.set("meme_panel:text", message.text)
+    await state.clear()
+    await message.answer("✅ <b>Mem matni muvaffaqiyatli saqlandi!</b>", parse_mode="HTML")
+    panel_text, enabled, has_text, has_sticker = await render_meme_panel_text()
+    kb = admin_meme_menu(enabled, has_text, has_sticker)
+    await message.answer(panel_text, parse_mode="HTML", reply_markup=kb)
+
+
+@router.callback_query(F.data == "adm_meme_set_sticker")
+async def adm_meme_set_sticker_cb(call: CallbackQuery, state: FSMContext):
+    if not await is_primary_admin(call.from_user.id):
+        return
+    from states.admin_states import AdminMemeStates
+    await state.set_state(AdminMemeStates.waiting_for_sticker)
+    kb = admin_back_btn("adm_meme_main")
+    text = (
+        "🎭 <b>Mem stikerini yoki media faylini yuboring:</b>\n\n"
+        "<i>Istalgan stiker, photo (rasm), GIF, video yoki video-eshtet yuborishingiz mumkin.</i>"
+    )
+    await call.message.edit_text(text, parse_mode="HTML", reply_markup=kb)
+    await call.answer()
+
+
+@router.message(AdminMemeStates.waiting_for_sticker)
+async def adm_meme_save_sticker(message: Message, state: FSMContext):
+    if not await is_primary_admin(message.from_user.id):
+        return
+    from utils.database import redis_client as r
+    file_id = None
+    media_type = "sticker"
+
+    if message.sticker:
+        file_id = message.sticker.file_id
+        media_type = "sticker"
+    elif message.photo:
+        file_id = message.photo[-1].file_id
+        media_type = "photo"
+    elif message.animation:
+        file_id = message.animation.file_id
+        media_type = "animation"
+    elif message.video:
+        file_id = message.video.file_id
+        media_type = "video"
+    elif message.video_note:
+        file_id = message.video_note.file_id
+        media_type = "video_note"
+    elif message.document:
+        file_id = message.document.file_id
+        media_type = "document"
+
+    if not file_id:
+        await message.answer("⚠️ Iltimos, stiker, rasm, GIF yoki video yuboring.")
+        return
+
+    await r.set("meme_panel:sticker", file_id)
+    await r.set("meme_panel:media_type", media_type)
+    await state.clear()
+    await message.answer(f"✅ <b>Mem mediasi ({media_type}) saqlandi!</b>", parse_mode="HTML")
+    panel_text, enabled, has_text, has_sticker = await render_meme_panel_text()
+    kb = admin_meme_menu(enabled, has_text, has_sticker)
+    await message.answer(panel_text, parse_mode="HTML", reply_markup=kb)
+
+
+@router.callback_query(F.data == "adm_meme_reset_text")
+async def adm_meme_reset_text_cb(call: CallbackQuery, state: FSMContext):
+    if not await is_primary_admin(call.from_user.id):
+        return
+    await state.clear()
+    from utils.database import redis_client as r
+    await r.delete("meme_panel:text")
+    panel_text, enabled, has_text, has_sticker = await render_meme_panel_text()
+    kb = admin_meme_menu(enabled, has_text, has_sticker)
+    await call.message.edit_text(panel_text, parse_mode="HTML", reply_markup=kb)
+    await call.answer("Matn default qiymatga tiklandi")
+
+
+@router.callback_query(F.data == "adm_meme_del_sticker")
+async def adm_meme_del_sticker_cb(call: CallbackQuery, state: FSMContext):
+    if not await is_primary_admin(call.from_user.id):
+        return
+    await state.clear()
+    from utils.database import redis_client as r
+    await r.delete("meme_panel:sticker")
+    await r.delete("meme_panel:media_type")
+    panel_text, enabled, has_text, has_sticker = await render_meme_panel_text()
+    kb = admin_meme_menu(enabled, has_text, has_sticker)
+    await call.message.edit_text(panel_text, parse_mode="HTML", reply_markup=kb)
+    await call.answer("Mem mediasi o'chirildi")
+

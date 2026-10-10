@@ -120,6 +120,7 @@ class PlayerService:
         """
         from utils.database import redis_client
         from datetime import datetime, timezone
+        from utils.redis_game.game_models_crud import game_repo
         
         active_game_ids = await redis_client.smembers("global:active_games")
         if not active_game_ids:
@@ -134,14 +135,8 @@ class PlayerService:
                 continue
             player = await player_repository.load_player(game_id, user_id)
             if player and not player.is_alive and not player.is_sayed_last_word:
-                if player.deaded_at:
-                    now = datetime.now(timezone.utc)
-                    dt = player.deaded_at
-                    if dt.tzinfo is None:
-                        dt = dt.replace(tzinfo=timezone.utc)
-                    if (now - dt).total_seconds() <= 120:
-                        return (game_id, player)
-                else:
+                game_state = await game_repo.load_game(game_id)
+                if game_state and game_state.is_active:
                     return (game_id, player)
 
         return None
