@@ -94,33 +94,23 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
         except Exception:
             pass
 
-    async def _bot_admin_and_can_delete(self, message: types.Message, force: bool = False) -> tuple[bool, bool]:
+    async def _bot_admin_and_can_delete(self, message: types.Message, force: bool = False) -> tuple[bool, bool, list[str]]:
         now = monotonic()
         chat_id = message.chat.id
         if not force and chat_id in bot_admin_cache and now - bot_admin_cache[chat_id]['time'] < _ADMIN_CACHE_TTL:
-            return bot_admin_cache[chat_id]['is_admin'], bot_admin_cache[chat_id]['can_delete']
+            return bot_admin_cache[chat_id]['is_admin'], bot_admin_cache[chat_id]['can_delete'], bot_admin_cache[chat_id].get('missing', [])
 
         try:
-            me = await message.bot.get_chat_member(message.chat.id, message.bot.id)
-        except (TelegramForbiddenError, TelegramBadRequest):
-            _get_bot_admin_status(chat_id, False, False)
-            return False, False
+            from utils.bot_permissions import check_bot_group_permissions
+            is_valid, missing = await check_bot_group_permissions(message.bot, chat_id)
+            _get_bot_admin_status(chat_id, is_valid, is_valid)
+            bot_admin_cache[chat_id]['missing'] = missing
+            return is_valid, is_valid, missing
         except Exception as e:
             logger.warning("Bot admin check failed transiently for chat %s: %r", chat_id, e)
             if chat_id in bot_admin_cache:
-                return bot_admin_cache[chat_id]['is_admin'], bot_admin_cache[chat_id]['can_delete']
-            return True, True
-
-        can_delete = True
-        if hasattr(me, "can_delete_messages"):
-            try:
-                can_delete = bool(me.can_delete_messages)
-            except Exception:
-                can_delete = True
-
-        is_admin = self._is_admin_status(getattr(me, "status", ""))
-        _get_bot_admin_status(chat_id, is_admin, can_delete)
-        return is_admin, can_delete
+                return bot_admin_cache[chat_id]['is_admin'], bot_admin_cache[chat_id]['can_delete'], bot_admin_cache[chat_id].get('missing', [])
+            return True, True, []
 
     async def _sync_chat_db(self, message: types.Message) -> None:
         """
@@ -294,22 +284,24 @@ class GroupWriteGuardMiddleware(BaseMiddleware):
         if not self._is_group(message):
             return await handler(event, data)
 
-        # 1) Bot adminligi va delete ruxsatlari
-        bot_is_admin, bot_can_delete = await self._bot_admin_and_can_delete(message)
+        # 1) Bot adminligi va 3 ta majburiy ruxsatlar
+        bot_is_admin, bot_can_delete, missing_perms = await self._bot_admin_and_can_delete(message)
         if not bot_is_admin:
             # Kesh eskirgan bo'lishi mumkin (bot hozirgina admin qilingan) — xabar ko'rsatishdan
             # oldin Telegram'dan darhol qayta tekshiramiz, shunda yolg'on ogohlantirish chiqmaydi.
-            bot_is_admin, bot_can_delete = await self._bot_admin_and_can_delete(message, force=True)
+            bot_is_admin, bot_can_delete, missing_perms = await self._bot_admin_and_can_delete(message, force=True)
         if not bot_is_admin:
-            # Foydalanuvchini ogohlantiramiz (bir marta bo‘lishi mumkin, spamlab yubormaslik uchun logger)
-            try:
-                await message.answer(
-                    "<b>❗️ Bot guruhda admin emas! Bot muammosiz ishlashi uchun botni guruhga admin qiling "
-                    "va xabarlarni o‘chirish ruxsatini bering.</b>",
-                    parse_mode="HTML",
-                )
-            except Exception:
-                pass
+            # Foydalanuvchini ogohlantiramiz (komanda bo'lsa javob beramiz, spam qilmaslik uchun)
+            msg_text = (message.text or message.caption or "").strip()
+            if msg_text and (msg_text.startswith("/") or msg_text.startswith("!")):
+                try:
+                    from utils.bot_permissions import get_permission_warning_text
+                    await message.answer(
+                        get_permission_warning_text(missing_perms),
+                        parse_mode="HTML",
+                    )
+                except Exception:
+                    pass
             # Handlerga uzatmaymiz — bu bot o‘zi ishlay olmaydi
             return
 

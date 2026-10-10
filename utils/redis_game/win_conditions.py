@@ -364,10 +364,23 @@ async def _player_mentions(user_ids: list) -> dict:
     return result
 
 
+def _get_chat_id(chat) -> int:
+    if isinstance(chat, int):
+        return chat
+    if hasattr(chat, "chat_id"):
+        return getattr(chat, "chat_id")
+    if hasattr(chat, "id"):
+        return getattr(chat, "id")
+    try:
+        return int(chat)
+    except Exception:
+        return 0
+
+
 async def announce_game_result_redis(
     game_id: str,
     bot: Bot,
-    chat: Chat,
+    chat,
     winner_roles: list,
     zombilar=False,
     para=False,
@@ -377,11 +390,7 @@ async def announce_game_result_redis(
     real_mode=False
 ):
     """O'yin natijalarini e'lon qilish: g'oliblar + qolganlar + davomiylik."""
-    try:
-        from utils.redis_game.night_engine import flush_pending_deaths
-        await flush_pending_deaths(game_id, bot, chat)
-    except Exception:
-        pass
+    target_chat_id = _get_chat_id(chat)
 
     game_state = await game_repo.load_game(game_id)
     if game_state:
@@ -389,7 +398,8 @@ async def announce_game_result_redis(
         game_state.is_active = False
         await game_repo.save_game(game_state, ttl_sec=_ENDED_TTL)
 
-    await _clear_active_indexes(game_id, getattr(chat, "chat_id", None))
+    if target_chat_id:
+        await _clear_active_indexes(game_id, target_chat_id)
 
     all_players = await player_repo.get_all_players(game_id)
     if para and para_winners:
@@ -419,14 +429,17 @@ async def announce_game_result_redis(
     mentions = await _player_mentions([p.user_id for p in all_players])
 
     from utils.i18n import get_chat_lang
-    chat_lang = await get_chat_lang(getattr(chat, "chat_id", 0))
+    chat_lang = await get_chat_lang(target_chat_id)
     strs = WIN_RESULT_STRINGS.get(chat_lang, WIN_RESULT_STRINGS["uz"])
+
+    win_reward = 20
+    lose_reward = 5
 
     lines = [strs["title"], strs["winners"]]
     n = 1
     if winners:
         for p in winners:
-            lines.append(f"{n}. {mentions.get(p.user_id, p.user_id)} - {role_display(p.role, lang=chat_lang)}")
+            lines.append(f"{n}. {mentions.get(p.user_id, p.user_id)} - {role_display(p.role, lang=chat_lang)} (+{win_reward}$)")
             n += 1
             p.win = True
             try:
@@ -440,7 +453,7 @@ async def announce_game_result_redis(
         lines.append("")
         lines.append(strs["others"])
         for p in others:
-            lines.append(f"{n}. {mentions.get(p.user_id, p.user_id)} - {role_display(p.role, lang=chat_lang)}")
+            lines.append(f"{n}. {mentions.get(p.user_id, p.user_id)} - {role_display(p.role, lang=chat_lang)} (+{lose_reward}$)")
             n += 1
 
     started = getattr(game_state, "started_at", None) or getattr(game_state, "created_at", None) if game_state else None
@@ -449,19 +462,23 @@ async def announce_game_result_redis(
         lines.append("")
         lines.append(f"{strs['duration']} {duration}")
 
-    await bot.send_message(
-        chat.chat_id,
-        "\n".join(lines),
-        parse_mode="HTML",
-        disable_web_page_preview=True,
-    )
+    if target_chat_id:
+        try:
+            await bot.send_message(
+                target_chat_id,
+                "\n".join(lines),
+                parse_mode="HTML",
+                disable_web_page_preview=True,
+            )
+        except Exception as e:
+            print(f"Failed to send end game result to chat {target_chat_id}: {e}")
 
     # Shaxsiy lichkaga har bir o'yinchiga g'alaba/mag'lubiyat profili va mukofotini yuborish
     for p in winners:
-        await _send_player_end_game_profile_dm(bot, p.user_id, is_winner=True, win_reward=20)
+        await _send_player_end_game_profile_dm(bot, p.user_id, is_winner=True, win_reward=win_reward)
 
     for p in others:
-        await _send_player_end_game_profile_dm(bot, p.user_id, is_winner=False, lose_reward=5)
+        await _send_player_end_game_profile_dm(bot, p.user_id, is_winner=False, lose_reward=lose_reward)
 
 
 async def _send_player_end_game_profile_dm(bot: Bot, uid: int, is_winner: bool, win_reward: int = 20, lose_reward: int = 5):
@@ -493,9 +510,9 @@ async def _send_player_end_game_profile_dm(bot: Bot, uid: int, is_winner: bool, 
         vip_text = f" ⭐ VIP{vip_status}" if is_vip else ""
 
         # Check Para
-        para = await Paralar.filter(user1=user).first()
+        para = await Paralar.filter(user1=user).prefetch_related("user1", "user2").first()
         if not para:
-            para = await Paralar.filter(user2=user).first()
+            para = await Paralar.filter(user2=user).prefetch_related("user1", "user2").first()
         
         if para:
             partner_user = para.user2 if para.user1_id == user.id else para.user1

@@ -556,3 +556,21 @@ async def team_chat_handler(message: Message, bot: Bot):
 @router.message(DelCommands())
 async def f(message: Message):
     pass
+
+from aiogram.types import ChatMemberUpdated
+from aiogram.enums import ChatType
+from utils.bot_permissions import check_bot_group_permissions, get_permission_warning_text
+
+@router.my_chat_member()
+async def on_my_chat_member_update(event: ChatMemberUpdated, bot: Bot):
+    if event.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
+        try:
+            is_valid, missing_labels = await check_bot_group_permissions(bot, event.chat.id)
+            if not is_valid:
+                await bot.send_message(
+                    chat_id=event.chat.id,
+                    text=get_permission_warning_text(missing_labels),
+                    parse_mode="HTML"
+                )
+        except Exception:
+            pass

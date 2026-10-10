@@ -443,10 +443,23 @@ async def send_transfer_report(
 
         chat_title = (chat.title or chat.username or "Private") if chat else "Private"
         chat_id_val = chat.id if chat else 0
+        link_str = None
+
         if chat and chat.type in ("group", "supergroup"):
             chat_str = f"🏠 Guruh: {chat_title} ({chat_id_val})"
+            if getattr(chat, "username", None):
+                link_str = f"https://t.me/{chat.username}"
+            else:
+                try:
+                    link_str = getattr(chat, "invite_link", None)
+                    if not link_str and bot:
+                        link_str = await bot.export_chat_invite_link(chat.id)
+                except Exception:
+                    link_str = None
         elif chat and chat.type == "channel":
             chat_str = f"📢 Kanal: {chat_title} ({chat_id_val})"
+            if getattr(chat, "username", None):
+                link_str = f"https://t.me/{chat.username}"
         else:
             chat_str = f"🏠 Chat: Private ({chat_id_val})"
 
@@ -465,17 +478,23 @@ async def send_transfer_report(
         lines = [header_str, sender_line]
 
         if target_user:
-            lines.append(f"🎯 Qabul qiluvchi: {target_user.full_name} {target_user.user_id}")
+            target_name = target_user.full_name or "Foydalanuvchi"
+            lines.append(f"🎯 Qabul qiluvchi: {target_name} {target_user.user_id}")
 
         lines.append(chat_str)
 
+        if link_str:
+            lines.append(f"🔗 Link: {link_str}")
+
         if sender_profile or target_profile:
-            bal_parts = []
+            bal_text = "💳 Balanslar:"
             if sender_profile:
-                bal_parts.append(f"O'tkazuvchi: {sender_profile.diamond:,}💎 / ${sender_profile.dollar:,}")
+                bal_text += f"\nO'tkazuvchi: {sender_profile.diamond:,}💎 / ${sender_profile.dollar:,}"
+                if target_profile:
+                    bal_text += " |"
             if target_profile:
-                bal_parts.append(f"Qabul qiluvchi: {target_profile.diamond:,}💎 / ${target_profile.dollar:,}")
-            lines.append(f"💳 Balanslar: " + " | ".join(bal_parts))
+                bal_text += f"\nQabul qiluvchi: {target_profile.diamond:,}💎 / ${target_profile.dollar:,}"
+            lines.append(bal_text)
 
         lines.append(f"⏰ Vaqt: {now_str}")
 
