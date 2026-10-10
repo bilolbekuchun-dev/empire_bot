@@ -22,6 +22,7 @@ TELEGRAM_USERBOT_SESSION = os.path.join(os.path.dirname(__file__), "userbot_sess
 
 BOT_URL = os.getenv("BOT_URL", "https://t.me/test_empire_bot")
 WEBAPP_URL = os.getenv("WEBAPP_URL", "https://empiremafiaweb.netlify.app")
+IS_WEBAPP_ACTIVE = False  # WebApp vaqtincha o'chirilgan
 PORT = os.getenv("PORT")
 
 MAX_PLAYERS = 45
