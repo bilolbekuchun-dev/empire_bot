@@ -23,39 +23,38 @@ class DelCommands(Filter):
         if getattr(message, "new_chat_members", None) or getattr(message, "left_chat_member", None) or getattr(message, "new_chat_title", None):
             return False
 
-        # 1. Bot adminligini keshlangan tarzda tekshirish
+        # 1. Bot adminligini va 3 ta majburiy ruxsatni keshlangan tarzda tekshirish
         now = time.time()
         chat_id = message.chat.id
         is_bot_admin = True
+        missing_perms = []
         if chat_id in bot_admin_cache and now - bot_admin_cache[chat_id]['time'] < 300:
             is_bot_admin = bot_admin_cache[chat_id]['is_admin']
+            missing_perms = bot_admin_cache[chat_id].get('missing', [])
         else:
             try:
-                me = await message.bot.get_chat_member(message.chat.id, message.bot.id)
-                is_bot_admin = me.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]
-                bot_admin_cache[chat_id] = {'time': now, 'is_admin': is_bot_admin}
-            except (TelegramForbiddenError, TelegramBadRequest):
-                bot_admin_cache[chat_id] = {'time': now, 'is_admin': False}
-                is_bot_admin = False
+                from utils.bot_permissions import check_bot_group_permissions
+                is_bot_admin, missing_perms = await check_bot_group_permissions(message.bot, message.chat.id)
+                bot_admin_cache[chat_id] = {'time': now, 'is_admin': is_bot_admin, 'missing': missing_perms}
             except Exception:
-                # Vaqtinchalik xato — "admin emas" deb keshlab guruhni bloklamaymiz
                 is_bot_admin = bot_admin_cache.get(chat_id, {}).get('is_admin', True)
 
         if not is_bot_admin and message.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
             # Kesh eskirgan bo'lishi mumkin — xabar ko'rsatishdan oldin Telegram'dan qayta tekshiramiz
             try:
-                me = await message.bot.get_chat_member(message.chat.id, message.bot.id)
-                is_bot_admin = me.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]
-                bot_admin_cache[chat_id] = {'time': time.time(), 'is_admin': is_bot_admin}
+                from utils.bot_permissions import check_bot_group_permissions
+                is_bot_admin, missing_perms = await check_bot_group_permissions(message.bot, message.chat.id)
+                bot_admin_cache[chat_id] = {'time': time.time(), 'is_admin': is_bot_admin, 'missing': missing_perms}
             except Exception:
                 is_bot_admin = True
 
         if not is_bot_admin and message.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
             # Xabarni qayta-qayta yubormaslik uchun faqat komanda bo'lsa javob berish
-            if message.text and message.text.startswith("/"):
+            if message.text and (message.text.startswith("/") or message.text.startswith("!")):
                 try:
+                    from utils.bot_permissions import get_permission_warning_text
                     await message.answer(
-                        "<b>❗️ Bot guruhda admin emas! Bot muammosiz ishlashi uchun botni guruhga admin qiling hamda unga bosh admin darajasidagi ruxsatlarni bering!</b>",
+                        get_permission_warning_text(missing_perms),
                         parse_mode="HTML",
                     )
                 except Exception:
