@@ -74,7 +74,7 @@ def get_start_markup(lang: str = "uz"):
         "kk": "📡 Канал"
     }
 
-    from config import IS_WEBAPP_ACTIVE
+    import config
     b = InlineKeyboardBuilder()
     if getattr(config, "IS_WEBAPP_ACTIVE", False):
         b.button(text=texts_cabinet.get(c, texts_cabinet["uz"]), web_app=WebAppInfo(url=w_url))
