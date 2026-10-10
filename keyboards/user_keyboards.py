@@ -91,7 +91,7 @@ def profile_keyboards():
     markup.adjust(2, 2, 2)
     return markup.as_markup()
 
-def shop_keyboard(himoya_price, hujjat_price, osish_himoya_price, dori_himoya_price, maska_price, qotildan_himoya_price, militiq_price, geroy_price, slip_himoya_price, send_profile_price, geroydan_himoya_price):
+def shop_keyboard(himoya_price, hujjat_price, osish_himoya_price, dori_himoya_price, maska_price, qotildan_himoya_price, militiq_price, geroy_price, slip_himoya_price, send_profile_price, geroydan_himoya_price, is_vip: bool = False):
     builder = InlineKeyboardBuilder()
 
     builder.button(text=f"🛡 Himoya - {himoya_price}💵", callback_data="buy_himoya")
@@ -107,7 +107,8 @@ def shop_keyboard(himoya_price, hujjat_price, osish_himoya_price, dori_himoya_pr
     builder.button(text=f"🥷 Geroy {geroy_price}💎", callback_data="buy_geroy")
     builder.button(text="🗃 Sandiqlar", callback_data="open-sandiq")
     builder.button(text=f"🃏 Faol rol", callback_data="active_role")
-    builder.button(text="🎨 VIP emoji o'zgartirish", callback_data="vip_emoji_change")
+    if is_vip:
+        builder.button(text="🎨 VIP emoji o'zgartirish", callback_data="vip_emoji_change")
     builder.button(text="⬅️ Orqaga", callback_data="back_profile")
     builder.adjust(2)
 

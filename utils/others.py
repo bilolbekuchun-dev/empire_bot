@@ -1594,6 +1594,10 @@ async def show_shop(call: CallbackQuery):
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     from aiogram.types import WebAppInfo
     from config import WEBAPP_URL
+    from models.user import User, VipUser
+
+    user = await User.filter(user_id=call.from_user.id).first()
+    is_vip = await VipUser.filter(user=user).exists() if user else False
 
     text = (
         f"🥷 <b>Geroy</b> - Sizga o'yinda tong vaqtida ham otish imkonini beradi...\n\n"
@@ -1613,6 +1617,7 @@ async def show_shop(call: CallbackQuery):
         slip_himoya_price=5,
         send_profile_price=SEND_PROFILE_PRICE,
         geroydan_himoya_price=5,
+        is_vip=is_vip,
     )
 
     if await is_webapp_active() and WEBAPP_URL:
@@ -1630,7 +1635,8 @@ async def show_shop(call: CallbackQuery):
         builder.button(text=f"🥷 Geroy {GEROY_PRICE}💎", callback_data="buy_geroy")
         builder.button(text="🗃 Sandiqlar", callback_data="open-sandiq")
         builder.button(text="🃏 Faol rol", callback_data="active_role")
-        builder.button(text="🎨 VIP emoji o'zgartirish", callback_data="vip_emoji_change")
+        if is_vip:
+            builder.button(text="🎨 VIP emoji o'zgartirish", callback_data="vip_emoji_change")
         builder.button(text="🌐 WebApp do'kon", web_app=WebAppInfo(url=WEBAPP_URL))
         builder.button(text="⬅️ Orqaga", callback_data="back_profile")
         builder.adjust(2)
