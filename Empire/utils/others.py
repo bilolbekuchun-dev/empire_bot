@@ -87,7 +87,7 @@ async def get_profile(bot: Bot, message: Message):
 
     active_roles = await ActiveRole.filter(profile=profile, is_active=True).all()
     if active_roles:
-        roles_text = ", ".join(r.role for r in active_roles)
+        roles_text = ", ".join(html.escape(r.role) for r in active_roles)
     else:
         roles_text = none_str
 
