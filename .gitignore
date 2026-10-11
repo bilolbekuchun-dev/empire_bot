@@ -1,6 +1,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
 .env
 venv/
 env/
@@ -10,3 +11,6 @@ ENV/
 *.db
 *.sqlite3
 userbot_session/
+cleanup.log
+profile.json
+users.json
