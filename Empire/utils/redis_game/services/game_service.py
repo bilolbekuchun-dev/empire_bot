@@ -11,7 +11,7 @@ from utils.redis_game.game_models_schema import GameState
 from utils.redis_game.repositories import game_repository, player_repository
 from models.user import User, Profile
 from models.game_data import Chat, Game, GamePlayer, PlayersGameBall
-from models.game_set import GamingOnChat, GameModeSet, CommandPermissionsChat
+from models.game_set import GamingOnChat, GameModeSet, CommandPermissionsChat, GameSetTime
 from keyboards.game_keyboard import join_vsgame_button, join_game_button
 
 
@@ -224,84 +224,6 @@ class GameService:
 
             return game_state
 
-
-async def start_lobby_autostart(game_id: int, bot: Bot):
-    """
-    Lobby registratsiya timer va autostart background taski.
-    GameSetTime.reg_time vaqtini poylaydi va vaqt tugagach kamida 4 ta o'yinchi bo'lsa
-    avtomatik ravishda o'yinni boshlaydi, yetarli bo'lmasa o'yinni bekor qiladi.
-    """
-    import asyncio
-    import time
-    from utils.database import redis_client as r
-
-    game_state = await game_repository.load_game(game_id)
-    if not game_state:
-        return
-
-    chat_id = game_state.chat_id
-    game_times, _ = await GameSetTime.get_or_create(chat_id=chat_id)
-    reg_time = getattr(game_times, "reg_time", 120) or 120
-
-    expires_at = time.time() + reg_time
-    await r.set(f"game:{game_id}:reg_expires_at", str(expires_at), ex=86400)
-
-    while True:
-        game_state = await game_repository.load_game(game_id)
-        if not game_state or not game_state.is_active or game_state.phase != "waiting":
-            return
-
-        # Agar /extend qilingan bo'lsa, 120s registratsiya taymeri bekor qilinadi
-        if await r.get(f"game:{game_id}:is_extended"):
-            return
-
-        expires_str = await r.get(f"game:{game_id}:reg_expires_at")
-        if not expires_str:
-            return
-
-        expires_at = float(expires_str)
-        now = time.time()
-        remaining = expires_at - now
-
-        if remaining > 0:
-            await asyncio.sleep(min(remaining, 3))
-        else:
-            break
-
-    # Timer tugagach, holatni qayta tekshiramiz
-    game_state = await game_repository.load_game(game_id)
-    if not game_state or not game_state.is_active or game_state.phase != "waiting":
-        return
-
-    # Kutilmagan extend holatini qayta tekshirish
-    if await r.get(f"game:{game_id}:is_extended"):
-        return
-
-
-    players = await player_repository.get_alive_players(game_id)
-    if len(players) >= 4:
-        try:
-            await bot.send_message(
-                chat_id,
-                "<b>⏱ Ro'yxatdan o'tish vaqti tugadi! O'yin avtomatik ravishda boshlanmoqda...</b>",
-                parse_mode="HTML"
-            )
-        except Exception:
-            pass
-        from utils.redis_game.handlers import starting_game_redis
-        asyncio.create_task(starting_game_redis(game_id=str(game_id), message=None, bot=bot, start=True))
-    else:
-        try:
-            await bot.send_message(
-                chat_id,
-                f"<b>⏱ Ro'yxatdan o'tish vaqti ({reg_time}s) tugadi. Yetarli o'yinchi yig'ilmadi (kamida 4 ta kerak). O'yin bekor qilindi.</b>",
-                parse_mode="HTML"
-            )
-        except Exception:
-            pass
-        await GameService.end_game(game_id, save_to_db=False)
-
-    
     @staticmethod
     async def end_game(game_id: int, save_to_db: bool = True):
         """
@@ -413,6 +335,82 @@ async def start_lobby_autostart(game_id: int, bot: Bot):
         
         # Boshqa ma'lumotlar (pattern scan)
         await game_repository.cleanup_game_data(game_id)
+
+
+async def start_lobby_autostart(game_id: int, bot: Bot):
+    """
+    Lobby registratsiya timer va autostart background taski.
+    GameSetTime.reg_time vaqtini poylaydi va vaqt tugagach kamida 4 ta o'yinchi bo'lsa
+    avtomatik ravishda o'yinni boshlaydi, yetarli bo'lmasa o'yinni bekor qiladi.
+    """
+    import asyncio
+    import time
+    from utils.database import redis_client as r
+
+    game_state = await game_repository.load_game(game_id)
+    if not game_state:
+        return
+
+    chat_id = game_state.chat_id
+    game_times, _ = await GameSetTime.get_or_create(chat_id=chat_id)
+    reg_time = getattr(game_times, "reg_time", 120) or 120
+
+    expires_at = time.time() + reg_time
+    await r.set(f"game:{game_id}:reg_expires_at", str(expires_at), ex=86400)
+
+    while True:
+        game_state = await game_repository.load_game(game_id)
+        if not game_state or not game_state.is_active or game_state.phase != "waiting":
+            return
+
+        # Agar /extend qilingan bo'lsa, 120s registratsiya taymeri bekor qilinadi
+        if await r.get(f"game:{game_id}:is_extended"):
+            return
+
+        expires_str = await r.get(f"game:{game_id}:reg_expires_at")
+        if not expires_str:
+            return
+
+        expires_at = float(expires_str)
+        now = time.time()
+        remaining = expires_at - now
+
+        if remaining > 0:
+            await asyncio.sleep(min(remaining, 3))
+        else:
+            break
+
+    # Timer tugagach, holatni qayta tekshiramiz
+    game_state = await game_repository.load_game(game_id)
+    if not game_state or not game_state.is_active or game_state.phase != "waiting":
+        return
+
+    # Kutilmagan extend holatini qayta tekshirish
+    if await r.get(f"game:{game_id}:is_extended"):
+        return
+
+    players = await player_repository.get_alive_players(game_id)
+    if len(players) >= 4:
+        try:
+            await bot.send_message(
+                chat_id,
+                "<b>⏱ Ro'yxatdan o'tish vaqti tugadi! O'yin avtomatik ravishda boshlanmoqda...</b>",
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
+        from utils.redis_game.handlers import starting_game_redis
+        asyncio.create_task(starting_game_redis(game_id=str(game_id), message=None, bot=bot, start=True))
+    else:
+        try:
+            await bot.send_message(
+                chat_id,
+                f"<b>⏱ Ro'yxatdan o'tish vaqti ({reg_time}s) tugadi. Yetarli o'yinchi yig'ilmadi (kamida 4 ta kerak). O'yin bekor qilindi.</b>",
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
+        await GameService.end_game(game_id, save_to_db=False)
 
 
 # Global instance

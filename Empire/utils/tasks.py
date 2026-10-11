@@ -7,6 +7,7 @@ from aiogram.exceptions import TelegramRetryAfter
 from models.user import User, Profile, VipUser
 from config import ADMINS
 from keyboards.game_keyboard import go_group_button
+from utils.telegram_utils import get_chat_join_link
 from asyncio import sleep
 from utils.statistika import calculate_and_cache_global_stats
 
@@ -156,7 +157,7 @@ async def long_games_attack(bot: Bot):
                                         f"O'yin davomiyligi: {game_duration}\n"
                                         f"Yaratilgan: {game.created_at}"
                                     ),
-                                    reply_markup=go_group_button(chat.invite_link)
+                                    reply_markup=go_group_button(await get_chat_join_link(bot, chat.chat_id))
                                 )
                         except TelegramRetryAfter as e:
                             await sleep(e.retry_after)

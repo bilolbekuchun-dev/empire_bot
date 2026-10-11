@@ -71,6 +71,8 @@ async def main():
     bot = Bot(token=TOKEN)#, session=session)
     # setup_db_logging()
     basicConfig(level=INFO)
+    logging.getLogger("aiogram.dispatcher.dispatcher").setLevel(logging.WARNING)
+    logging.getLogger("aiogram.event").setLevel(logging.WARNING)
     await database.init()
 
     # Guruhlar uchun komandalar

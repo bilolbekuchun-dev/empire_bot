@@ -101,41 +101,75 @@ async def check_win_conditions_redis(
     return False
 
 
+def get_faol_fuqarolar(fuqarolar: list) -> list:
+    """Tinch aholi orasidagi faol rollarni qaytaradi (oddiy FUQARO dan tashqari har qanday tinch rol)."""
+    return [p for p in fuqarolar if p.role != RoleNames.FUQARO]
+
+
+async def _kill_civilians_on_mafia_win(fuqarolar: list):
+    """Mafia g'alaba qilganda tirik tinch aholi (Doktor va h.k.) Don bilan birga tirik qolmasligi uchun ularni o'ldirish."""
+    for civilian in fuqarolar:
+        civilian.is_alive = False
+        try:
+            await player_repo.save_player(civilian, ttl_sec=_ENDED_TTL)
+        except Exception:
+            pass
+
+
 async def check_real_mode_win(game_id, players, fuqarolar, mafiyalar, yakka_taraflar, bot, chat):
-    """Real mode g'alabat shartlari."""
+    """Real mode g'alaba shartlari."""
+    if len(players) == 0:
+        return False
+
+    # 1 ta o'yinchi qolgan
+    if len(players) == 1:
+        await announce_game_result_redis(game_id, bot, chat, winner_roles=[players[0].role], real_mode=True)
+        return True
+
     # Faqat tinchlar qolgan (Mafia va Yakkalar yo'q bo'lsa)
     if len(players) > 0 and (len(players) == len(fuqarolar) or (len(mafiyalar) == 0 and len(yakka_taraflar) == 0)):
         await announce_game_result_redis(game_id, bot, chat, winner_roles=tinchlar, real_mode=True)
-        return True
-    
-    # Faqat mafiyalar qolgan yoki Mafiyalar ustunligi
-    if len(players) > 0 and (len(players) == len(mafiyalar) or (len(fuqarolar) == 0 and len(yakka_taraflar) == 0) or (len(mafiyalar) >= len(fuqarolar) and len(yakka_taraflar) == 0 and len(mafiyalar) > 0)):
-        await announce_game_result_redis(game_id, bot, chat, winner_roles=mafialar, real_mode=True)
         return True
     
     # Faqat yakkalar qolgan
     if len(players) > 0 and (len(players) == len(yakka_taraflar) or (len(fuqarolar) == 0 and len(mafiyalar) == 0)):
         await announce_game_result_redis(game_id, bot, chat, winner_roles=yakkalar, real_mode=True)
         return True
+
+    # Faqat mafiyalar qolgan (Fuqarolar va Yakkalar yo'q)
+    if len(players) > 0 and (len(players) == len(mafiyalar) or (len(fuqarolar) == 0 and len(yakka_taraflar) == 0)):
+        await announce_game_result_redis(game_id, bot, chat, winner_roles=mafialar, real_mode=True)
+        return True
     
-    # 2 ta o'yinchi qolgan - special cases
+    # 2 ta o'yinchi qolgan - 1 ga 1 special cases
     if len(players) == 2:
-        player_1, player_2 = players[0], players[1]
+        player_roles = {players[0].role, players[1].role}
         
-        # Don vs non-Komissar
-        if player_1.role == RoleNames.DON and player_2.role != RoleNames.KOMISSAR:
-            await announce_game_result_redis(game_id, bot, chat, winner_roles=mafialar, real_mode=True)
-            return True
-        
-        # Komissar vs non-Don
-        if player_1.role == RoleNames.KOMISSAR and player_2.role != RoleNames.DON:
-            await announce_game_result_redis(game_id, bot, chat, winner_roles=[RoleNames.KOMISSAR], real_mode=True)
-            return True
-        
-        # Qotil vs anyone
-        if RoleNames.QOTIL in [player_1.role, player_2.role]:
+        # Qotil vs anyone -> Qotil yutadi
+        if RoleNames.QOTIL in player_roles:
             await announce_game_result_redis(game_id, bot, chat, winner_roles=[RoleNames.QOTIL], real_mode=True)
             return True
+
+        # 1 mafia vs 1 tinch aholi (masalan Don vs Doktor, Mafia vs Doktor, Don vs Komissar):
+        # 1 ga 1 qolganda HAR DOIM mafia yutadi. Don bilan Doktor bir vaqtda tirik qolmasligi uchun tinch o'yinchi halok bo'ladi.
+        if len(mafiyalar) == 1 and len(fuqarolar) == 1:
+            await _kill_civilians_on_mafia_win(fuqarolar)
+            await announce_game_result_redis(game_id, bot, chat, winner_roles=mafialar, real_mode=True)
+            return True
+
+    faol_fuqarolar = get_faol_fuqarolar(fuqarolar)
+
+    # Agar tinch aholida kamida 1 ta faol rol tirik bo'lsa:
+    # O'YIN TUGAMAYDI! (Chunki ular kechasi harakat qilib o'yinni o'zgartira oladi).
+    # Toki 1 ga 1 qolmaguncha o'yin davom etadi.
+    if len(faol_fuqarolar) > 0 and len(yakka_taraflar) == 0:
+        return False
+
+    # Agar tinch aholida faol rollar qolmagan bo'lsa (faqat oddiy FUQARO) va mafiyalar >= fuqarolar:
+    if len(faol_fuqarolar) == 0 and len(mafiyalar) >= len(fuqarolar) and len(yakka_taraflar) == 0 and len(mafiyalar) > 0:
+        await _kill_civilians_on_mafia_win(fuqarolar)
+        await announce_game_result_redis(game_id, bot, chat, winner_roles=mafialar, real_mode=True)
+        return True
     
     return False
 
@@ -246,6 +280,9 @@ async def check_para_mode_win(game_id, players, bot, chat):
 
 async def check_classic_mode_win(game_id, players, fuqarolar, mafiyalar, qotil, bot, chat):
     """Classic/Super/Mega mode g'alaba shartlari."""
+    if len(players) == 0:
+        return False
+
     # 1 ta o'yinchi qolgan
     if len(players) == 1:
         await announce_game_result_redis(game_id, bot, chat, winner_roles=[
@@ -267,18 +304,36 @@ async def check_classic_mode_win(game_id, players, fuqarolar, mafiyalar, qotil, 
         ])
         return True
     
-    # Tinchlar g'alaba qilgan
+    # Tinchlar g'alaba qilgan (Mafia butunlay yo'q qilingan)
     if not check_mafialar_list(mafiyalar) and fuqarolar and not qotil:
         await announce_game_result_redis(game_id, bot, chat, winner_roles=tinchlar)
         return True
     
-    # Mafiyalar g'alaba qilgan
-    if len(mafiyalar) >= len(fuqarolar) and mafiyalar and not qotil:
+    # Mafiyalar g'alaba qilgan (Tinchlar butunlay yo'q qilingan)
+    if not fuqarolar and mafiyalar and not qotil:
         await announce_game_result_redis(game_id, bot, chat, winner_roles=mafialar)
         return True
-    
-    # 2 ta o'yinchi qolgan va 1 ta mafia
-    if len(players) == 2 and len(mafiyalar) == 1:
+
+    faol_fuqarolar = get_faol_fuqarolar(fuqarolar)
+
+    # 1 ga 1 qolganda: 1 ta mafia va 1 ta tinch aholi (masalan Don vs Doktor, Mafia vs Doktor, Don vs Komissar):
+    # Bu holatda HAR DOIM mafia yutadi. Don bilan Doktor (yoki tinch rol) bir vaqtda tirik qolmasligi uchun
+    # tinch o'yinchi halok bo'ladi (is_alive = False).
+    if len(players) == 2 and len(mafiyalar) == 1 and len(fuqarolar) == 1 and not qotil:
+        await _kill_civilians_on_mafia_win(fuqarolar)
+        await announce_game_result_redis(game_id, bot, chat, winner_roles=mafialar)
+        return True
+
+    # Agar tinch aholida kamida 1 ta faol rol tirik bo'lsa (Komissar, Doktor, Serjant, Daydi, Kezuvchi va h.k.):
+    # O'YIN HALI TUGAMAYDI! (Hatto mafiyalar soni fuqarolardan ko'p yoki teng bo'lsa ham).
+    # Toki 1 ga 1 qolmaguncha yoki faol rollar halok bo'lmaguncha davom etadi.
+    if len(faol_fuqarolar) > 0 and not qotil:
+        return False
+
+    # Agar tinch aholida faol rollar qolmagan bo'lsa (faqat oddiy Fuqarolar):
+    # Agar mafiyalar soni fuqarolardan ko'p yoki teng bo'lsa -> Mafia g'alaba qiladi!
+    if len(faol_fuqarolar) == 0 and len(mafiyalar) >= len(fuqarolar) and mafiyalar and not qotil:
+        await _kill_civilians_on_mafia_win(fuqarolar)
         await announce_game_result_redis(game_id, bot, chat, winner_roles=mafialar)
         return True
     
@@ -430,6 +485,18 @@ async def announce_game_result_redis(
             filtered_winners.append(p)
     winners = filtered_winners
 
+    # Agar mafia g'alaba qozongan bo'lsa, tirik qolgan tinch aholi (Doktor va h.k.)
+    # Don bilan bir vaqtda tirik qolmasligi uchun ularning is_alive statusini False qilamiz:
+    mafia_won = bool(winner_roles and any(r in mafialar for r in winner_roles) and not civilians_won)
+    if mafia_won:
+        for p in all_players:
+            if p.role in tinchlar and p.is_alive:
+                p.is_alive = False
+                try:
+                    await player_repo.save_player(p, ttl_sec=_ENDED_TTL)
+                except Exception:
+                    pass
+
     winner_id_set = {p.user_id for p in winners}
     others = [p for p in all_players if p.user_id not in winner_id_set]
     mentions = await _player_mentions([p.user_id for p in all_players])
@@ -445,7 +512,7 @@ async def announce_game_result_redis(
     n = 1
     if winners:
         for p in winners:
-            lines.append(f"{n}. {mentions.get(p.user_id, p.user_id)} - {role_display(p.role, lang=chat_lang)} (+{win_reward}$)")
+            lines.append(f"{n}. {mentions.get(p.user_id, p.user_id)} - {role_display(p.role, lang=chat_lang)}")
             n += 1
             p.win = True
             try:
@@ -459,7 +526,7 @@ async def announce_game_result_redis(
         lines.append("")
         lines.append(strs["others"])
         for p in others:
-            lines.append(f"{n}. {mentions.get(p.user_id, p.user_id)} - {role_display(p.role, lang=chat_lang)} (+{lose_reward}$)")
+            lines.append(f"{n}. {mentions.get(p.user_id, p.user_id)} - {role_display(p.role, lang=chat_lang)}")
             n += 1
 
     started = getattr(game_state, "started_at", None) or getattr(game_state, "created_at", None) if game_state else None

@@ -44,8 +44,8 @@ class RoleConfiguration:
         (19, RoleNames.OMADLI),
         # 20 kishi (Sehrgar erta chiqadi)
         (20, RoleNames.SEHRGAR),
-        # 21 kishi (Ayg'oqchi)
-        (21, RoleNames.AYGOQCHI),
+        # 21 kishi (Taqlidchi)
+        (21, RoleNames.TAQLIDCHI),
         # 22 kishi (Bo'ri erta chiqadi)
         (22, RoleNames.BORI),
         # 23 kishi
