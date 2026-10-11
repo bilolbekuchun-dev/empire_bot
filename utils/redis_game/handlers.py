@@ -406,14 +406,32 @@ async def update_players_list_redis(game_id: str, bot: Bot, new_msg: bool = Fals
     from utils.redis_game.menu_manager import (
         get_chat_lock, replace_menu_locked, get_canonical_message_id,
     )
+    import re as _re
+
+    def _strip_tg_emoji(text: str) -> str:
+        """Strip <tg-emoji ...>...</tg-emoji> tags (fallback when custom emoji causes API error)."""
+        return _re.sub(r'<tg-emoji[^>]*>.*?</tg-emoji>', '', text, flags=_re.DOTALL)
 
     async def _send_new_menu():
-        return await bot.send_message(
-            chat_id=game_state.chat_id,
-            text=message_text,
-            reply_markup=join_markup,
-            parse_mode="HTML",
-        )
+        try:
+            return await bot.send_message(
+                chat_id=game_state.chat_id,
+                text=message_text,
+                reply_markup=join_markup,
+                parse_mode="HTML",
+            )
+        except Exception as _e:
+            # If tg-emoji caused the failure, retry without custom emojis
+            _safe_text = _strip_tg_emoji(message_text)
+            if _safe_text != message_text:
+                print(f"Menu send with tg-emoji failed (game={game_id}): {_e}. Retrying without custom emojis.")
+                return await bot.send_message(
+                    chat_id=game_state.chat_id,
+                    text=_safe_text,
+                    reply_markup=join_markup,
+                    parse_mode="HTML",
+                )
+            raise
 
     async def _apply_menu_update():
         if new_msg:
@@ -445,14 +463,31 @@ async def update_players_list_redis(game_id: str, bot: Bot, new_msg: bool = Fals
                 parse_mode="HTML",
             )
         except Exception as exc:
-            # Stale/inaccessible message -> publish a fresh canonical menu.
-            print(f"Menu edit failed, replacing (game={game_id}): {exc}")
-            msg = await replace_menu_locked(game_state.chat_id, bot, _send_new_menu, game_id=game_id)
-            if msg:
+            # First try stripping tg-emoji and editing in place.
+            # This avoids deleting the message when only a custom emoji is bad.
+            _safe_text = _strip_tg_emoji(message_text)
+            _edit_recovered = False
+            if _safe_text != message_text:
                 try:
-                    await msg.pin()
-                except Exception as pin_exc:
-                    print(f"Menu pin failed (game={game_id}): {pin_exc}")
+                    await bot.edit_message_text(
+                        chat_id=game_state.chat_id,
+                        message_id=menu_id,
+                        text=_safe_text,
+                        reply_markup=join_markup,
+                        parse_mode="HTML",
+                    )
+                    _edit_recovered = True
+                except Exception:
+                    pass
+            if not _edit_recovered:
+                # Stale/inaccessible message -> publish a fresh canonical menu.
+                print(f"Menu edit failed, replacing (game={game_id}): {exc}")
+                msg = await replace_menu_locked(game_state.chat_id, bot, _send_new_menu, game_id=game_id)
+                if msg:
+                    try:
+                        await msg.pin()
+                    except Exception as pin_exc:
+                        print(f"Menu pin failed (game={game_id}): {pin_exc}")
 
     if _locked:
         # Caller already holds the per-chat menu lock.

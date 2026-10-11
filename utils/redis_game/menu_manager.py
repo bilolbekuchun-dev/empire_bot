@@ -115,6 +115,11 @@ async def replace_menu_locked(
     succeeds, so a failed send can never store an invalid id.
     """
     await delete_canonical_message(chat_id, bot)
+    # Clear the canonical pointer *before* the send attempt.
+    # If send() succeeds we will overwrite it with the new id.
+    # If send() fails we leave it cleared (None) so the next caller
+    # sees no canonical message rather than a stale, already-deleted one.
+    await clear_canonical_message_id(chat_id)
 
     try:
         msg = await send()

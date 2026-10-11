@@ -307,8 +307,8 @@ def approve_transfer_profile_btn(user_id: int):
 def para_gift_menu(gender_changes_left: int = 3):
     markup = InlineKeyboardBuilder()
 
-    markup.button(text="Dollar yuborish", callback_data="para_send_dollar", icon_custom_emoji_id="5211062061932521090")
-    markup.button(text="Olmos yuborish", callback_data="para_send_diamond", icon_custom_emoji_id="5210941235912552228")
+    markup.button(text="💵 Dollar yuborish", callback_data="para_send_dollar")
+    markup.button(text="💎 Olmos yuborish", callback_data="para_send_diamond")
 
     items = [
         ("Himoya", "himoya", "5334560212986632624"),
