@@ -1178,7 +1178,7 @@ async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot,
         if target == 0:
             continue
         voter_player = by_uid.get(voter)
-        weight = 2 if voter_player and voter_player.role == RoleNames.JANOB else 1
+        weight = 5 if voter_player and voter_player.role == RoleNames.JANOB else 1
         counts[target] = counts.get(target, 0) + weight
 
     no_vote_text = {
@@ -1220,11 +1220,24 @@ async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot,
         "kk": f"Шынымен {mention} асуды қалайсыз ба?"
     }.get(c_lang, f"Chindan ham {mention}ni osmoqchimisiz?")
 
+    # Janob ovoz bergan bo'lsa, avtomatik 5 ta like qo'shish
+    initial_likes = 0
+    janob_voters = [
+        uid for uid, tid in votes.items()
+        if tid == victim.user_id and by_uid.get(uid) and by_uid[uid].role == RoleNames.JANOB
+    ]
+    for janob_uid in janob_voters:
+        for bonus_i in range(5):
+            await VoteService.save_vote_like(
+                game_id, day_num, -(janob_uid * 10 + bonus_i), victim.user_id, True
+            )
+            initial_likes += 1
+
     msg = await bot.send_message(
         chat.chat_id,
         confirm_text,
         parse_mode="HTML",
-        reply_markup=lynch_confirm_kb(game_id, day_num, victim.user_id),
+        reply_markup=lynch_confirm_kb(game_id, day_num, victim.user_id, likes=initial_likes),
         disable_web_page_preview=True,
     )
     await r.set(f"game:{game_id}:phase:{day_num}:like_msg", str(msg.message_id), ex=7200)

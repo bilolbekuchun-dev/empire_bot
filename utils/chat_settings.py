@@ -27,7 +27,7 @@ async def group_info_handler(message: Message, bot: Bot):
 <b>Guruh nomi:</b> {chat.title}
 
 🎮 <b>Jami o'yinlar soni:</b> {games_count}
-<tg-emoji emoji-id='5210941235912552228'>💎</tg-emoji> <b>Guruh hisobi:</b> {group_balance.balance} ta
+💎 <b>Guruh hisobi:</b> {group_balance.balance} ta
 
 Guruh hisobini to'ldirish uchun /gsend buyrug'idan foydalaning
 """, parse_mode="HTML")
@@ -396,7 +396,7 @@ async def add_diamond_group_balance(message: Message):
     except Exception:
         pass
 
-    await message.answer(f"<b>{sender_user.mention} guruh hisobiga {count} <tg-emoji emoji-id='5210941235912552228'>💎</tg-emoji> ta olmos hadya qildi!</b>", parse_mode="HTML")
+    await message.answer(f"<b>{sender_user.mention} guruh hisobiga {count} 💎 ta olmos hadya qildi!</b>", parse_mode="HTML")
 
 async def open_set_more_answer(call: CallbackQuery):
     points = call.data.split("_")

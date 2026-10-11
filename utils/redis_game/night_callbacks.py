@@ -494,7 +494,9 @@ async def _announce_day_vote(call: CallbackQuery, gid: int, uid: int, target_uid
         if not game_state:
             return
 
-        voter = await _player_mention(uid)
+        player = await player_repo.load_player(gid, uid)
+        is_janob = player and player.role == RoleNames.JANOB
+        voter = RoleNames.JANOB if is_janob else await _player_mention(uid)
         if skipped:
             text = f"🚷 {voter} hech kimni tanlamaslikka qaror qildi!"
         else:
@@ -621,6 +623,12 @@ async def vote_like_cb(call: CallbackQuery, bot=None):
     if not player or not player.is_alive:
         await call.answer()
         return
+
+    if player.role == RoleNames.JANOB:
+        votes = await VoteService.get_all_votes(gid, day)
+        if votes.get(uid) == tid:
+            await call.answer("🎖 Siz Janobsiz! Sizning 5 ta ovozingiz avtomatik qo'shilgan.", show_alert=True)
+            return
 
     expected = await r.get(f"game:{gid}:phase:{day}:like_target")
     if expected is not None and int(expected) != tid:

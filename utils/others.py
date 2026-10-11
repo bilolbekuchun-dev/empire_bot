@@ -553,13 +553,14 @@ async def send_big_giveaway_report(
     try:
         chat_title = (chat.title or chat.username or "Guruh") if chat else "Guruh"
         chat_id_val = chat.id if chat else 0
-        user_name = user.full_name or "Foydalanuvchi"
+        user_name = getattr(user, "full_name", None) or "Foydalanuvchi"
+        target_uid = getattr(user, "user_id", None) or getattr(user, "id", 0)
 
         log_msg = (
             f"🎁 <b>Katta giveaway aniqlandi!</b>\n\n"
             f"🎉 <b>Turi:</b> {giveaway_type}\n"
             f"🔢 <b>Soni:</b> {count}\n"
-            f"👤 <b>Foydalanuvchi:</b> {user_name} {user.user_id}\n"
+            f"👤 <b>Foydalanuvchi:</b> {user_name} {target_uid}\n"
             f"💬 <b>Guruh:</b> {chat_title} {chat_id_val}"
         )
 
@@ -568,7 +569,7 @@ async def send_big_giveaway_report(
             chat_id=INFO_GROUP,
             text=log_msg,
             parse_mode="HTML",
-            reply_markup=blocking_users(user.user_id, user.user_id)
+            reply_markup=blocking_users(target_uid, target_uid)
         )
     except Exception as e:
         import logging
