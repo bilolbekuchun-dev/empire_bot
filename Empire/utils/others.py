@@ -110,8 +110,13 @@ async def get_profile(bot: Bot, message: Message):
     lbl_partner = lbls.get('partner', 'Sizning parangiz')
     lbl_roles = lbls.get('active_roles', 'Faol rollar')
 
+    # HTML escape for all user-generated content
+    safe_name = html.escape(user.full_name or "Unknown")
+    safe_roles = html.escape(roles_text)
+    safe_para = html.escape(para_text)
+    
     text = (
-        f"👤 <b>{html.escape(user.full_name)}</b>{vip_text}\n\n"
+        f"👤 <b>{safe_name}</b>{vip_text}\n\n"
         f"{m_disp} {lbl_dollar}: <b>{profile.dollar:,}</b>\n"
         f"{d_disp} {lbl_diamond}: <b>{profile.diamond:,}</b>\n\n"
         f"🛡 {lbl_himoya}: <b>{profile.himoya}</b>\n"
@@ -125,14 +130,22 @@ async def get_profile(bot: Bot, message: Message):
         f"📦 {lbl_geroy}: <b>{profile.geroy_himoya}</b>\n\n"
         f"🎯 {lbl_wins}: <b>{profile.wins}</b>\n"
         f"📜 {lbl_games}: <b>{profile.games_count}</b>\n\n"
-        f"{lbl_partner}: {para_text}\n\n"
-        f"🏙 {lbl_roles}: {roles_text}"
+        f"{lbl_partner}: {safe_para}\n\n"
+        f"🏙 {lbl_roles}: {safe_roles}"
     )
     from keyboards.user_keyboards import profile_keyboards_on_private, profile_keyboards
-    if message.chat.type == "private":
-        await message.answer(text, reply_markup=profile_keyboards_on_private(profile, is_vip=is_vip, lang=lang), parse_mode="HTML")
-    else:
-        await message.answer(text, reply_markup=profile_keyboards(lang=lang), parse_mode="HTML")
+    try:
+        if message.chat.type == "private":
+            await message.answer(text, reply_markup=profile_keyboards_on_private(profile, is_vip=is_vip, lang=lang), parse_mode="HTML")
+        else:
+            await message.answer(text, reply_markup=profile_keyboards(lang=lang), parse_mode="HTML")
+    except Exception as e:
+        # Fallback to plain text if HTML fails
+        plain_text = text.replace("<b>", "").replace("</b>", "")
+        if message.chat.type == "private":
+            await message.answer(plain_text, reply_markup=profile_keyboards_on_private(profile, is_vip=is_vip, lang=lang))
+        else:
+            await message.answer(plain_text, reply_markup=profile_keyboards(lang=lang))
 
 async def transfer_funds_handler(message: Message, bot: Bot = None):
     """
@@ -553,13 +566,14 @@ async def send_big_giveaway_report(
     try:
         chat_title = (chat.title or chat.username or "Guruh") if chat else "Guruh"
         chat_id_val = chat.id if chat else 0
-        user_name = user.full_name or "Foydalanuvchi"
+        user_name = getattr(user, "full_name", None) or "Foydalanuvchi"
+        target_uid = getattr(user, "user_id", None) or getattr(user, "id", 0)
 
         log_msg = (
             f"🎁 <b>Katta giveaway aniqlandi!</b>\n\n"
             f"🎉 <b>Turi:</b> {giveaway_type}\n"
             f"🔢 <b>Soni:</b> {count}\n"
-            f"👤 <b>Foydalanuvchi:</b> {user_name} {user.user_id}\n"
+            f"👤 <b>Foydalanuvchi:</b> {user_name} {target_uid}\n"
             f"💬 <b>Guruh:</b> {chat_title} {chat_id_val}"
         )
 
@@ -568,7 +582,7 @@ async def send_big_giveaway_report(
             chat_id=INFO_GROUP,
             text=log_msg,
             parse_mode="HTML",
-            reply_markup=blocking_users(user.user_id, user.user_id)
+            reply_markup=blocking_users(target_uid, target_uid)
         )
     except Exception as e:
         import logging
@@ -795,10 +809,24 @@ GIVEAWAY_STRINGS = {
 
 async def start_giveaway_redis(message: Message, bot: Bot):
     from utils.i18n import get_chat_lang
+    from utils.giveaways_redis import create_giveaway
     lang = await get_chat_lang(message.chat.id)
     strs = GIVEAWAY_STRINGS.get(lang, GIVEAWAY_STRINGS["uz"])
     count = _parse_giveaway_count(message, default=10)
-    giveaway_id = message.message_id
+    
+    # Redisda giveaway yaratish
+    giveaway = await create_giveaway(
+        creator_id=message.from_user.id if message.from_user else bot.id,
+        chat_id=message.chat.id,
+        message_id=message.message_id,
+        total_amount=count
+    )
+    
+    if not giveaway:
+        await message.answer("❌ Giveaway yaratishda xatolik!")
+        return
+    
+    giveaway_id = giveaway["id"]
     kb = InlineKeyboardBuilder()
     kb.button(text=strs["btn_enter"].format(remaining=count), callback_data=f"giveaway_{giveaway_id}_{count}_{count}")
     msg = (
@@ -812,9 +840,23 @@ async def start_giveaway_redis(message: Message, bot: Bot):
         await send_big_giveaway_report(bot, message.from_user, message.chat, "Umumiy giveaway", count)
 
 async def start_giveaway_channel(message: Message, bot: Bot):
+    from utils.giveaways_redis import create_giveaway
     strs = GIVEAWAY_STRINGS["uz"]
     count = _parse_giveaway_count(message, default=10)
-    giveaway_id = message.message_id
+    
+    # Redisda giveaway yaratish
+    giveaway = await create_giveaway(
+        creator_id=message.from_user.id if message.from_user else bot.id,
+        chat_id=message.chat.id,
+        message_id=message.message_id,
+        total_amount=count
+    )
+    
+    if not giveaway:
+        await message.answer("❌ Giveaway yaratishda xatolik!")
+        return
+    
+    giveaway_id = giveaway["id"]
     kb = InlineKeyboardBuilder()
     kb.button(text=strs["btn_enter"].format(remaining=count), callback_data=f"channel-giveaway_{giveaway_id}_{count}_{count}")
     msg = (
@@ -836,8 +878,9 @@ async def giveaway_callback_redis(call: CallbackQuery, bot: Bot):
 async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, is_channel: bool = False):
     from models.user import User, Profile
     from utils.giveaways_redis import (
-        is_collected_user, add_collected_user, is_processing,
-        mark_as_processing, unmark_as_processing, add_winner_detail, get_winner_details
+        is_collected_user, queue_collected_user, is_processing,
+        mark_as_processing, unmark_as_processing, queue_winner_detail, get_winner_details,
+        get_giveaway, update_giveaway, flush_all_giveaway_buffers
     )
     from utils.i18n import get_chat_lang
     import random
@@ -868,6 +911,15 @@ async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, i
         total = 1
 
     user_id = call.from_user.id
+    
+    # Redisdan giveaway ma'lumotlarini olish (bot restart bo'lganda ham ishlaydi)
+    giveaway_data = await get_giveaway(giveaway_id)
+    if giveaway_data:
+        # Redisda ma'lumot bor - u yerdan olish
+        remaining = giveaway_data["remaining_amount"]
+        total = giveaway_data["total_amount"]
+    # Agar Redisda yo'q bo'lsa, callback data'dan foydalanamiz (backward compatibility)
+    
     if is_processing(giveaway_id, user_id):
         await call.answer(strs["alert_wait"], show_alert=True)
         return
@@ -880,7 +932,11 @@ async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, i
         await call.answer(strs["alert_ended"], show_alert=True)
         return
 
-    mark_as_processing(giveaway_id, user_id)
+    # Atomic lock olish
+    lock_acquired = await mark_as_processing(giveaway_id, user_id)
+    if not lock_acquired:
+        await call.answer(strs["alert_wait"], show_alert=True)
+        return
     try:
         user, _ = await User.get_or_create(
             user_id=user_id,
@@ -902,11 +958,16 @@ async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, i
             caption="Umumiy giveaway yutug'i"
         )
 
-        add_collected_user(giveaway_id, user_id)
+        # Queue for batch write to Redis (reduces load under high traffic)
+        await queue_collected_user(giveaway_id, user_id)
         u_name = call.from_user.full_name or f"User_{user_id}"
-        add_winner_detail(giveaway_id, user_id, u_name, reward)
+        await queue_winner_detail(giveaway_id, user_id, u_name, reward)
 
         new_remaining = remaining - reward
+        
+        # Redisdan ham yangilash (bot restart bo'lganda davom etishi uchun)
+        if giveaway_data:
+            await update_giveaway(giveaway_id, {"remaining_amount": new_remaining})
 
         if new_remaining > 0:
             cb_prefix = "channel-giveaway" if is_channel else "giveaway"
@@ -918,6 +979,9 @@ async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, i
                 except Exception:
                     pass
         else:
+            # Flush all buffers before showing winners
+            await flush_all_giveaway_buffers(giveaway_id)
+            
             winners = get_winner_details(giveaway_id)
             d_disp = get_diamond_display()
             header = "<b>Ajratilgan sovg'alar tugadi!</b>"
@@ -925,7 +989,7 @@ async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, i
 
         await call.answer(strs["alert_success"].format(reward=reward), show_alert=True)
     finally:
-        unmark_as_processing(giveaway_id, user_id)
+        await unmark_as_processing(giveaway_id, user_id)
 
 
 def _parse_giveaway_count(message: Message, default: int = 1) -> int:
