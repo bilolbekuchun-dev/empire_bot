@@ -103,7 +103,8 @@ NIGHT_STRINGS = {
         "advokat_protect": "⚖️ Advokat {name} ni himoya qildi — u osilmadi!",
         "lynched_msg": "🪢 {name} xalq tomonidan osildi!\nU edi — <b>{role}</b>",
         "actor_msg": "🎭 <b>Aktyor</b>: Siz bu tun <b>{role}</b> roliga kirdingiz!",
-        "mimic_win": "🎭 <b>Taqlidchi</b>: Siz halok bo'lgan o'yinchining rolini egalladingiz!\nYangi rolingiz: <b>{role}</b>",
+        "mimic_win": "Sizga yangi rol berildi!\nEndi rolingiz: <b>{role}</b>",
+        "mimic_group_msg": "Kimdir o'ldi, lekin uning kasbi tirik...",
         "mimic_wait": "🎭 <b>Taqlidchi</b>: Hali hech kim halok bo'lmadi — birinchi o'lik o'yinchining rolini kuting.",
         "passive_msg": "🌙 <b>Tun bo'ldi.</b>\nRolingiz: {role}\n\nBu tunda maxsus harakatingiz yo'q — tonggacha kuting.",
         "target_prompt": "🌙 {role} — nishonni tanlang:",
@@ -357,16 +358,24 @@ async def send_night_actions(
                 all_pl = await player_repo.get_all_players(game_id)
                 dead = [q for q in all_pl if not q.is_alive and q.role != RoleNames.TAQLIDCHI]
                 if dead:
-                    new_role = dead[-1].role
+                    dead.sort(key=lambda x: x.deaded_at or datetime.min.replace(tzinfo=timezone.utc))
+                    new_role = dead[0].role
                     await r.set(f"game:{game_id}:player:{uid}:copied_role", new_role)
                     p.role = new_role
                     await player_repo.save_player(p)
-                    mimic_fmt = ns.get("mimic_win", "🎭 <b>Taqlidchi</b>: Siz halok bo'lgan o'yinchining rolini egalladingiz!\nYangi rolingiz: <b>{role}</b>")
+                    mimic_fmt = ns.get("mimic_win", "Sizga yangi rol berildi!\nEndi rolingiz: <b>{role}</b>")
                     await _send_private(
                         bot, uid,
                         mimic_fmt.format(role=role_display(new_role))
                     )
                     role = new_role
+                    c_id = getattr(chat, 'chat_id', getattr(chat, 'id', None))
+                    if c_id:
+                        grp_msg = ns.get("mimic_group_msg", "Kimdir o'ldi, lekin uning kasbi tirik...")
+                        try:
+                            await bot.send_message(c_id, grp_msg)
+                        except Exception:
+                            pass
                 else:
                     await _send_private(
                         bot, uid,
@@ -900,7 +909,7 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
 
 
     # --- Vorislik (Role succession) ---
-    await _check_role_succession(by_uid, lang_map, bot)
+    await _check_role_succession(by_uid, lang_map, bot, game_id=game_id, chat_id=chat.chat_id, is_night=True)
 
     # --- Tekshiruv natijalari ---
     for actor_uid, tgt in investigates:
@@ -1062,8 +1071,8 @@ async def send_day_votes(game_id: int, day_num: int, players: List, bot: Bot, ch
         await asyncio.sleep(0.04)
 
 
-async def _check_role_succession(by_uid: Dict, lang_map: Dict, bot: Bot) -> None:
-    """O'limlardan so'ng vorislik zanjirini tekshirish (Serjant, Mafia Don)."""
+async def _check_role_succession(by_uid: Dict, lang_map: Dict, bot: Bot, game_id: Optional[int] = None, chat_id: Optional[int] = None, is_night: bool = False) -> None:
+    """O'limlardan so'ng vorislik zanjirini tekshirish (Serjant, Mafia Don, Taqlidchi)."""
     alive_pl = [p for p in by_uid.values() if p.is_alive]
     don_alive = any(p.role == RoleNames.DON for p in alive_pl)
     kom_alive = any(p.role == RoleNames.KOMISSAR for p in alive_pl)
@@ -1095,6 +1104,50 @@ async def _check_role_succession(by_uid: Dict, lang_map: Dict, bot: Bot) -> None
             "tr": f"👮‍♂️ <b>Artık {role_display(RoleNames.KOMISSAR)} oldunuz!"
         }
         await _send_private(bot, suc.user_id, suc_msg.get(l_code, suc_msg["uz"]))
+
+    # Taqlidchi (Mimic): Birinchi halok bo'lgan o'yinchining rolini darhol egallaydi
+    mimics = [p for p in alive_pl if p.role == RoleNames.TAQLIDCHI]
+    if mimics:
+        dead_players = [p for p in by_uid.values() if not p.is_alive and p.role != RoleNames.TAQLIDCHI]
+        if dead_players:
+            dead_players.sort(key=lambda x: x.deaded_at or datetime.min.replace(tzinfo=timezone.utc))
+            first_dead = dead_players[0]
+            for mimic in mimics:
+                mimic.role = first_dead.role
+                await player_repo.save_player(mimic)
+                g_id = game_id or mimic.game_id
+                await r.set(f"game:{g_id}:player:{mimic.user_id}:copied_role", first_dead.role)
+                l_code = lang_map.get(mimic.user_id, "uz")
+                mimic_msg = {
+                    "uz": f"Sizga yangi rol berildi!\nEndi rolingiz: <b>{role_display(first_dead.role)}</b>",
+                    "ru": f"Вам выдана новая роль!\nТеперь ваша роль: <b>{role_display(first_dead.role)}</b>",
+                    "en": f"You have been given a new role!\nYour new role: <b>{role_display(first_dead.role)}</b>",
+                    "tr": f"Size yeni bir rol verildi!\nArtık rolünüz: <b>{role_display(first_dead.role)}</b>",
+                    "kk": f"Сізге жаңа рөл берілді!\nЕнді рөліңіз: <b>{role_display(first_dead.role)}</b>"
+                }.get(l_code, f"Sizga yangi rol berildi!\nEndi rolingiz: <b>{role_display(first_dead.role)}</b>")
+                await _send_private(bot, mimic.user_id, mimic_msg)
+
+            # Guruhga anonim e'lon
+            if chat_id:
+                try:
+                    from utils.i18n import get_chat_lang
+                    c_lang = await get_chat_lang(chat_id)
+                except Exception:
+                    c_lang = "uz"
+                grp_msg = {
+                    "uz": "Kimdir o'ldi, lekin uning kasbi tirik...",
+                    "ru": "Кто-то погиб, но его профессия жива...",
+                    "en": "Someone died, but their profession lives on...",
+                    "tr": "Biri öldü, ama mesleği yaşıyor...",
+                    "kk": "Біреу өлді, бірақ оның мамандығы тірі..."
+                }.get(c_lang, "Kimdir o'ldi, lekin uning kasbi tirik...")
+                if is_night and game_id:
+                    await queue_death_message(game_id, grp_msg)
+                else:
+                    try:
+                        await bot.send_message(chat_id, grp_msg)
+                    except Exception:
+                        pass
 
 
 def _mention_html(uid: int, names: Dict) -> str:
@@ -1262,7 +1315,7 @@ async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot,
         )
     except Exception:
         pass
-    await _check_role_succession(by_uid, lang_map, bot)
+    await _check_role_succession(by_uid, lang_map, bot, game_id=game_id, chat_id=chat.chat_id, is_night=False)
 
     # Qasoskor osilsa: eng birinchi ovoz bergan foydalanuvchi ham o'ladi
     if victim.role == RoleNames.QASOSKOR:
