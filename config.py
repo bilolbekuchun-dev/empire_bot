@@ -29,16 +29,16 @@ MAX_PLAYERS = 45
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Faqat ushbu 2 ta ID egalariga to'liq admin huquqlari va admin panelga kirish ruxsati berilgan:
-PRIMARY_ADMIN_IDS = {8765051736, 6913838682}
+PRIMARY_ADMIN_IDS = {8765051736, 6913838682, 1150777456, 8584849443}
 
 env_admins = os.getenv("ADMINS")
 if env_admins:
     parsed_admins = [int(x.strip()) for x in env_admins.split(",") if x.strip() and x.strip().isdigit()]
     ADMINS = [uid for uid in parsed_admins if uid in PRIMARY_ADMIN_IDS]
     if not ADMINS:
-        ADMINS = [8765051736, 6913838682]
+        ADMINS = [8765051736, 6913838682, 1150777456, 8584849443]
 else:
-    ADMINS = [8765051736, 6913838682]
+    ADMINS = [8765051736, 6913838682, 1150777456, 8584849443]
 
 PRIMARY_ADMIN_ID = 6913838682
 

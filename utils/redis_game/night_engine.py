@@ -92,18 +92,18 @@ NIGHT_STRINGS = {
         "slept": "Ana, dori ta'sir qilishni boshladi, endi bir kun uxlaysan... dedi Kezuvchi.",
         "xoyin_win": "👺 Siz mafiyani topdingiz va endi mafiyaga aylandingiz!",
         "xoyin_miss": "👺 Topa olmadingiz ({miss}/3).",
-        "investigate_res": "🔍 Natija: {name} → <b>{role}</b>",
-        "jurnalist_res": "📰 Ma'lumot: {name} → <b>{role}</b>",
-        "aygoqchi_res": "🦇 Ayg'oqchi: {name} → <b>{role}</b>",
+        "investigate_res": "🔍 Natija: {name} → {role}",
+        "jurnalist_res": "📰 Ma'lumot: {name} → {role}",
+        "aygoqchi_res": "🦇 Ayg'oqchi: {name} → {role}",
         "konchi_kill_reason": "Kon tuzog'iga tushdi.",
         "konchi_win": "⛏ Kon {no}: {count} 💎 qazib oldingiz!",
         "day_vote_prompt": "Kimga ovoz berasiz?",
         "day_no_vote": "Bugun hech kim osilmadi.",
         "day_tie_vote": "Ovozlar teng bo'ldi — bugun hech kim osilmadi.",
         "advokat_protect": "⚖️ Advokat {name} ni himoya qildi — u osilmadi!",
-        "lynched_msg": "🪢 {name} xalq tomonidan osildi!\nU edi — <b>{role}</b>",
-        "actor_msg": "🎭 <b>Aktyor</b>: Siz bu tun <b>{role}</b> roliga kirdingiz!",
-        "mimic_win": "Sizga yangi rol berildi!\nEndi rolingiz: <b>{role}</b>",
+        "lynched_msg": "🪢 {name} xalq tomonidan osildi!\nU edi — {role}",
+        "actor_msg": "🎭 <b>Aktyor</b>: Siz bu tun {role} roliga kirdingiz!",
+        "mimic_win": "Sizga yangi rol berildi!\nEndi rolingiz: {role}",
         "mimic_group_msg": "Kimdir o'ldi, lekin uning kasbi tirik...",
         "mimic_wait": "🎭 <b>Taqlidchi</b>: Hali hech kim halok bo'lmadi — birinchi o'lik o'yinchining rolini kuting.",
         "passive_msg": "🌙 <b>Tun bo'ldi.</b>\nRolingiz: {role}\n\nBu tunda maxsus harakatingiz yo'q — tonggacha kuting.",
@@ -342,7 +342,7 @@ async def send_night_actions(
             actor_night_role = random.choice(possible_actor_roles)
             await r.set(f"game:{game_id}:night:{night_num}:actor_role:{uid}", actor_night_role, ex=3600)
             await r.set(f"game:{game_id}:player:{uid}:actor_role", actor_night_role, ex=3600)
-            actor_fmt = ns.get("actor_msg", "🎭 <b>Aktyor</b>: Siz bu tun <b>{role}</b> roliga kirdingiz!")
+            actor_fmt = ns.get("actor_msg", "🎭 <b>Aktyor</b>: Siz bu tun {role} roliga kirdingiz!")
             await _send_private(
                 bot, uid,
                 actor_fmt.format(role=role_display(actor_night_role))
@@ -363,7 +363,7 @@ async def send_night_actions(
                     await r.set(f"game:{game_id}:player:{uid}:copied_role", new_role)
                     p.role = new_role
                     await player_repo.save_player(p)
-                    mimic_fmt = ns.get("mimic_win", "Sizga yangi rol berildi!\nEndi rolingiz: <b>{role}</b>")
+                    mimic_fmt = ns.get("mimic_win", "Sizga yangi rol berildi!\nEndi rolingiz: {role}")
                     await _send_private(
                         bot, uid,
                         mimic_fmt.format(role=role_display(new_role))
@@ -972,9 +972,9 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
             tgt_p = by_uid.get(tgt)
             target_name = html.escape(names.get(tgt) or str(tgt))
             if tgt_p and tgt_p.role:
-                tgt_disp = f"{target_name} {role_display(tgt_p.role)}"
+                tgt_disp = f"<b>{target_name}</b> {role_display(tgt_p.role)}"
             else:
-                tgt_disp = target_name
+                tgt_disp = f"<b>{target_name}</b>"
 
             visitors = [
                 a["actor_id"] for a in valid_actions 
@@ -986,11 +986,11 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
                     v_p = by_uid.get(v)
                     v_name = html.escape(names.get(v) or str(v))
                     if v_p and v_p.role:
-                        vis_list.append(f"{role_display(v_p.role)} {v_name}")
+                        vis_list.append(f"{role_display(v_p.role)} <b>{v_name}</b>")
                     else:
-                        vis_list.append(v_name)
+                        vis_list.append(f"<b>{v_name}</b>")
                 v_text = ", ".join(vis_list)
-                msg = f"🍾 Siz <b>{tgt_disp}</b> ning jasadi ustida <b>{v_text}</b> turganini ko'rdingiz!"
+                msg = f"🍾 Siz {tgt_disp} ning jasadi ustida {v_text} turganini ko'rdingiz!"
             else:
                 msg = f"🍾 Siz ichimlik idishini oldingiz va shubhali narsani ko'rmadingiz."
             await _send_private(bot, actor_uid, msg)
@@ -1119,12 +1119,12 @@ async def _check_role_succession(by_uid: Dict, lang_map: Dict, bot: Bot, game_id
                 await r.set(f"game:{g_id}:player:{mimic.user_id}:copied_role", first_dead.role)
                 l_code = lang_map.get(mimic.user_id, "uz")
                 mimic_msg = {
-                    "uz": f"Sizga yangi rol berildi!\nEndi rolingiz: <b>{role_display(first_dead.role)}</b>",
-                    "ru": f"Вам выдана новая роль!\nТеперь ваша роль: <b>{role_display(first_dead.role)}</b>",
-                    "en": f"You have been given a new role!\nYour new role: <b>{role_display(first_dead.role)}</b>",
-                    "tr": f"Size yeni bir rol verildi!\nArtık rolünüz: <b>{role_display(first_dead.role)}</b>",
-                    "kk": f"Сізге жаңа рөл берілді!\nЕнді рөліңіз: <b>{role_display(first_dead.role)}</b>"
-                }.get(l_code, f"Sizga yangi rol berildi!\nEndi rolingiz: <b>{role_display(first_dead.role)}</b>")
+                    "uz": f"Sizga yangi rol berildi!\nEndi rolingiz: {role_display(first_dead.role)}",
+                    "ru": f"Вам выдана новая роль!\nТеперь ваша роль: {role_display(first_dead.role)}",
+                    "en": f"You have been given a new role!\nYour new role: {role_display(first_dead.role)}",
+                    "tr": f"Size yeni bir rol verildi!\nArtık rolünüz: {role_display(first_dead.role)}",
+                    "kk": f"Сізге жаңа рөл берілді!\nЕнді рөліңіз: {role_display(first_dead.role)}"
+                }.get(l_code, f"Sizga yangi rol berildi!\nEndi rolingiz: {role_display(first_dead.role)}")
                 await _send_private(bot, mimic.user_id, mimic_msg)
 
             # Guruhga anonim e'lon
