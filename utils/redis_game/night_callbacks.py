@@ -432,119 +432,38 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         await _mark_action_completed(gid, ph, uid)
         return
 
-    # Jin: Ortga qaytish / Asosiy menyu
-    if code == "ji" and kind == "b":
+    # Jin: o'yinchi (nishon) tanlanganda, Jin o'sha o'yinchi huzuriga boradi va o'yinchiga tilak menyusi yuboriladi
+    if code == "ji" and kind == "t" and int(target) != 0:
+        jin_uid = uid
+        target_uid = int(target)
+        target_name = await _player_name(target_uid)
+        await _announce_night_action(call, gid, ph, jin_uid, role)
+        await _confirm_choice(call, role, f"🧞 <b>{target_name}</b> huzuriga bordingiz.\nU o'z tilagini tanlamoqda...", lang=chat_lang, gid=gid)
+        await _set_last_visited(gid, jin_uid, target_uid)
+        await _mark_action_completed(gid, ph, jin_uid)
+
+        # Tanlangan o'yinchiga (target_uid) 3 ta tilak menyusi yuboriladi
+        from utils.i18n import get_chat_lang
+        t_lang = await get_chat_lang(target_uid)
+        wish_prompts = {
+            "uz": "🧞 <b>Huzuringizga Jin keldi!</b>\n\nU sizning bitta tilagingizni bajo keltiradi.\nQuyidagi 3 ta tilakdan birini tanlang:",
+            "ru": "🧞 <b>К вам явился Джинн!</b>\n\nОн исполнит одно ваше желание.\nВыберите одно из 3 желаний:",
+            "en": "🧞 <b>A Genie has appeared before you!</b>\n\nHe will grant one of your wishes.\nChoose one of the 3 wishes:",
+            "tr": "🧞 <b>Huzurunuza Cin geldi!</b>\n\nBir dileğinizi yerine getirecek.\nAşağıdaki 3 dilekten birini seçin:",
+            "kk": "🧞 <b>Сізге Жын келді!</b>\n\nОл сіздің бір тілегіңізді орындайды.\n3 тілектің бірін таңдаңыз:"
+        }
+        life_btns = {"uz": "✨ Hayot (himoya)", "ru": "✨ Жизнь (защита)", "en": "✨ Life (protection)", "tr": "✨ Yaşam (koruma)", "kk": "✨ Өмір (қорғаныс)"}
+        money_btns = {"uz": "💰 Boylik (pul)", "ru": "💰 Богатство (деньги)", "en": "💰 Wealth (money)", "tr": "💰 Zenginlik (para)", "kk": "💰 Байлық (ақша)"}
+        kill_btns = {"uz": "💀 Qotillik", "ru": "💀 Убийство", "en": "💀 Murder", "tr": "💀 Cinayet", "kk": "💀 Өлтіру"}
+
         kb = InlineKeyboardBuilder()
-        kb.button(text="✨ Hayot", callback_data=f"na|ji|{gid}|{ph}|jh_menu|0")
-        kb.button(text="💰 Pul", callback_data=f"na|ji|{gid}|{ph}|jp_menu|0")
-        kb.button(text="💀 Qotillik", callback_data=f"na|ji|{gid}|{ph}|jq_menu|0")
-        kb.button(text="🚷 O'tkazib yuborish", callback_data=f"na|ji|{gid}|{ph}|s|0")
+        kb.button(text=life_btns.get(t_lang, life_btns["uz"]), callback_data=f"jw|{gid}|{ph}|life|{jin_uid}|{target_uid}")
+        kb.button(text=money_btns.get(t_lang, money_btns["uz"]), callback_data=f"jw|{gid}|{ph}|money|{jin_uid}|{target_uid}")
+        kb.button(text=kill_btns.get(t_lang, kill_btns["uz"]), callback_data=f"jw|{gid}|{ph}|kill|{jin_uid}|{target_uid}")
         kb.adjust(1)
-        try:
-            await call.message.edit_text("🧞 <b>Jin</b>, tilagingizni tanlang:", parse_mode="HTML", reply_markup=kb.as_markup())
-        except Exception:
-            pass
-        await call.answer()
-        return
 
-    # Jin: ✨ Hayot menyusi (O'zimga / Boshqaga)
-    if code == "ji" and kind == "jh_menu":
-        kb = InlineKeyboardBuilder()
-        kb.button(text="👤 O'zimga", callback_data=f"na|ji|{gid}|{ph}|jh_self|0")
-        kb.button(text="👥 Boshqaga", callback_data=f"na|ji|{gid}|{ph}|jh_other|0")
-        kb.button(text="🔙 Ortga", callback_data=f"na|ji|{gid}|{ph}|b|0")
-        kb.adjust(2, 1)
-        try:
-            await call.message.edit_text("Kimga hayot tilamoqchisiz?", parse_mode="HTML", reply_markup=kb.as_markup())
-        except Exception:
-            pass
-        await call.answer()
-        return
-
-    # Jin: ✨ Hayot ➔ O'zimga
-    if code == "ji" and kind == "jh_self":
-        await ActionService.clear_player_actions(gid, ph, uid)
-        await ActionService.save_action(gid, ph, uid, uid, "jin_hayot")
-        await _announce_night_action(call, gid, ph, uid, role)
-        await _confirm_choice(call, role, "✨ Hayot ➔ O'zimga", lang=chat_lang, gid=gid)
-        await _mark_action_completed(gid, ph, uid)
-        return
-
-    # Jin: ✨ Hayot ➔ Boshqaga (o'yinchilar ro'yxati)
-    if code == "ji" and kind == "jh_other":
-        _p, tg = await _alive_targets(gid, exclude_uid=uid)
-        kb = InlineKeyboardBuilder()
-        for tuid, label in tg:
-            kb.button(text=label, callback_data=f"na|ji|{gid}|{ph}|jh_target|{tuid}")
-        kb.button(text="🔙 Ortga", callback_data=f"na|ji|{gid}|{ph}|jh_menu|0")
-        kb.adjust(1)
-        try:
-            await call.message.edit_text("✨ Kimga hayot tilamoqchisiz?", reply_markup=kb.as_markup())
-        except Exception:
-            pass
-        await call.answer()
-        return
-
-    # Jin: ✨ Hayot ➔ NISHON tanlandi
-    if code == "ji" and kind == "jh_target" and int(target) != 0:
-        await ActionService.clear_player_actions(gid, ph, uid)
-        await ActionService.save_action(gid, ph, uid, int(target), "jin_hayot")
-        target_name = await _player_name(int(target))
-        await _announce_night_action(call, gid, ph, uid, role)
-        await _confirm_choice(call, role, f"✨ Hayot ➔ {target_name}", lang=chat_lang, gid=gid)
-        await _mark_action_completed(gid, ph, uid)
-        return
-
-    # Jin: 💰 Pul menyusi (o'yinchilar ro'yxati)
-    if code == "ji" and kind == "jp_menu":
-        players = await player_repo.get_alive_players(gid)
-        names = await _name_map([p.user_id for p in players])
-        kb = InlineKeyboardBuilder()
-        for p in players:
-            label = html.escape(names.get(p.user_id) or str(p.user_id))
-            kb.button(text=label, callback_data=f"na|ji|{gid}|{ph}|jp_target|{p.user_id}")
-        kb.button(text="🔙 Ortga", callback_data=f"na|ji|{gid}|{ph}|b|0")
-        kb.adjust(1)
-        try:
-            await call.message.edit_text("💰 Kimga pul (va olmos) in'om etmoqchisiz?", reply_markup=kb.as_markup())
-        except Exception:
-            pass
-        await call.answer()
-        return
-
-    # Jin: 💰 Pul ➔ NISHON tanlandi
-    if code == "ji" and kind == "jp_target" and int(target) != 0:
-        await ActionService.clear_player_actions(gid, ph, uid)
-        await ActionService.save_action(gid, ph, uid, int(target), "jin_pul")
-        target_name = await _player_name(int(target))
-        await _announce_night_action(call, gid, ph, uid, role)
-        await _confirm_choice(call, role, f"💰 Pul ➔ {target_name}", lang=chat_lang, gid=gid)
-        await _mark_action_completed(gid, ph, uid)
-        return
-
-    # Jin: 💀 Qotillik menyusi (o'yinchilar ro'yxati)
-    if code == "ji" and kind == "jq_menu":
-        _p, tg = await _alive_targets(gid, exclude_uid=uid)
-        kb = InlineKeyboardBuilder()
-        for tuid, label in tg:
-            kb.button(text=label, callback_data=f"na|ji|{gid}|{ph}|jq_target|{tuid}")
-        kb.button(text="🔙 Ortga", callback_data=f"na|ji|{gid}|{ph}|b|0")
-        kb.adjust(1)
-        try:
-            await call.message.edit_text("💀 Kimni o'ldirmoqchisiz?", reply_markup=kb.as_markup())
-        except Exception:
-            pass
-        await call.answer()
-        return
-
-    # Jin: 💀 Qotillik ➔ NISHON tanlandi
-    if code == "ji" and kind == "jq_target" and int(target) != 0:
-        await ActionService.clear_player_actions(gid, ph, uid)
-        await ActionService.save_action(gid, ph, uid, int(target), "jin_qotil")
-        target_name = await _player_name(int(target))
-        await _announce_night_action(call, gid, ph, uid, role)
-        await _confirm_choice(call, role, f"💀 Qotillik ➔ {target_name}", lang=chat_lang, gid=gid)
-        await _mark_action_completed(gid, ph, uid)
+        from utils.redis_game.night_engine import _send_private
+        await _send_private(call.bot, target_uid, wish_prompts.get(t_lang, wish_prompts["uz"]), kb.as_markup())
         return
 
     # Oddiy nishonli harakat
@@ -719,3 +638,179 @@ async def vote_like_cb(call: CallbackQuery, bot=None):
     except Exception:
         pass
     await call.answer("👍" if is_like else "👎")
+
+
+@router.callback_query(F.data.startswith("jw|"))
+async def jin_wish_choice_cb(call: CallbackQuery, bot=None):
+    """Jin kelgan o'yinchi 3 ta tilakdan birini tanlaydi (Hayot / Boylik / Qotillik)."""
+    try:
+        _, gid, ph, wish, jin_uid, wisher_uid = call.data.split("|")
+        gid, ph, jin_uid, wisher_uid = int(gid), int(ph), int(jin_uid), int(wisher_uid)
+    except Exception:
+        await call.answer()
+        return
+
+    if call.from_user.id != wisher_uid:
+        await call.answer("Bu tilak siz uchun emas!", show_alert=True)
+        return
+
+    if not await _ensure_night_phase(call, gid, ph):
+        return
+
+    from utils.i18n import get_chat_lang
+    t_lang = await get_chat_lang(wisher_uid)
+    wisher_name = await _player_name(wisher_uid)
+    from utils.redis_game.night_engine import _send_private
+
+    if wish == "life":
+        await ActionService.clear_player_actions(gid, ph, jin_uid)
+        await ActionService.save_action(gid, ph, jin_uid, wisher_uid, "jin_hayot")
+        res_text = {
+            "uz": "✨ <b>Hayot tilagi tanlandi!</b>\nJin bu tun sizni o'limdan himoya qiladi.",
+            "ru": "✨ <b>Выбрано желание Жизни!</b>\nДжинн защитит вас от смерти этой ночью.",
+            "en": "✨ <b>Life wish chosen!</b>\nThe Genie will protect you from death tonight.",
+            "tr": "✨ <b>Yaşam dileği seçildi!</b>\nCin bu gece sizi ölümden koruyacak.",
+            "kk": "✨ <b>Өмір тілегі таңдалды!</b>\nЖын бұл түнде сізді өлімнен қорғайды."
+        }.get(t_lang, "✨ <b>Hayot tilagi tanlandi!</b>")
+        try:
+            await call.message.edit_text(res_text, parse_mode="HTML", reply_markup=None)
+        except Exception:
+            pass
+        await _send_private(call.bot, jin_uid, f"🧞 <b>{wisher_name}</b> Hayot tilagini tanladi. Bu tun u sizning himoyangizda!")
+        
+        # Guruhga tilak e'loni
+        game_state = await game_repo.load_game(gid)
+        if game_state and game_state.chat_id:
+            c_lang = await get_chat_lang(game_state.chat_id)
+            c_msg = {
+                "uz": "✨ <b>Tilak bajarildi - Kimdir bugun o'lmaydi!</b>",
+                "ru": "✨ <b>Желание исполнено - Кто-то сегодня не умрёт!</b>",
+                "en": "✨ <b>Wish granted - Someone will not die tonight!</b>",
+                "tr": "✨ <b>Dilek gerçekleşti - Biri bu gece ölmeyecek!</b>",
+                "kk": "✨ <b>Тілек орындалды - Бүгін біреу өлмейді!</b>"
+            }.get(c_lang, "✨ <b>Tilak bajarildi - Kimdir bugun o'lmaydi!</b>")
+            try:
+                await call.bot.send_message(game_state.chat_id, c_msg, parse_mode="HTML")
+            except Exception:
+                pass
+
+        await call.answer("✨ Hayot tilagi qabul qilindi!")
+        return
+
+    elif wish == "money":
+        await ActionService.clear_player_actions(gid, ph, jin_uid)
+        await ActionService.save_action(gid, ph, jin_uid, wisher_uid, "jin_pul")
+        res_text = {
+            "uz": "💰 <b>Boylik tilagi tanlandi!</b>\nJin ertalab sizga boylik (pul/olmos) in'om etadi.",
+            "ru": "💰 <b>Выбрано желание Богатства!</b>\nУтром Джинн одарит вас деньгами/алмазами.",
+            "en": "💰 <b>Wealth wish chosen!</b>\nThe Genie will grant you riches in the morning.",
+            "tr": "💰 <b>Zenginlik dileği seçildi!</b>\nCin sabah size para/elmas verecek.",
+            "kk": "💰 <b>Байлық тілегі таңдалды!</b>\nЖын таңертең сізге байлық береді."
+        }.get(t_lang, "💰 <b>Boylik tilagi tanlandi!</b>")
+        try:
+            await call.message.edit_text(res_text, parse_mode="HTML", reply_markup=None)
+        except Exception:
+            pass
+        await _send_private(call.bot, jin_uid, f"🧞 <b>{wisher_name}</b> Boylik tilagini tanladi. Ertalab unga boylik beriladi!")
+        
+        # Guruhga tilak e'loni
+        game_state = await game_repo.load_game(gid)
+        if game_state and game_state.chat_id:
+            c_lang = await get_chat_lang(game_state.chat_id)
+            c_msg = {
+                "uz": "✨ <b>Tilak bajarildi - Kimdir boyib ketdi!</b>",
+                "ru": "✨ <b>Желание исполнено - Кто-то разбогател!</b>",
+                "en": "✨ <b>Wish granted - Someone got rich!</b>",
+                "tr": "✨ <b>Dilek gerçekleşti - Biri zengin oldu!</b>",
+                "kk": "✨ <b>Тілек орындалды - Біреу байып кетті!</b>"
+            }.get(c_lang, "✨ <b>Tilak bajarildi - Kimdir boyib ketdi!</b>")
+            try:
+                await call.bot.send_message(game_state.chat_id, c_msg, parse_mode="HTML")
+            except Exception:
+                pass
+
+        await call.answer("💰 Boylik tilagi qabul qilindi!")
+        return
+
+    elif wish == "kill":
+        players = await player_repo.get_alive_players(gid)
+        candidates = [p for p in players if p.user_id not in (wisher_uid, jin_uid)]
+        names = await _name_map([p.user_id for p in candidates])
+        kb = InlineKeyboardBuilder()
+        for c in candidates:
+            c_name = names.get(c.user_id) or str(c.user_id)
+            kb.button(text=c_name, callback_data=f"jk|{gid}|{ph}|{c.user_id}|{jin_uid}|{wisher_uid}")
+        kb.adjust(2)
+        prompt = {
+            "uz": "💀 <b>Qotillik tilagi:</b>\nKimni o'ldirishni tilaysiz? Nishonni tanlang:",
+            "ru": "💀 <b>Желание Убийства:</b>\nКого приказать убить? Выберите цель:",
+            "en": "💀 <b>Murder wish:</b>\nWho do you wish to eliminate? Choose a target:",
+            "tr": "💀 <b>Cinayet dileği:</b>\nKimi öldürtmek istersiniz? Hedefi seçin:",
+            "kk": "💀 <b>Өлтіру тілегі:</b>\nКімді өлтіруді бұйырасыз? Нысананы таңдаңыз:"
+        }.get(t_lang, "💀 Kimni o'ldirishni tilaysiz?")
+        try:
+            await call.message.edit_text(prompt, parse_mode="HTML", reply_markup=kb.as_markup())
+        except Exception:
+            pass
+        await call.answer()
+        return
+
+
+@router.callback_query(F.data.startswith("jk|"))
+async def jin_kill_target_cb(call: CallbackQuery, bot=None):
+    """Jin qotillik tilagi uchun o'yinchi nishon tanlaganda."""
+    try:
+        _, gid, ph, victim_uid, jin_uid, wisher_uid = call.data.split("|")
+        gid, ph, victim_uid, jin_uid, wisher_uid = int(gid), int(ph), int(victim_uid), int(jin_uid), int(wisher_uid)
+    except Exception:
+        await call.answer()
+        return
+
+    if call.from_user.id != wisher_uid:
+        await call.answer("Bu sizning tanlovingiz emas!", show_alert=True)
+        return
+
+    if not await _ensure_night_phase(call, gid, ph):
+        return
+
+    from utils.i18n import get_chat_lang
+    t_lang = await get_chat_lang(wisher_uid)
+    victim_name = await _player_name(victim_uid)
+    wisher_name = await _player_name(wisher_uid)
+    from utils.redis_game.night_engine import _send_private
+
+    await ActionService.clear_player_actions(gid, ph, jin_uid)
+    await ActionService.save_action(gid, ph, jin_uid, victim_uid, "jin_qotil")
+
+    res_text = {
+        "uz": f"💀 Siz <b>{victim_name}</b>ni o'ldirishni tiladingiz!\nJin bu tilakni bajo keltiradi.",
+        "ru": f"💀 Вы пожелали убить <b>{victim_name}</b>!\nДжинн исполнит это желание.",
+        "en": f"💀 You wished to eliminate <b>{victim_name}</b>!\nThe Genie will grant this wish.",
+        "tr": f"💀 <b>{victim_name}</b> kişisinin öldürülmesini dilediniz!\nCin bu dileği yerine getirecek.",
+        "kk": f"💀 Сіз <b>{victim_name}</b> өлтіруді бұйырдыңыз!\nЖын бұл тілекті орындайды."
+    }.get(t_lang, f"💀 Siz <b>{victim_name}</b>ni o'ldirishni tiladingiz!")
+
+    try:
+        await call.message.edit_text(res_text, parse_mode="HTML", reply_markup=None)
+    except Exception:
+        pass
+
+    await _send_private(call.bot, jin_uid, f"🧞 <b>{wisher_name}</b> sizdan <b>{victim_name}</b>ni o'ldirishni tiladi! Bu tun uni yo'q qilasiz.")
+
+    # Guruhga tilak e'loni
+    game_state = await game_repo.load_game(gid)
+    if game_state and game_state.chat_id:
+        c_lang = await get_chat_lang(game_state.chat_id)
+        c_msg = {
+            "uz": "✨ <b>Tilak bajarildi - Bu tun kimdir o'ladi!</b>",
+            "ru": "✨ <b>Желание исполнено - Эту ночь кто-то умрёт!</b>",
+            "en": "✨ <b>Wish granted - Someone will die tonight!</b>",
+            "tr": "✨ <b>Dilek gerçekleşti - Bu gece biri ölecek!</b>",
+            "kk": "✨ <b>Тілек орындалды - Бұл түнде біреу өледі!</b>"
+        }.get(c_lang, "✨ <b>Tilak bajarildi - Bu tun kimdir o'ladi!</b>")
+        try:
+            await call.bot.send_message(game_state.chat_id, c_msg, parse_mode="HTML")
+        except Exception:
+            pass
+
+    await call.answer("💀 Qotillik tilagi qabul qilindi!")

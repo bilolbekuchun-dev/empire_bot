@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 from typing import List, Optional, Dict, Union
 
 from aiogram import Bot
+from aiogram.exceptions import TelegramRetryAfter
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardMarkup
 
@@ -287,12 +288,20 @@ def _target_kb(code: str, gid: int, ph: int, targets: List[tuple], skip_label="�
     return kb.as_markup()
 
 
-async def _send_private(bot: Bot, uid: int, text: str, kb=None) -> bool:
-    try:
-        await bot.send_message(uid, text, parse_mode="HTML", reply_markup=kb)
-        return True
-    except Exception:
-        return False
+async def _send_private(bot: Bot, uid: int, text: str, kb=None, max_retries: int = 3) -> bool:
+    for attempt in range(max_retries):
+        try:
+            await bot.send_message(uid, text, parse_mode="HTML", reply_markup=kb)
+            return True
+        except TelegramRetryAfter as e:
+            await asyncio.sleep(e.retry_after + 0.1)
+        except Exception:
+            try:
+                await bot.send_message(uid, text, reply_markup=kb)
+                return True
+            except Exception:
+                return False
+    return False
 
 
 def _targets_list(players: List, exclude: set) -> List[tuple]:
@@ -437,19 +446,17 @@ async def send_night_actions(
                                 _target_kb("qa", game_id, night_num, mk_targets, skip_label=skip_label))
             continue
 
-        # --- Jin: tilak tanlash menyusi ---
+        # --- Jin: nishon tanlash (kimning huzuriga borish) ---
         if role == RoleNames.JIN:
-            kb = InlineKeyboardBuilder()
-            kb.button(text=ns.get("jin_life_btn", "✨ Hayot"), callback_data=_cb("ji", game_id, night_num, "jh_menu", 0))
-            kb.button(text=ns.get("jin_money_btn", "💰 Pul"), callback_data=_cb("ji", game_id, night_num, "jp_menu", 0))
-            kb.button(text=ns.get("jin_kill_btn", "💀 Qotillik"), callback_data=_cb("ji", game_id, night_num, "jq_menu", 0))
-            kb.button(text=skip_label, callback_data=_cb("ji", game_id, night_num, "s", 0))
-            kb.adjust(1)
-            await _send_private(
-                bot, uid,
-                ns.get("jin_prompt", "🧞 <b>Jin</b> keldi, tilagingizni tanlang:"),
-                kb.as_markup()
-            )
+            jin_prompt = {
+                "uz": "🌙 🧞 <b>Jin</b> — huzuriga borish uchun o'yinchini tanlang:\n<i>(Siz borgan o'yinchi 3 ta tilakdan birini tanlaydi va siz uni bajarasiz)</i>",
+                "ru": "🌙 🧞 <b>Джинн</b> — выберите игрока, к которому явитесь:\n<i>(Этот игрок выберет одно из 3 желаний, и вы его исполните)</i>",
+                "en": "🌙 🧞 <b>Genie</b> — choose a player to visit:\n<i>(That player will choose 1 of 3 wishes, and you will grant it)</i>",
+                "tr": "🌙 🧞 <b>Cin</b> — ziyaret edeceğiniz oyuncuyu seçin:\n<i>(O oyuncu 3 dilekten birini seçecek ve siz gerçekleştireceksiniz)</i>",
+                "kk": "🌙 🧞 <b>Жын</b> — баратын ойыншыны таңдаңыз:\n<i>(Ол ойыншы 3 тілектің бірін таңдайды, сіз оны орындайсыз)</i>"
+            }.get(chat_lang, "🌙 🧞 <b>Jin</b> — huzuriga borish uchun o'yinchini tanlang:")
+            await _send_private(bot, uid, jin_prompt, _target_kb("ji", game_id, night_num, mk_targets, skip_label=skip_label))
+            await asyncio.sleep(0.03)
             continue
 
         # --- Zanjir / Sehrgar: 2 nishonli (1-qadam) ---
@@ -942,6 +949,16 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
             await r.rpush(history_key, hist_entry)
             await r.expire(history_key, 86400)
             await _send_private(bot, actor_uid, get_msg(actor_uid, "investigate_res", name=names.get(tgt), role=disp_shown))
+            # Tekshirilgan o'yinchiga xabar yuborish
+            tgt_lang_raw = lang_map.get(tgt, "uz")
+            tgt_notice = {
+                "uz": "🕵️ <b>Kimdir bu tun rolingizga juda qiziqdi...</b>",
+                "ru": "🕵️ <b>Этой ночью кто-то очень интересовался вашей ролью...</b>",
+                "en": "🕵️ <b>Someone was very curious about your role tonight...</b>",
+                "tr": "🕵️ <b>Bu gece biri rolünüzle çok ilgilendi...</b>",
+                "kk": "🕵️ <b>Бүгін түні біреу сіздің рөліңізге өте қызықты...</b>",
+            }.get(tgt_lang_raw, "🕵️ <b>Kimdir bu tun rolingizga juda qiziqdi...</b>")
+            await _send_private(bot, tgt, tgt_notice)
         elif act_role == RoleNames.DAYDI:
             tgt_p = by_uid.get(tgt)
             target_name = html.escape(names.get(tgt) or str(tgt))
@@ -1036,11 +1053,13 @@ async def send_day_votes(game_id: int, day_num: int, players: List, bot: Bot, ch
         for q in alive:
             if q.user_id == p.user_id:
                 continue
-            kb.button(text=names.get(q.user_id), callback_data=f"nv|{game_id}|{day_num}|{q.user_id}")
+            btn_text = names.get(q.user_id) or str(q.user_id)
+            kb.button(text=btn_text, callback_data=f"nv|{game_id}|{day_num}|{q.user_id}")
         kb.button(text="🚷 O'tkazib yuborish", callback_data=f"nv|{game_id}|{day_num}|s")
-        kb.adjust(1)
+        kb.adjust(2)
         day_head = "Kimga ovoz berasiz?"
         await _send_private(bot, p.user_id, day_head, kb.as_markup())
+        await asyncio.sleep(0.04)
 
 
 async def _check_role_succession(by_uid: Dict, lang_map: Dict, bot: Bot) -> None:
