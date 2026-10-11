@@ -244,18 +244,25 @@ def format_large_list(
 
 async def get_chat_join_link(bot: Bot, chat_id: int) -> str:
     """
-    Guruh/kanal uchun taklif havolasini olish yoki yaratish:
-    1. Agar guruhda public username bo'lsa -> https://t.me/<username>
-    2. Agar bot.get_chat() da invite_link bo'lsa -> shu havola
-    3. Bot huquqlari orqali yangi havola yaratish -> bot.create_chat_invite_link(chat_id, name="Empire Mafia")
-    4. Birlamchi havolani olish -> bot.export_chat_invite_link(chat_id)
+    Guruh/kanal uchun taklif havolasini olish yoki yaratish.
+    Har safar yangi (fresh) havola yaratiladi:
+    1. Agar guruhda public username bo'lsa -> https://t.me/<username> (doim ishlaydi)
+    2. export_chat_invite_link orqali asosiy havolani yangilaydi va qaytaradi
+    3. create_chat_invite_link orqali yangi havola yaratadi (zaxira)
+    4. bot.get_chat() dagi invite_link (eng oxirgi zaxira)
     """
     try:
         chat = await bot.get_chat(chat_id)
         if chat.username:
             return f"https://t.me/{chat.username}"
-        if chat.invite_link:
-            return chat.invite_link
+    except Exception:
+        pass
+
+    # Har safar yangi havola yaratish — eskirgan havoladan saqlanish uchun
+    try:
+        link = await bot.export_chat_invite_link(chat_id=chat_id)
+        if link:
+            return link
     except Exception:
         pass
 
@@ -266,10 +273,11 @@ async def get_chat_join_link(bot: Bot, chat_id: int) -> str:
     except Exception:
         pass
 
+    # Oxirgi zaxira: keshda saqlangan havola
     try:
-        link = await bot.export_chat_invite_link(chat_id=chat_id)
-        if link:
-            return link
+        chat = await bot.get_chat(chat_id)
+        if chat.invite_link:
+            return chat.invite_link
     except Exception:
         pass
 

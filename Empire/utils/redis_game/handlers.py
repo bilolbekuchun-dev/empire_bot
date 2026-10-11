@@ -14,6 +14,7 @@ from models.user import User, Profile, Paralar
 from models.game_data import Chat
 from models.game_set import GamingOnChat, CommandPermissionsChat, GameModeSet, GameSetPermissions, GroupMoreSet
 from keyboards.game_keyboard import join_game_button, join_vsgame_button, go_group_button
+from utils.telegram_utils import get_chat_join_link
 from utils.redis_game import game_service, player_service
 from utils.redis_game.repositories.game_repository import game_repository as game_repo
 from utils.redis_game.repositories.player_repository import player_repository as player_repo
@@ -207,15 +208,17 @@ async def _join_game_handler_redis_core(message: Message, bot: Bot, state: FSMCo
             if existing_player.team != color_name:
                 existing_player.team = color_name
                 await player_repo.save_player(existing_player)
+                _fresh_link = await get_chat_join_link(bot, chat.chat_id)
                 await message.answer(
                     f"Siz jamoangizni almashtirdingiz!", 
-                    reply_markup=go_group_button(chat.invite_link, lang=user_lang)
+                    reply_markup=go_group_button(_fresh_link, lang=user_lang)
                 )
                 await update_players_list_redis(game_id, bot)
                 return
+        _fresh_link = await get_chat_join_link(bot, chat.chat_id)
         await message.answer(
             already_texts.get(user_lang, already_texts["uz"]), 
-            reply_markup=go_group_button(chat.invite_link, lang=user_lang)
+            reply_markup=go_group_button(_fresh_link, lang=user_lang)
         )
         return
 
@@ -274,9 +277,10 @@ async def _join_game_handler_redis_core(message: Message, bot: Bot, state: FSMCo
         max_team_players = more_set.max_players // teams_count
         
         if len(team_players) >= max_team_players:
+            _fresh_link = await get_chat_join_link(bot, chat.chat_id)
             await message.answer(
                 f"Kechirasiz, bu jamoasi to'lgan!", 
-                reply_markup=go_group_button(chat.invite_link, lang=user_lang)
+                reply_markup=go_group_button(_fresh_link, lang=user_lang)
             )
             return
         
@@ -290,9 +294,10 @@ async def _join_game_handler_redis_core(message: Message, bot: Bot, state: FSMCo
             await message.answer("Kechirasiz, qo'shilishda xatolik yuz berdi!")
             return
         
+        _fresh_link = await get_chat_join_link(bot, chat.chat_id)
         await message.answer(
             joined_texts.get(user_lang, joined_texts["uz"]), 
-            reply_markup=go_group_button(chat.invite_link, lang=user_lang)
+            reply_markup=go_group_button(_fresh_link, lang=user_lang)
         )
     else:
         # Normal game - no team
@@ -304,9 +309,10 @@ async def _join_game_handler_redis_core(message: Message, bot: Bot, state: FSMCo
         if not success:
             await message.answer("Kechirasiz, qo'shilishda xatolik yuz berdi!")
             return
+        _fresh_link2 = await get_chat_join_link(bot, chat.chat_id)
         await message.answer(
             joined_texts.get(user_lang, joined_texts["uz"]), 
-            reply_markup=go_group_button(chat.invite_link, lang=user_lang)
+            reply_markup=go_group_button(_fresh_link2, lang=user_lang)
         )
     
     # Update player list
@@ -406,14 +412,32 @@ async def update_players_list_redis(game_id: str, bot: Bot, new_msg: bool = Fals
     from utils.redis_game.menu_manager import (
         get_chat_lock, replace_menu_locked, get_canonical_message_id,
     )
+    import re as _re
+
+    def _strip_tg_emoji(text: str) -> str:
+        """Strip <tg-emoji ...>...</tg-emoji> tags (fallback when custom emoji causes API error)."""
+        return _re.sub(r'<tg-emoji[^>]*>.*?</tg-emoji>', '', text, flags=_re.DOTALL)
 
     async def _send_new_menu():
-        return await bot.send_message(
-            chat_id=game_state.chat_id,
-            text=message_text,
-            reply_markup=join_markup,
-            parse_mode="HTML",
-        )
+        try:
+            return await bot.send_message(
+                chat_id=game_state.chat_id,
+                text=message_text,
+                reply_markup=join_markup,
+                parse_mode="HTML",
+            )
+        except Exception as _e:
+            # If tg-emoji caused the failure, retry without custom emojis
+            _safe_text = _strip_tg_emoji(message_text)
+            if _safe_text != message_text:
+                print(f"Menu send with tg-emoji failed (game={game_id}): {_e}. Retrying without custom emojis.")
+                return await bot.send_message(
+                    chat_id=game_state.chat_id,
+                    text=_safe_text,
+                    reply_markup=join_markup,
+                    parse_mode="HTML",
+                )
+            raise
 
     async def _apply_menu_update():
         if new_msg:
@@ -445,14 +469,31 @@ async def update_players_list_redis(game_id: str, bot: Bot, new_msg: bool = Fals
                 parse_mode="HTML",
             )
         except Exception as exc:
-            # Stale/inaccessible message -> publish a fresh canonical menu.
-            print(f"Menu edit failed, replacing (game={game_id}): {exc}")
-            msg = await replace_menu_locked(game_state.chat_id, bot, _send_new_menu, game_id=game_id)
-            if msg:
+            # First try stripping tg-emoji and editing in place.
+            # This avoids deleting the message when only a custom emoji is bad.
+            _safe_text = _strip_tg_emoji(message_text)
+            _edit_recovered = False
+            if _safe_text != message_text:
                 try:
-                    await msg.pin()
-                except Exception as pin_exc:
-                    print(f"Menu pin failed (game={game_id}): {pin_exc}")
+                    await bot.edit_message_text(
+                        chat_id=game_state.chat_id,
+                        message_id=menu_id,
+                        text=_safe_text,
+                        reply_markup=join_markup,
+                        parse_mode="HTML",
+                    )
+                    _edit_recovered = True
+                except Exception:
+                    pass
+            if not _edit_recovered:
+                # Stale/inaccessible message -> publish a fresh canonical menu.
+                print(f"Menu edit failed, replacing (game={game_id}): {exc}")
+                msg = await replace_menu_locked(game_state.chat_id, bot, _send_new_menu, game_id=game_id)
+                if msg:
+                    try:
+                        await msg.pin()
+                    except Exception as pin_exc:
+                        print(f"Menu pin failed (game={game_id}): {pin_exc}")
 
     if _locked:
         # Caller already holds the per-chat menu lock.
@@ -807,11 +848,28 @@ async def starting_game_redis(game_id: str, message: Optional[Message], bot: Bot
     game_state = await game_repo.load_game(game_id)
     if not game_state:
         return
-    
+
+    # ── Atomic start-guard ───────────────────────────────────────────────────
+    # Use Redis SET NX so that even if /start, autostart-timer, and
+    # max-players trigger all fire at the same millisecond, exactly ONE of
+    # them proceeds.  The key has a short TTL so it never leaks.
+    if start:
+        _lock_key = f"game:{game_id}:starting_lock"
+        _acquired = await redis_client.set(_lock_key, "1", nx=True, ex=30)
+        if not _acquired:
+            # Another coroutine already claimed the start slot → bail out.
+            return
+        # Extra safety: re-read fresh state inside the critical window.
+        game_state = await game_repo.load_game(game_id)
+        if not game_state or game_state.phase != "waiting":
+            await redis_client.delete(_lock_key)
+            return
+    # ─────────────────────────────────────────────────────────────────────────
+
     chat_id = game_state.chat_id
     chat = await Chat.get(chat_id=chat_id)
     game_times, _ = await GameSetTime.get_or_create(chat_id=chat_id)
-    
+
     if start:
         # Mark game as started
         game_state.phase = "night"

@@ -12,6 +12,7 @@ from utils.role_names import RoleNames
 from utils.role_configuration import RoleConfiguration
 from utils.roles_text import Roles
 from keyboards.game_keyboard import go_group_button
+from utils.telegram_utils import get_chat_join_link
 from tortoise.transactions import in_transaction
 
 
@@ -261,11 +262,12 @@ async def _finalize_role_assignment(
             chat_lang = await get_chat_lang(chat_id)
             rol_matni = Roles.get_by_role(rol, lang=chat_lang)
             user = await User.get(user_id=p.user_id)
+            _fresh_link = await get_chat_join_link(bot, chat_id)
             await bot.send_message(
                 user.user_id,
                 rol_matni,
                 parse_mode="HTML",
-                reply_markup=go_group_button(chat.invite_link, lang=chat_lang)
+                reply_markup=go_group_button(_fresh_link, lang=chat_lang)
             )
             
             # Increment games count

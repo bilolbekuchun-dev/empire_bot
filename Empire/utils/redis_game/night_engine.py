@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 from typing import List, Optional, Dict, Union
 
 from aiogram import Bot
+from aiogram.exceptions import TelegramRetryAfter
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardMarkup
 
@@ -91,18 +92,19 @@ NIGHT_STRINGS = {
         "slept": "Ana, dori ta'sir qilishni boshladi, endi bir kun uxlaysan... dedi Kezuvchi.",
         "xoyin_win": "👺 Siz mafiyani topdingiz va endi mafiyaga aylandingiz!",
         "xoyin_miss": "👺 Topa olmadingiz ({miss}/3).",
-        "investigate_res": "🔍 Natija: {name} → <b>{role}</b>",
-        "jurnalist_res": "📰 Ma'lumot: {name} → <b>{role}</b>",
-        "aygoqchi_res": "🦇 Ayg'oqchi: {name} → <b>{role}</b>",
+        "investigate_res": "🔍 Natija: {name} → {role}",
+        "jurnalist_res": "📰 Ma'lumot: {name} → {role}",
+        "aygoqchi_res": "🦇 Ayg'oqchi: {name} → {role}",
         "konchi_kill_reason": "Kon tuzog'iga tushdi.",
         "konchi_win": "⛏ Kon {no}: {count} 💎 qazib oldingiz!",
         "day_vote_prompt": "Kimga ovoz berasiz?",
         "day_no_vote": "Bugun hech kim osilmadi.",
         "day_tie_vote": "Ovozlar teng bo'ldi — bugun hech kim osilmadi.",
         "advokat_protect": "⚖️ Advokat {name} ni himoya qildi — u osilmadi!",
-        "lynched_msg": "🪢 {name} xalq tomonidan osildi!\nU edi — <b>{role}</b>",
-        "actor_msg": "🎭 <b>Aktyor</b>: Siz bu tun <b>{role}</b> roliga kirdingiz!",
-        "mimic_win": "🎭 <b>Taqlidchi</b>: Siz halok bo'lgan o'yinchining rolini egalladingiz!\nYangi rolingiz: <b>{role}</b>",
+        "lynched_msg": "🪢 {name} xalq tomonidan osildi!\nU edi — {role}",
+        "actor_msg": "🎭 <b>Aktyor</b>: Siz bu tun {role} roliga kirdingiz!",
+        "mimic_win": "Sizga yangi rol berildi!\nEndi rolingiz: {role}",
+        "mimic_group_msg": "Kimdir o'ldi, lekin uning kasbi tirik...",
         "mimic_wait": "🎭 <b>Taqlidchi</b>: Hali hech kim halok bo'lmadi — birinchi o'lik o'yinchining rolini kuting.",
         "passive_msg": "🌙 <b>Tun bo'ldi.</b>\nRolingiz: {role}\n\nBu tunda maxsus harakatingiz yo'q — tonggacha kuting.",
         "target_prompt": "🌙 {role} — nishonni tanlang:",
@@ -287,12 +289,20 @@ def _target_kb(code: str, gid: int, ph: int, targets: List[tuple], skip_label="�
     return kb.as_markup()
 
 
-async def _send_private(bot: Bot, uid: int, text: str, kb=None) -> bool:
-    try:
-        await bot.send_message(uid, text, parse_mode="HTML", reply_markup=kb)
-        return True
-    except Exception:
-        return False
+async def _send_private(bot: Bot, uid: int, text: str, kb=None, max_retries: int = 3) -> bool:
+    for attempt in range(max_retries):
+        try:
+            await bot.send_message(uid, text, parse_mode="HTML", reply_markup=kb)
+            return True
+        except TelegramRetryAfter as e:
+            await asyncio.sleep(e.retry_after + 0.1)
+        except Exception:
+            try:
+                await bot.send_message(uid, text, reply_markup=kb)
+                return True
+            except Exception:
+                return False
+    return False
 
 
 def _targets_list(players: List, exclude: set) -> List[tuple]:
@@ -332,7 +342,7 @@ async def send_night_actions(
             actor_night_role = random.choice(possible_actor_roles)
             await r.set(f"game:{game_id}:night:{night_num}:actor_role:{uid}", actor_night_role, ex=3600)
             await r.set(f"game:{game_id}:player:{uid}:actor_role", actor_night_role, ex=3600)
-            actor_fmt = ns.get("actor_msg", "🎭 <b>Aktyor</b>: Siz bu tun <b>{role}</b> roliga kirdingiz!")
+            actor_fmt = ns.get("actor_msg", "🎭 <b>Aktyor</b>: Siz bu tun {role} roliga kirdingiz!")
             await _send_private(
                 bot, uid,
                 actor_fmt.format(role=role_display(actor_night_role))
@@ -348,16 +358,24 @@ async def send_night_actions(
                 all_pl = await player_repo.get_all_players(game_id)
                 dead = [q for q in all_pl if not q.is_alive and q.role != RoleNames.TAQLIDCHI]
                 if dead:
-                    new_role = dead[-1].role
+                    dead.sort(key=lambda x: x.deaded_at or datetime.min.replace(tzinfo=timezone.utc))
+                    new_role = dead[0].role
                     await r.set(f"game:{game_id}:player:{uid}:copied_role", new_role)
                     p.role = new_role
                     await player_repo.save_player(p)
-                    mimic_fmt = ns.get("mimic_win", "🎭 <b>Taqlidchi</b>: Siz halok bo'lgan o'yinchining rolini egalladingiz!\nYangi rolingiz: <b>{role}</b>")
+                    mimic_fmt = ns.get("mimic_win", "Sizga yangi rol berildi!\nEndi rolingiz: {role}")
                     await _send_private(
                         bot, uid,
                         mimic_fmt.format(role=role_display(new_role))
                     )
                     role = new_role
+                    c_id = getattr(chat, 'chat_id', getattr(chat, 'id', None))
+                    if c_id:
+                        grp_msg = ns.get("mimic_group_msg", "Kimdir o'ldi, lekin uning kasbi tirik...")
+                        try:
+                            await bot.send_message(c_id, grp_msg)
+                        except Exception:
+                            pass
                 else:
                     await _send_private(
                         bot, uid,
@@ -437,19 +455,17 @@ async def send_night_actions(
                                 _target_kb("qa", game_id, night_num, mk_targets, skip_label=skip_label))
             continue
 
-        # --- Jin: tilak tanlash menyusi ---
+        # --- Jin: nishon tanlash (kimning huzuriga borish) ---
         if role == RoleNames.JIN:
-            kb = InlineKeyboardBuilder()
-            kb.button(text=ns.get("jin_life_btn", "✨ Hayot"), callback_data=_cb("ji", game_id, night_num, "jh_menu", 0))
-            kb.button(text=ns.get("jin_money_btn", "💰 Pul"), callback_data=_cb("ji", game_id, night_num, "jp_menu", 0))
-            kb.button(text=ns.get("jin_kill_btn", "💀 Qotillik"), callback_data=_cb("ji", game_id, night_num, "jq_menu", 0))
-            kb.button(text=skip_label, callback_data=_cb("ji", game_id, night_num, "s", 0))
-            kb.adjust(1)
-            await _send_private(
-                bot, uid,
-                ns.get("jin_prompt", "🧞 <b>Jin</b> keldi, tilagingizni tanlang:"),
-                kb.as_markup()
-            )
+            jin_prompt = {
+                "uz": "🌙 🧞 <b>Jin</b> — huzuriga borish uchun o'yinchini tanlang:\n<i>(Siz borgan o'yinchi 3 ta tilakdan birini tanlaydi va siz uni bajarasiz)</i>",
+                "ru": "🌙 🧞 <b>Джинн</b> — выберите игрока, к которому явитесь:\n<i>(Этот игрок выберет одно из 3 желаний, и вы его исполните)</i>",
+                "en": "🌙 🧞 <b>Genie</b> — choose a player to visit:\n<i>(That player will choose 1 of 3 wishes, and you will grant it)</i>",
+                "tr": "🌙 🧞 <b>Cin</b> — ziyaret edeceğiniz oyuncuyu seçin:\n<i>(O oyuncu 3 dilekten birini seçecek ve siz gerçekleştireceksiniz)</i>",
+                "kk": "🌙 🧞 <b>Жын</b> — баратын ойыншыны таңдаңыз:\n<i>(Ол ойыншы 3 тілектің бірін таңдайды, сіз оны орындайсыз)</i>"
+            }.get(chat_lang, "🌙 🧞 <b>Jin</b> — huzuriga borish uchun o'yinchini tanlang:")
+            await _send_private(bot, uid, jin_prompt, _target_kb("ji", game_id, night_num, mk_targets, skip_label=skip_label))
+            await asyncio.sleep(0.03)
             continue
 
         # --- Zanjir / Sehrgar: 2 nishonli (1-qadam) ---
@@ -893,7 +909,7 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
 
 
     # --- Vorislik (Role succession) ---
-    await _check_role_succession(by_uid, lang_map, bot)
+    await _check_role_succession(by_uid, lang_map, bot, game_id=game_id, chat_id=chat.chat_id, is_night=True)
 
     # --- Tekshiruv natijalari ---
     for actor_uid, tgt in investigates:
@@ -942,13 +958,23 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
             await r.rpush(history_key, hist_entry)
             await r.expire(history_key, 86400)
             await _send_private(bot, actor_uid, get_msg(actor_uid, "investigate_res", name=names.get(tgt), role=disp_shown))
+            # Tekshirilgan o'yinchiga xabar yuborish
+            tgt_lang_raw = lang_map.get(tgt, "uz")
+            tgt_notice = {
+                "uz": "🕵️ <b>Kimdir bu tun rolingizga juda qiziqdi...</b>",
+                "ru": "🕵️ <b>Этой ночью кто-то очень интересовался вашей ролью...</b>",
+                "en": "🕵️ <b>Someone was very curious about your role tonight...</b>",
+                "tr": "🕵️ <b>Bu gece biri rolünüzle çok ilgilendi...</b>",
+                "kk": "🕵️ <b>Бүгін түні біреу сіздің рөліңізге өте қызықты...</b>",
+            }.get(tgt_lang_raw, "🕵️ <b>Kimdir bu tun rolingizga juda qiziqdi...</b>")
+            await _send_private(bot, tgt, tgt_notice)
         elif act_role == RoleNames.DAYDI:
             tgt_p = by_uid.get(tgt)
             target_name = html.escape(names.get(tgt) or str(tgt))
             if tgt_p and tgt_p.role:
-                tgt_disp = f"{target_name} {role_display(tgt_p.role)}"
+                tgt_disp = f"<b>{target_name}</b> {role_display(tgt_p.role)}"
             else:
-                tgt_disp = target_name
+                tgt_disp = f"<b>{target_name}</b>"
 
             visitors = [
                 a["actor_id"] for a in valid_actions 
@@ -960,11 +986,11 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
                     v_p = by_uid.get(v)
                     v_name = html.escape(names.get(v) or str(v))
                     if v_p and v_p.role:
-                        vis_list.append(f"{role_display(v_p.role)} {v_name}")
+                        vis_list.append(f"{role_display(v_p.role)} <b>{v_name}</b>")
                     else:
-                        vis_list.append(v_name)
+                        vis_list.append(f"<b>{v_name}</b>")
                 v_text = ", ".join(vis_list)
-                msg = f"🍾 Siz <b>{tgt_disp}</b> ning jasadi ustida <b>{v_text}</b> turganini ko'rdingiz!"
+                msg = f"🍾 Siz {tgt_disp} ning jasadi ustida {v_text} turganini ko'rdingiz!"
             else:
                 msg = f"🍾 Siz ichimlik idishini oldingiz va shubhali narsani ko'rmadingiz."
             await _send_private(bot, actor_uid, msg)
@@ -1036,15 +1062,17 @@ async def send_day_votes(game_id: int, day_num: int, players: List, bot: Bot, ch
         for q in alive:
             if q.user_id == p.user_id:
                 continue
-            kb.button(text=names.get(q.user_id), callback_data=f"nv|{game_id}|{day_num}|{q.user_id}")
+            btn_text = names.get(q.user_id) or str(q.user_id)
+            kb.button(text=btn_text, callback_data=f"nv|{game_id}|{day_num}|{q.user_id}")
         kb.button(text="🚷 O'tkazib yuborish", callback_data=f"nv|{game_id}|{day_num}|s")
-        kb.adjust(1)
+        kb.adjust(2)
         day_head = "Kimga ovoz berasiz?"
         await _send_private(bot, p.user_id, day_head, kb.as_markup())
+        await asyncio.sleep(0.04)
 
 
-async def _check_role_succession(by_uid: Dict, lang_map: Dict, bot: Bot) -> None:
-    """O'limlardan so'ng vorislik zanjirini tekshirish (Serjant, Mafia Don)."""
+async def _check_role_succession(by_uid: Dict, lang_map: Dict, bot: Bot, game_id: Optional[int] = None, chat_id: Optional[int] = None, is_night: bool = False) -> None:
+    """O'limlardan so'ng vorislik zanjirini tekshirish (Serjant, Mafia Don, Taqlidchi)."""
     alive_pl = [p for p in by_uid.values() if p.is_alive]
     don_alive = any(p.role == RoleNames.DON for p in alive_pl)
     kom_alive = any(p.role == RoleNames.KOMISSAR for p in alive_pl)
@@ -1077,6 +1105,50 @@ async def _check_role_succession(by_uid: Dict, lang_map: Dict, bot: Bot) -> None
         }
         await _send_private(bot, suc.user_id, suc_msg.get(l_code, suc_msg["uz"]))
 
+    # Taqlidchi (Mimic): Birinchi halok bo'lgan o'yinchining rolini darhol egallaydi
+    mimics = [p for p in alive_pl if p.role == RoleNames.TAQLIDCHI]
+    if mimics:
+        dead_players = [p for p in by_uid.values() if not p.is_alive and p.role != RoleNames.TAQLIDCHI]
+        if dead_players:
+            dead_players.sort(key=lambda x: x.deaded_at or datetime.min.replace(tzinfo=timezone.utc))
+            first_dead = dead_players[0]
+            for mimic in mimics:
+                mimic.role = first_dead.role
+                await player_repo.save_player(mimic)
+                g_id = game_id or mimic.game_id
+                await r.set(f"game:{g_id}:player:{mimic.user_id}:copied_role", first_dead.role)
+                l_code = lang_map.get(mimic.user_id, "uz")
+                mimic_msg = {
+                    "uz": f"Sizga yangi rol berildi!\nEndi rolingiz: {role_display(first_dead.role)}",
+                    "ru": f"Вам выдана новая роль!\nТеперь ваша роль: {role_display(first_dead.role)}",
+                    "en": f"You have been given a new role!\nYour new role: {role_display(first_dead.role)}",
+                    "tr": f"Size yeni bir rol verildi!\nArtık rolünüz: {role_display(first_dead.role)}",
+                    "kk": f"Сізге жаңа рөл берілді!\nЕнді рөліңіз: {role_display(first_dead.role)}"
+                }.get(l_code, f"Sizga yangi rol berildi!\nEndi rolingiz: {role_display(first_dead.role)}")
+                await _send_private(bot, mimic.user_id, mimic_msg)
+
+            # Guruhga anonim e'lon
+            if chat_id:
+                try:
+                    from utils.i18n import get_chat_lang
+                    c_lang = await get_chat_lang(chat_id)
+                except Exception:
+                    c_lang = "uz"
+                grp_msg = {
+                    "uz": "Kimdir o'ldi, lekin uning kasbi tirik...",
+                    "ru": "Кто-то погиб, но его профессия жива...",
+                    "en": "Someone died, but their profession lives on...",
+                    "tr": "Biri öldü, ama mesleği yaşıyor...",
+                    "kk": "Біреу өлді, бірақ оның мамандығы тірі..."
+                }.get(c_lang, "Kimdir o'ldi, lekin uning kasbi tirik...")
+                if is_night and game_id:
+                    await queue_death_message(game_id, grp_msg)
+                else:
+                    try:
+                        await bot.send_message(chat_id, grp_msg)
+                    except Exception:
+                        pass
+
 
 def _mention_html(uid: int, names: Dict) -> str:
     name = html.escape(str(names.get(uid) or uid))
@@ -1106,7 +1178,7 @@ async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot,
         if target == 0:
             continue
         voter_player = by_uid.get(voter)
-        weight = 2 if voter_player and voter_player.role == RoleNames.JANOB else 1
+        weight = 5 if voter_player and voter_player.role == RoleNames.JANOB else 1
         counts[target] = counts.get(target, 0) + weight
 
     no_vote_text = {
@@ -1148,11 +1220,24 @@ async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot,
         "kk": f"Шынымен {mention} асуды қалайсыз ба?"
     }.get(c_lang, f"Chindan ham {mention}ni osmoqchimisiz?")
 
+    # Janob ovoz bergan bo'lsa, avtomatik 5 ta like qo'shish
+    initial_likes = 0
+    janob_voters = [
+        uid for uid, tid in votes.items()
+        if tid == victim.user_id and by_uid.get(uid) and by_uid[uid].role == RoleNames.JANOB
+    ]
+    for janob_uid in janob_voters:
+        for bonus_i in range(5):
+            await VoteService.save_vote_like(
+                game_id, day_num, -(janob_uid * 10 + bonus_i), victim.user_id, True
+            )
+            initial_likes += 1
+
     msg = await bot.send_message(
         chat.chat_id,
         confirm_text,
         parse_mode="HTML",
-        reply_markup=lynch_confirm_kb(game_id, day_num, victim.user_id),
+        reply_markup=lynch_confirm_kb(game_id, day_num, victim.user_id, likes=initial_likes),
         disable_web_page_preview=True,
     )
     await r.set(f"game:{game_id}:phase:{day_num}:like_msg", str(msg.message_id), ex=7200)
@@ -1243,7 +1328,7 @@ async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot,
         )
     except Exception:
         pass
-    await _check_role_succession(by_uid, lang_map, bot)
+    await _check_role_succession(by_uid, lang_map, bot, game_id=game_id, chat_id=chat.chat_id, is_night=False)
 
     # Qasoskor osilsa: eng birinchi ovoz bergan foydalanuvchi ham o'ladi
     if victim.role == RoleNames.QASOSKOR:

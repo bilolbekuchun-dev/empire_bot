@@ -227,7 +227,7 @@ async def bust_user_answer(message: Message):
         case "2":
             profile.diamond = 0
             await profile.save()
-            await message.answer(f"{user.full_name} <tg-emoji emoji-id='5210941235912552228'>💎</tg-emoji> hisobi bankrot qilindi!", parse_mode="HTML")
+            await message.answer(f"{user.full_name} 💎 hisobi bankrot qilindi!", parse_mode="HTML")
 
 async def block_users_lst_answer(message: Message):
     if message.from_user.id not in ADMINS:

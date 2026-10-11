@@ -1,6 +1,7 @@
 from aiogram import Bot
 from aiogram.types import Message, CallbackQuery
 from keyboards.game_keyboard import join_game_button, action_buttons, vote_buttons, go_group_button
+from utils.telegram_utils import get_chat_join_link
 from models.game_data import Chat, Game, GamePlayer, GamePhase, Action, Vote
 from models.game_set import GameSetTime
 from models.user import User, Profile
@@ -63,7 +64,7 @@ async def vote_target_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
             f"<b>Bu kunda kimga ovoz berasiz?\n\nSizning tanlov:</b> 🚷 O'tkazib yuborish",
             parse_mode="HTML",
             reply_markup=go_group_button(
-                chat.invite_link
+                await get_chat_join_link(bot, chat.chat_id)
                 )
         )
 
@@ -159,7 +160,7 @@ async def vote_target_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
         f"<b>Bu kunda kimga ovoz berasiz?\n\nSizning tanlov:</b> {colors_dict[target_player.team] if target_player.team else ''}{target_user.full_name if not nik else nik}\n",
                         parse_mode="HTML",
         reply_markup=go_group_button(
-            chat.invite_link
+            await get_chat_join_link(bot, chat.chat_id)
         )
     )
 
@@ -172,7 +173,7 @@ async def vote_target_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
             "Aferist aldab sizning ovoz berish huquqingizni olib qo'ydi!",
             parse_mode="HTML",
             reply_markup=go_group_button(
-                chat.invite_link
+                await get_chat_join_link(bot, chat.chat_id)
             )
         )
         await safe_send_message(bot, 
@@ -346,7 +347,7 @@ async def select_card_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
         await call.message.edit_text(
             f"🤡 <b>Siz o'lim kartasini tanladingiz va o'ldingiz!</b>",
             parse_mode="HTML",
-            reply_markup=go_group_button(chat.invite_link)
+            reply_markup=go_group_button(await get_chat_join_link(bot, chat.chat_id))
         )
          
 
@@ -367,7 +368,7 @@ async def select_card_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
         await call.message.edit_text(
             f"🤡 <b>Tabriklayman, siz to'g'ri kartani tanladingiz va tirik qoldingiz!</b>",
             parse_mode="HTML",
-            reply_markup=go_group_button(chat.invite_link)
+            reply_markup=go_group_button(await get_chat_join_link(bot, chat.chat_id))
         )
 
         await safe_send_message(bot, 
