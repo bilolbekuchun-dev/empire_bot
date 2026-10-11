@@ -364,6 +364,7 @@ async def update_players_list_redis(game_id: str, bot: Bot, new_msg: bool = Fals
     
     # VS game: group by teams
     from models.user import VipUser
+    from utils.premium_emojis import get_vip_prefix
     if ":vsgame" in game_state.mode:
         colors_dict = TeamColors.all_colors_dict() if hasattr(TeamColors, 'all_colors_dict') else {}
         teams = {}
@@ -372,7 +373,7 @@ async def update_players_list_redis(game_id: str, bot: Bot, new_msg: bool = Fals
                 teams[player.team] = []
             user = await User.get_or_none(user_id=player.user_id)
             vip = await VipUser.get_or_none(user=user) if user else None
-            vip_prefix = f"{vip.emoji_char} " if (vip and vip.emoji_char) else ""
+            vip_prefix = get_vip_prefix(vip)
             clean_name = html.escape((user.full_name if user and user.full_name else player.first_name) or "O'yinchi")
             mention = f"{vip_prefix}<a href='tg://user?id={player.user_id}'>{clean_name}</a>"
             teams[player.team].append(mention)
@@ -389,7 +390,7 @@ async def update_players_list_redis(game_id: str, bot: Bot, new_msg: bool = Fals
         for player in players:
             user = await User.get_or_none(user_id=player.user_id)
             vip = await VipUser.get_or_none(user=user) if user else None
-            vip_prefix = f"{vip.emoji_char} " if (vip and vip.emoji_char) else ""
+            vip_prefix = get_vip_prefix(vip)
             clean_name = html.escape((user.full_name if user and user.full_name else player.first_name) or "O'yinchi")
             mention = f"{vip_prefix}<a href='tg://user?id={player.user_id}'>{clean_name}</a>"
             player_mentions.append(mention)

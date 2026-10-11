@@ -15,7 +15,7 @@ from models.game_set import GameSetTime, GameSetWeapons, GroupMoreSet
 from models.user import User
 from utils.redis_game.repositories.game_repository import game_repository as game_repo
 from keyboards.main_keyboard import bot_link_markup
-from utils.premium_emojis import role_display
+from utils.premium_emojis import role_display, get_vip_prefix
 from utils.database import redis_client as r
 
 
@@ -61,7 +61,7 @@ async def _alive_players_text(players: list, *, dawn: bool = False, lang: str = 
     for num, player in numbered:
         uid = getattr(player, "user_id", None)
         vip = vips.get(uid)
-        vip_prefix = f"{vip.emoji_char} " if (vip and vip.emoji_char) else ""
+        vip_prefix = get_vip_prefix(vip)
         lines.append(f"{num}. {vip_prefix}{_player_mention_label(uid, users.get(uid), player)}")
 
     if not dawn:

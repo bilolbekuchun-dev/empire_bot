@@ -7,7 +7,7 @@ from models.game_data import Giveaway, Chat, GamePlayer, Game
 from config import ADMINS, DIAMOND_SHOP_USERNAME, SUPPORT_ADMIN, PRIMARY_ADMIN_IDS
 from keyboards.main_keyboard import get_start_markup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from utils.premium_emojis import get_diamond_display, get_dollar_display, role_display
+from utils.premium_emojis import get_diamond_display, get_dollar_display, role_display, get_vip_prefix
 
 # Emojilar va tg-emoji teglari
 EMOJI_QOTIL_HIMOYA = "<tg-emoji emoji-id='5411452114838761907'>🔪</tg-emoji> Qotildan himoya"
@@ -65,8 +65,8 @@ async def get_profile(bot: Bot, message: Message):
 
     vip_obj = await VipUser.get_or_none(user=user)
     is_vip = bool(vip_obj)
-    vip_status = f" ({vip_obj.emoji_char})" if (vip_obj and vip_obj.emoji_char) else ""
-    vip_text = f" ⭐ VIP{vip_status}" if is_vip else ""
+    vip_prefix = get_vip_prefix(vip_obj)
+    vip_text = f" ⭐ VIP {vip_prefix}".rstrip() if is_vip else ""
 
     from models.user import Paralar, ActiveRole
     from tortoise.expressions import Q
@@ -1966,8 +1966,11 @@ async def get_diamond_hamyonlar(call: CallbackQuery):
 
     text = bal_texts.get(lang, bal_texts["uz"])
     kb = InlineKeyboardBuilder()
-    if WEBAPP_URL:
+    from utils.webapp_config import is_webapp_active
+    if await is_webapp_active() and WEBAPP_URL:
         kb.button(text=btn_shop_text.get(lang, btn_shop_text["uz"]), web_app=WebAppInfo(url=WEBAPP_URL))
+    else:
+        kb.button(text="🛒 Do'konga o'tish", callback_data="shop")
     kb.button(text=btn_back, callback_data="back_profile")
     kb.adjust(1)
 
@@ -2221,7 +2224,9 @@ async def set_lang_callback(call: CallbackQuery, bot: Bot = None):
         except Exception as e:
             print(f"realtime group language refresh error: {e}")
 
-
+# Do'kon va Valyutalar
+async def show_shop_webapp(call: CallbackQuery):
+    await show_shop(call)
 
 async def get_dollar_callback(call: CallbackQuery):
     await get_diamond_hamyonlar(call)
@@ -2258,7 +2263,8 @@ async def open_protections_menu(call: CallbackQuery):
         await call.message.answer(text, reply_markup=kb.as_markup(), parse_mode="HTML")
     await call.answer()
 
-async def get_diamond_hamyonlar(call: CallbackQuery):
+async def get_diamond_hamyonlar_webapp(call: CallbackQuery):
+    from utils.webapp_config import is_webapp_active
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     from aiogram.types import WebAppInfo
     from config import WEBAPP_URL
@@ -2272,12 +2278,13 @@ async def get_diamond_hamyonlar(call: CallbackQuery):
     text = (
         "💰 <b>Balans ma'lumotlari:</b>\n\n"
         f"💎 Olmoslar: <b>{diamonds:,} ta</b>\n"
-        f"💵 Dollar: <b>{dollars:,} $</b>\n\n"
-        "<i>Olmos va dollarlarni WebApp do'koni orqali xarid qilishingiz mumkin.</i>"
+        f"💵 Dollar: <b>{dollars:,} $</b>\n"
     )
     kb = InlineKeyboardBuilder()
-    if WEBAPP_URL:
+    if await is_webapp_active() and WEBAPP_URL:
         kb.button(text="🛒 Do'konga o'tish (WebApp)", web_app=WebAppInfo(url=WEBAPP_URL))
+    else:
+        kb.button(text="🛒 Do'konga o'tish", callback_data="shop")
     kb.button(text="⬅️ Orqaga", callback_data="back_profile")
     kb.adjust(1)
 
