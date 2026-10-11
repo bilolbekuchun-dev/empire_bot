@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1400" preserveAspectRatio="xMidYMax slice">
+  <defs>
+    <radialGradient id="sky" cx="50%" cy="8%" r="75%">
+      <stop offset="0%" stop-color="#123324"/>
+      <stop offset="45%" stop-color="#081912"/>
+      <stop offset="100%" stop-color="#050a08"/>
+    </radialGradient>
+    <radialGradient id="moon" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#d9ffe6"/>
+      <stop offset="55%" stop-color="#7dffb0"/>
+      <stop offset="100%" stop-color="#7dffb0" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="beam" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#39ff6a" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#39ff6a" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="fade" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#050a08" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#050a08" stop-opacity="1"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="900" height="1400" fill="url(#sky)"/>
+
+  <!-- moon -->
+  <circle cx="640" cy="180" r="220" fill="url(#moon)" opacity="0.12"/>
+  <circle cx="640" cy="180" r="70" fill="#7dffb0" opacity="0.16"/>
+
+  <!-- spotlight beam -->
+  <polygon points="450,0 250,650 650,650" fill="url(#beam)"/>
+
+  <!-- stars -->
+  <g fill="#8dffb8" opacity="0.5">
+    <circle cx="80" cy="90" r="2"/>
+    <circle cx="180" cy="220" r="1.5"/>
+    <circle cx="760" cy="120" r="2"/>
+    <circle cx="120" cy="380" r="1.5"/>
+    <circle cx="820" cy="340" r="2"/>
+    <circle cx="300" cy="90" r="1.5"/>
+    <circle cx="500" cy="60" r="1.5"/>
+  </g>
+
+  <!-- distant skyline -->
+  <g fill="#0a1c14">
+    <rect x="0" y="620" width="60" height="260"/>
+    <rect x="70" y="560" width="50" height="320"/>
+    <rect x="130" y="660" width="70" height="220"/>
+    <rect x="210" y="520" width="55" height="360"/>
+    <rect x="270" y="600" width="90" height="280"/>
+    <rect x="370" y="480" width="60" height="400"/>
+    <rect x="440" y="640" width="75" height="240"/>
+    <rect x="525" y="540" width="55" height="340"/>
+    <rect x="590" y="600" width="90" height="280"/>
+    <rect x="690" y="500" width="60" height="380"/>
+    <rect x="760" y="640" width="70" height="240"/>
+    <rect x="840" y="580" width="60" height="300"/>
+  </g>
+
+  <!-- lit windows -->
+  <g fill="#39ff6a" opacity="0.55">
+    <rect x="10" y="660" width="6" height="9"/>
+    <rect x="26" y="700" width="6" height="9"/>
+    <rect x="85" y="600" width="6" height="9"/>
+    <rect x="100" y="650" width="6" height="9"/>
+    <rect x="230" y="560" width="6" height="9"/>
+    <rect x="248" y="610" width="6" height="9"/>
+    <rect x="390" y="520" width="6" height="9"/>
+    <rect x="405" y="570" width="6" height="9"/>
+    <rect x="540" y="580" width="6" height="9"/>
+    <rect x="700" y="540" width="6" height="9"/>
+    <rect x="780" y="680" width="6" height="9"/>
+  </g>
+
+  <!-- foreground skyline (closer, darker, taller) -->
+  <g fill="#050f0a">
+    <rect x="-20" y="780" width="130" height="300"/>
+    <rect x="120" y="720" width="90" height="360"/>
+    <rect x="220" y="800" width="110" height="280"/>
+    <rect x="340" y="700" width="80" height="380"/>
+    <rect x="430" y="760" width="140" height="320"/>
+    <rect x="580" y="690" width="90" height="390"/>
+    <rect x="680" y="770" width="120" height="310"/>
+    <rect x="810" y="720" width="110" height="360"/>
+  </g>
+
+  <!-- mafia figure silhouette, fedora + long coat, standing on foreground rooftop -->
+  <g transform="translate(455,760) scale(1.35)" fill="#020604">
+    <ellipse cx="0" cy="-118" rx="34" ry="16"/>
+    <path d="M -22 -122 Q 0 -150 22 -122 Q 26 -104 0 -100 Q -26 -104 -22 -122 Z"/>
+    <circle cx="0" cy="-88" r="17"/>
+    <path d="M -30 -70 Q 0 -84 30 -70 L 42 60 Q 0 80 -42 60 Z"/>
+    <path d="M -30 -70 L -54 20 L -40 26 L -20 -55 Z"/>
+    <path d="M 30 -70 L 54 20 L 40 26 L 20 -55 Z"/>
+    <path d="M -20 60 L -26 140 L -8 140 L -4 66 Z"/>
+    <path d="M 20 60 L 26 140 L 8 140 L 4 66 Z"/>
+  </g>
+
+  <rect width="900" height="1400" fill="url(#fade)"/>
+</svg>

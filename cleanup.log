@@ -1,0 +1,1640 @@
+2026-09-30 18:58:38,983 - INFO - Failed to load SSL library: <class 'OSError'> (no library called "ssl" found)
+2026-09-30 18:58:38,986 - INFO - cryptg module not installed and libssl not found, falling back to (slower) Python encryption
+2026-09-30 18:58:39,724 - WARNING - NFT katalog avto-sinxronlash xato: unable to open database file
+2026-09-30 18:59:41,453 - INFO - Failed to load SSL library: <class 'OSError'> (no library called "ssl" found)
+2026-09-30 18:59:41,457 - INFO - cryptg module not installed and libssl not found, falling back to (slower) Python encryption
+2026-09-30 18:59:41,929 - WARNING - NFT katalog avto-sinxronlash xato: unable to open database file
+2026-09-30 18:59:46,182 - INFO - Bot POLLING rejimida ishga tushdi...
+2026-09-30 19:01:38,757 - INFO - Failed to load SSL library: <class 'OSError'> (no library called "ssl" found)
+2026-09-30 19:01:38,762 - INFO - cryptg module not installed and libssl not found, falling back to (slower) Python encryption
+2026-09-30 19:01:39,263 - WARNING - NFT katalog avto-sinxronlash xato: unable to open database file
+2026-09-30 19:01:43,472 - INFO - Bot POLLING rejimida ishga tushdi...
+2026-09-30 19:01:43,480 - INFO - Webapp serveri 127.0.0.1:8000 da ishga tushdi
+2026-09-30 19:01:43,482 - INFO - Start polling
+2026-09-30 19:01:43,613 - INFO - Run polling for bot @test_empire_bot id=8884302733 - 'emp test'
+2026-09-30 19:03:15,854 - INFO - Failed to load SSL library: <class 'OSError'> (no library called "ssl" found)
+2026-09-30 19:03:15,857 - INFO - cryptg module not installed and libssl not found, falling back to (slower) Python encryption
+2026-09-30 19:03:16,387 - WARNING - NFT katalog avto-sinxronlash xato: unable to open database file
+2026-09-30 19:03:20,698 - INFO - Bot POLLING rejimida ishga tushdi...
+2026-09-30 19:03:20,705 - INFO - Webapp serveri 127.0.0.1:8000 da ishga tushdi
+2026-09-30 19:03:20,706 - INFO - Start polling
+2026-09-30 19:03:20,906 - INFO - Run polling for bot @test_empire_bot id=8884302733 - 'emp test'
+2026-09-30 19:28:00,540 - INFO - Polling stopped
+2026-09-30 19:28:00,637 - ERROR - Failed to fetch updates - TelegramNetworkError: HTTP Client says - ServerDisconnectedError: Server disconnected
+2026-09-30 19:28:00,641 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8884302733)
+2026-09-30 19:28:00,916 - INFO - Polling stopped for bot @test_empire_bot id=8884302733 - 'emp test'
+2026-09-30 19:28:22,323 - INFO - Failed to load SSL library: <class 'OSError'> (no library called "ssl" found)
+2026-09-30 19:28:22,325 - INFO - cryptg module not installed and libssl not found, falling back to (slower) Python encryption
+2026-09-30 19:28:22,958 - WARNING - NFT katalog avto-sinxronlash xato: unable to open database file
+2026-09-30 19:28:27,553 - INFO - Bot POLLING rejimida ishga tushdi...
+2026-09-30 19:28:27,556 - INFO - Webapp serveri 127.0.0.1:8000 da ishga tushdi
+2026-09-30 19:28:27,558 - INFO - Start polling
+2026-09-30 19:28:27,695 - INFO - Run polling for bot @test_empire_bot id=8884302733 - 'emp test'
+2026-09-30 19:30:52,112 - INFO - RECEIVED MESSAGE: /start from 8765051736 in chat 8765051736
+2026-09-30 19:30:53,228 - INFO - Update id=370589481 is handled. Duration 1125 ms by bot id=8884302733
+2026-09-30 19:30:57,818 - INFO - Update id=370589482 is handled. Duration 531 ms by bot id=8884302733
+2026-09-30 19:33:49,622 - ERROR - Failed to fetch updates - TelegramNetworkError: HTTP Client says - ClientOSError: [WinError 121] Превышен таймаут семафора
+2026-09-30 19:33:49,629 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8884302733)
+2026-09-30 19:34:01,332 - INFO - Connection established (tryings = 1, bot id = 8884302733)
+2026-09-30 19:36:45,305 - INFO - RECEIVED MESSAGE: /start from 6913838682 in chat 6913838682
+2026-09-30 19:36:46,105 - INFO - Update id=370589483 is handled. Duration 813 ms by bot id=8884302733
+2026-09-30 19:36:49,276 - INFO - Update id=370589484 is handled. Duration 609 ms by bot id=8884302733
+2026-09-30 19:37:04,741 - INFO - RECEIVED MESSAGE: /profile from 6913838682 in chat 6913838682
+2026-09-30 19:37:04,754 - INFO - Update id=370589485 is not handled. Duration 14 ms by bot id=8884302733
+2026-09-30 19:37:04,756 - ERROR - Cause exception while process update id=370589485 by bot id=8884302733
+AttributeError: module 'utils.others' has no attribute 'get_profile'
+Traceback (most recent call last):
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 309, in _process_update
+    response = await self.feed_update(bot, update, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 158, in feed_update
+    response = await self.update.wrap_outer_middleware(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\error.py", line 25, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\user_context.py", line 56, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\fsm\middleware.py", line 42, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 276, in _listen_update
+    return await self.propagate_event(update_type=update_type, event=event, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\bot.py", line 75, in log_all_messages
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 166, in _propagate_event
+    response = await observer.trigger(event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\floot.py", line 93, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\manager.py", line 250, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\handlers\other_handlers.py", line 75, in f
+    await others.get_profile(bot, message)
+          ^^^^^^^^^^^^^^^^^^
+AttributeError: module 'utils.others' has no attribute 'get_profile'
+2026-09-30 19:37:08,243 - INFO - RECEIVED MESSAGE: /profile from 6913838682 in chat 6913838682
+2026-09-30 19:37:08,248 - INFO - Update id=370589486 is not handled. Duration 14 ms by bot id=8884302733
+2026-09-30 19:37:08,249 - ERROR - Cause exception while process update id=370589486 by bot id=8884302733
+AttributeError: module 'utils.others' has no attribute 'get_profile'
+Traceback (most recent call last):
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 309, in _process_update
+    response = await self.feed_update(bot, update, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 158, in feed_update
+    response = await self.update.wrap_outer_middleware(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\error.py", line 25, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\user_context.py", line 56, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\fsm\middleware.py", line 42, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 276, in _listen_update
+    return await self.propagate_event(update_type=update_type, event=event, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\bot.py", line 75, in log_all_messages
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 166, in _propagate_event
+    response = await observer.trigger(event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\floot.py", line 93, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\manager.py", line 250, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\handlers\other_handlers.py", line 75, in f
+    await others.get_profile(bot, message)
+          ^^^^^^^^^^^^^^^^^^
+AttributeError: module 'utils.others' has no attribute 'get_profile'
+2026-09-30 19:37:09,231 - INFO - RECEIVED MESSAGE: /start from 6913838682 in chat 6913838682
+2026-09-30 19:37:09,401 - INFO - Update id=370589487 is handled. Duration 171 ms by bot id=8884302733
+2026-09-30 19:37:17,970 - INFO - RECEIVED MESSAGE: /profile from 6913838682 in chat 6913838682
+2026-09-30 19:37:17,976 - INFO - Update id=370589488 is not handled. Duration 0 ms by bot id=8884302733
+2026-09-30 19:37:17,978 - ERROR - Cause exception while process update id=370589488 by bot id=8884302733
+AttributeError: module 'utils.others' has no attribute 'get_profile'
+Traceback (most recent call last):
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 309, in _process_update
+    response = await self.feed_update(bot, update, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 158, in feed_update
+    response = await self.update.wrap_outer_middleware(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\error.py", line 25, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\user_context.py", line 56, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\fsm\middleware.py", line 42, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 276, in _listen_update
+    return await self.propagate_event(update_type=update_type, event=event, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\bot.py", line 75, in log_all_messages
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 166, in _propagate_event
+    response = await observer.trigger(event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\floot.py", line 93, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\manager.py", line 250, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\handlers\other_handlers.py", line 75, in f
+    await others.get_profile(bot, message)
+          ^^^^^^^^^^^^^^^^^^
+AttributeError: module 'utils.others' has no attribute 'get_profile'
+2026-09-30 19:37:19,622 - INFO - RECEIVED MESSAGE: /roles from 6913838682 in chat 6913838682
+2026-09-30 19:37:19,629 - INFO - Update id=370589489 is not handled. Duration 0 ms by bot id=8884302733
+2026-09-30 19:37:19,632 - ERROR - Cause exception while process update id=370589489 by bot id=8884302733
+AttributeError: module 'utils.others' has no attribute 'get_roles_text'
+Traceback (most recent call last):
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 309, in _process_update
+    response = await self.feed_update(bot, update, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 158, in feed_update
+    response = await self.update.wrap_outer_middleware(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\error.py", line 25, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\user_context.py", line 56, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\fsm\middleware.py", line 42, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 276, in _listen_update
+    return await self.propagate_event(update_type=update_type, event=event, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\bot.py", line 75, in log_all_messages
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 166, in _propagate_event
+    response = await observer.trigger(event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\floot.py", line 93, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\manager.py", line 250, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\handlers\other_handlers.py", line 230, in f
+    await others.get_roles_text(message)
+          ^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'utils.others' has no attribute 'get_roles_text'
+2026-09-30 19:37:32,538 - INFO - RECEIVED MESSAGE: /zapravka1 from 6913838682 in chat 6913838682
+2026-09-30 19:37:32,651 - INFO - Update id=370589490 is not handled. Duration 125 ms by bot id=8884302733
+2026-09-30 19:37:32,652 - ERROR - Cause exception while process update id=370589490 by bot id=8884302733
+AttributeError: 'NoneType' object has no attribute 'diamond'
+Traceback (most recent call last):
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 309, in _process_update
+    response = await self.feed_update(bot, update, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 158, in feed_update
+    response = await self.update.wrap_outer_middleware(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\error.py", line 25, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\user_context.py", line 56, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\fsm\middleware.py", line 42, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 276, in _listen_update
+    return await self.propagate_event(update_type=update_type, event=event, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\bot.py", line 75, in log_all_messages
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 166, in _propagate_event
+    response = await observer.trigger(event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\floot.py", line 93, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\manager.py", line 250, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\handlers\admin.py", line 379, in f_zapravka1
+    await admins.zapravka_olmosh_handler(message=message)
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\utils\admins.py", line 246, in zapravka_olmosh_handler
+    profile.diamond += 100
+    ^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'diamond'
+2026-09-30 19:58:17,602 - INFO - RECEIVED MESSAGE: /profile from 6913838682 in chat 6913838682
+2026-09-30 19:58:17,969 - INFO - Update id=370589491 is not handled. Duration 389 ms by bot id=8884302733
+2026-09-30 19:58:17,972 - ERROR - Cause exception while process update id=370589491 by bot id=8884302733
+AttributeError: module 'utils.others' has no attribute 'get_profile'
+Traceback (most recent call last):
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 309, in _process_update
+    response = await self.feed_update(bot, update, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 158, in feed_update
+    response = await self.update.wrap_outer_middleware(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\error.py", line 25, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\user_context.py", line 56, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\fsm\middleware.py", line 42, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 276, in _listen_update
+    return await self.propagate_event(update_type=update_type, event=event, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\bot.py", line 75, in log_all_messages
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 166, in _propagate_event
+    response = await observer.trigger(event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\floot.py", line 93, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\manager.py", line 250, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\handlers\other_handlers.py", line 75, in f
+    await others.get_profile(bot, message)
+          ^^^^^^^^^^^^^^^^^^
+AttributeError: module 'utils.others' has no attribute 'get_profile'
+2026-09-30 19:58:19,118 - INFO - RECEIVED MESSAGE: /roles from 6913838682 in chat 6913838682
+2026-09-30 19:58:19,132 - INFO - Update id=370589492 is not handled. Duration 0 ms by bot id=8884302733
+2026-09-30 19:58:19,133 - ERROR - Cause exception while process update id=370589492 by bot id=8884302733
+AttributeError: module 'utils.others' has no attribute 'get_roles_text'
+Traceback (most recent call last):
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 309, in _process_update
+    response = await self.feed_update(bot, update, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 158, in feed_update
+    response = await self.update.wrap_outer_middleware(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\error.py", line 25, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\user_context.py", line 56, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\fsm\middleware.py", line 42, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 276, in _listen_update
+    return await self.propagate_event(update_type=update_type, event=event, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\bot.py", line 75, in log_all_messages
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 166, in _propagate_event
+    response = await observer.trigger(event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\floot.py", line 93, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\manager.py", line 250, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\handlers\other_handlers.py", line 230, in f
+    await others.get_roles_text(message)
+          ^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'utils.others' has no attribute 'get_roles_text'
+2026-09-30 19:58:21,324 - INFO - RECEIVED MESSAGE: /start from 6913838682 in chat 6913838682
+2026-09-30 19:58:21,539 - INFO - Update id=370589493 is handled. Duration 202 ms by bot id=8884302733
+2026-09-30 19:58:30,782 - INFO - Update id=370589494 is not handled. Duration 31 ms by bot id=8884302733
+2026-09-30 19:58:30,785 - ERROR - Cause exception while process update id=370589494 by bot id=8884302733
+AttributeError: module 'utils.others' has no attribute 'get_premium_groups_on_start'
+Traceback (most recent call last):
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 309, in _process_update
+    response = await self.feed_update(bot, update, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 158, in feed_update
+    response = await self.update.wrap_outer_middleware(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\error.py", line 25, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\user_context.py", line 56, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\fsm\middleware.py", line 42, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 276, in _listen_update
+    return await self.propagate_event(update_type=update_type, event=event, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 166, in _propagate_event
+    response = await observer.trigger(event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\floot.py", line 93, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\handlers\other_handlers.py", line 288, in f
+    await others.get_premium_groups_on_start(call=call, bot=bot)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'utils.others' has no attribute 'get_premium_groups_on_start'
+2026-09-30 20:28:23,001 - WARNING - NFT katalog avto-sinxronlash xato: unable to open database file
+2026-09-30 20:39:58,982 - ERROR - Failed to fetch updates - TelegramNetworkError: HTTP Client says - Request timeout error
+2026-09-30 20:39:58,985 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8884302733)
+2026-09-30 20:40:10,487 - INFO - Connection established (tryings = 1, bot id = 8884302733)
+2026-09-30 21:28:23,040 - WARNING - NFT katalog avto-sinxronlash xato: unable to open database file
+2026-09-30 22:45:07,845 - ERROR - Failed to fetch updates - TelegramNetworkError: HTTP Client says - Request timeout error
+2026-09-30 22:45:07,897 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8884302733)
+2026-09-30 22:45:07,964 - WARNING - NFT katalog avto-sinxronlash xato: unable to open database file
+2026-09-30 22:45:09,390 - INFO - Connection established (tryings = 1, bot id = 8884302733)
+2026-09-30 22:45:09,398 - INFO - RECEIVED MESSAGE: /zapravka1 from 6913838682 in chat 6913838682
+2026-09-30 22:45:09,408 - INFO - RECEIVED MESSAGE: /roles from 6913838682 in chat 6913838682
+2026-09-30 22:45:09,423 - INFO - RECEIVED MESSAGE: /profile from 6913838682 in chat 6913838682
+2026-09-30 22:45:09,914 - INFO - Update id=370589496 is not handled. Duration 500 ms by bot id=8884302733
+2026-09-30 22:45:09,917 - ERROR - Cause exception while process update id=370589496 by bot id=8884302733
+AttributeError: module 'utils.others' has no attribute 'get_roles_text'
+Traceback (most recent call last):
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 309, in _process_update
+    response = await self.feed_update(bot, update, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 158, in feed_update
+    response = await self.update.wrap_outer_middleware(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\error.py", line 25, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\user_context.py", line 56, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\fsm\middleware.py", line 42, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 276, in _listen_update
+    return await self.propagate_event(update_type=update_type, event=event, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\bot.py", line 75, in log_all_messages
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 166, in _propagate_event
+    response = await observer.trigger(event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\floot.py", line 93, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\manager.py", line 250, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\handlers\other_handlers.py", line 230, in f
+    await others.get_roles_text(message)
+          ^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'utils.others' has no attribute 'get_roles_text'
+2026-09-30 22:45:09,948 - INFO - Update id=370589497 is not handled. Duration 546 ms by bot id=8884302733
+2026-09-30 22:45:09,951 - ERROR - Cause exception while process update id=370589497 by bot id=8884302733
+AttributeError: module 'utils.others' has no attribute 'get_profile'
+Traceback (most recent call last):
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 309, in _process_update
+    response = await self.feed_update(bot, update, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 158, in feed_update
+    response = await self.update.wrap_outer_middleware(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\error.py", line 25, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\user_context.py", line 56, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\fsm\middleware.py", line 42, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 276, in _listen_update
+    return await self.propagate_event(update_type=update_type, event=event, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\bot.py", line 75, in log_all_messages
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 166, in _propagate_event
+    response = await observer.trigger(event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\floot.py", line 93, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\manager.py", line 250, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\handlers\other_handlers.py", line 75, in f
+    await others.get_profile(bot, message)
+          ^^^^^^^^^^^^^^^^^^
+AttributeError: module 'utils.others' has no attribute 'get_profile'
+2026-09-30 22:45:09,999 - INFO - Update id=370589495 is not handled. Duration 608 ms by bot id=8884302733
+2026-09-30 22:45:10,000 - ERROR - Cause exception while process update id=370589495 by bot id=8884302733
+AttributeError: 'NoneType' object has no attribute 'diamond'
+Traceback (most recent call last):
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 309, in _process_update
+    response = await self.feed_update(bot, update, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 158, in feed_update
+    response = await self.update.wrap_outer_middleware(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\error.py", line 25, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\user_context.py", line 56, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\fsm\middleware.py", line 42, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 276, in _listen_update
+    return await self.propagate_event(update_type=update_type, event=event, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\bot.py", line 75, in log_all_messages
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 166, in _propagate_event
+    response = await observer.trigger(event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\floot.py", line 93, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\manager.py", line 250, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\handlers\admin.py", line 379, in f_zapravka1
+    await admins.zapravka_olmosh_handler(message=message)
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\utils\admins.py", line 246, in zapravka_olmosh_handler
+    profile.diamond += 100
+    ^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'diamond'
+2026-09-30 23:03:42,466 - ERROR - Failed to fetch updates - TelegramNetworkError: HTTP Client says - ClientOSError: [WinError 121] Превышен таймаут семафора
+2026-09-30 23:03:42,469 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8884302733)
+2026-09-30 23:03:43,821 - INFO - Connection established (tryings = 1, bot id = 8884302733)
+2026-09-30 23:03:43,831 - INFO - RECEIVED MESSAGE: /roles from 6913838682 in chat 6913838682
+2026-09-30 23:03:43,833 - INFO - RECEIVED MESSAGE: /profile from 6913838682 in chat 6913838682
+2026-09-30 23:03:44,194 - INFO - Update id=370589499 is not handled. Duration 359 ms by bot id=8884302733
+2026-09-30 23:03:44,195 - ERROR - Cause exception while process update id=370589499 by bot id=8884302733
+AttributeError: module 'utils.others' has no attribute 'get_profile'
+Traceback (most recent call last):
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 309, in _process_update
+    response = await self.feed_update(bot, update, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 158, in feed_update
+    response = await self.update.wrap_outer_middleware(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\error.py", line 25, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\user_context.py", line 56, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\fsm\middleware.py", line 42, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 276, in _listen_update
+    return await self.propagate_event(update_type=update_type, event=event, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\bot.py", line 75, in log_all_messages
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 166, in _propagate_event
+    response = await observer.trigger(event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\floot.py", line 93, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\manager.py", line 250, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\handlers\other_handlers.py", line 75, in f
+    await others.get_profile(bot, message)
+          ^^^^^^^^^^^^^^^^^^
+AttributeError: module 'utils.others' has no attribute 'get_profile'
+2026-09-30 23:03:44,231 - INFO - Update id=370589498 is not handled. Duration 405 ms by bot id=8884302733
+2026-09-30 23:03:44,233 - ERROR - Cause exception while process update id=370589498 by bot id=8884302733
+AttributeError: module 'utils.others' has no attribute 'get_roles_text'
+Traceback (most recent call last):
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 309, in _process_update
+    response = await self.feed_update(bot, update, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 158, in feed_update
+    response = await self.update.wrap_outer_middleware(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\error.py", line 25, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\user_context.py", line 56, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\fsm\middleware.py", line 42, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 276, in _listen_update
+    return await self.propagate_event(update_type=update_type, event=event, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\bot.py", line 75, in log_all_messages
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 166, in _propagate_event
+    response = await observer.trigger(event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\floot.py", line 93, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\manager.py", line 250, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\handlers\other_handlers.py", line 230, in f
+    await others.get_roles_text(message)
+          ^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'utils.others' has no attribute 'get_roles_text'
+2026-09-30 23:45:08,062 - WARNING - NFT katalog avto-sinxronlash xato: unable to open database file
+2026-10-01 00:11:06,961 - ERROR - Failed to fetch updates - TelegramNetworkError: HTTP Client says - Request timeout error
+2026-10-01 00:11:06,965 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8884302733)
+2026-10-01 00:11:18,304 - INFO - Connection established (tryings = 1, bot id = 8884302733)
+2026-10-01 00:45:08,099 - WARNING - NFT katalog avto-sinxronlash xato: unable to open database file
+2026-10-01 00:53:08,560 - INFO - Failed to load SSL library: <class 'OSError'> (no library called "ssl" found)
+2026-10-01 00:53:08,562 - INFO - cryptg module not installed and libssl not found, falling back to (slower) Python encryption
+2026-10-01 00:53:08,883 - WARNING - NFT katalog avto-sinxronlash xato: unable to open database file
+2026-10-01 00:53:13,171 - INFO - Bot POLLING rejimida ishga tushdi...
+2026-10-01 00:54:17,948 - INFO - Polling stopped
+2026-10-01 00:54:17,966 - ERROR - Failed to fetch updates - TelegramNetworkError: HTTP Client says - ServerDisconnectedError: Server disconnected
+2026-10-01 00:54:17,966 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8884302733)
+2026-10-01 00:54:18,239 - INFO - Polling stopped for bot @test_empire_bot id=8884302733 - 'emp test'
+2026-10-01 00:54:33,038 - INFO - Failed to load SSL library: <class 'OSError'> (no library called "ssl" found)
+2026-10-01 00:54:33,040 - INFO - cryptg module not installed and libssl not found, falling back to (slower) Python encryption
+2026-10-01 00:54:33,220 - WARNING - NFT katalog avto-sinxronlash xato: unable to open database file
+2026-10-01 00:54:37,490 - INFO - Bot POLLING rejimida ishga tushdi...
+2026-10-01 00:54:37,493 - INFO - Webapp serveri 127.0.0.1:8000 da ishga tushdi
+2026-10-01 00:54:37,494 - INFO - Start polling
+2026-10-01 00:54:37,612 - INFO - Run polling for bot @test_empire_bot id=8884302733 - 'emp test'
+2026-10-01 00:54:51,487 - INFO - RECEIVED MESSAGE: /start from 8765051736 in chat 8765051736
+2026-10-01 00:54:51,990 - INFO - Update id=370589500 is handled. Duration 500 ms by bot id=8884302733
+2026-10-01 00:57:27,464 - INFO - RECEIVED MESSAGE: None from 8765051736 in chat -5391124410
+2026-10-01 00:57:27,472 - INFO - Update id=370589501 is not handled. Duration 0 ms by bot id=8884302733
+2026-10-01 00:57:43,120 - INFO - RECEIVED MESSAGE: /game@test_empire_bot from 8765051736 in chat -5391124410
+2026-10-01 00:57:44,497 - INFO - Update id=370589502 is handled. Duration 1375 ms by bot id=8884302733
+2026-10-01 00:57:44,505 - INFO - RECEIVED MESSAGE: None from 8884302733 in chat -5391124410
+2026-10-01 00:57:44,636 - INFO - Update id=370589503 is not handled. Duration 141 ms by bot id=8884302733
+2026-10-01 01:00:18,270 - INFO - Polling stopped
+2026-10-01 01:00:18,273 - ERROR - Failed to fetch updates - TelegramNetworkError: HTTP Client says - ServerDisconnectedError: Server disconnected
+2026-10-01 01:00:18,274 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8884302733)
+2026-10-01 01:00:18,534 - INFO - Polling stopped for bot @test_empire_bot id=8884302733 - 'emp test'
+2026-10-01 01:01:28,116 - INFO - Failed to load SSL library: <class 'OSError'> (no library called "ssl" found)
+2026-10-01 01:01:28,117 - INFO - cryptg module not installed and libssl not found, falling back to (slower) Python encryption
+2026-10-01 01:01:28,285 - WARNING - NFT katalog avto-sinxronlash xato: unable to open database file
+2026-10-01 01:01:32,597 - INFO - Bot POLLING rejimida ishga tushdi...
+2026-10-01 01:01:32,601 - INFO - Webapp serveri 127.0.0.1:8000 da ishga tushdi
+2026-10-01 01:01:32,602 - INFO - Start polling
+2026-10-01 01:01:32,713 - INFO - Run polling for bot @test_empire_bot id=8884302733 - 'emp test'
+2026-10-01 01:01:38,017 - INFO - RECEIVED MESSAGE: /game@test_empire_bot from 8765051736 in chat -5391124410
+2026-10-01 01:01:39,247 - INFO - RECEIVED MESSAGE: None from 8884302733 in chat -5391124410
+2026-10-01 01:01:39,252 - INFO - Update id=370589505 is handled. Duration 1233 ms by bot id=8884302733
+2026-10-01 01:01:39,377 - INFO - Update id=370589506 is not handled. Duration 125 ms by bot id=8884302733
+2026-10-01 01:01:40,691 - INFO - RECEIVED MESSAGE: /start game_1 from 8765051736 in chat 8765051736
+2026-10-01 01:01:40,957 - INFO - Update id=370589507 is not handled. Duration 265 ms by bot id=8884302733
+2026-10-01 01:01:40,959 - ERROR - Cause exception while process update id=370589507 by bot id=8884302733
+NameError: name 'html' is not defined
+Traceback (most recent call last):
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 309, in _process_update
+    response = await self.feed_update(bot, update, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 158, in feed_update
+    response = await self.update.wrap_outer_middleware(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\error.py", line 25, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\user_context.py", line 56, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\fsm\middleware.py", line 42, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 276, in _listen_update
+    return await self.propagate_event(update_type=update_type, event=event, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\bot.py", line 75, in log_all_messages
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 166, in _propagate_event
+    response = await observer.trigger(event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\floot.py", line 93, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\middlewares\manager.py", line 250, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\handlers\game.py", line 53, in f
+    await join_game_handler_wrapper(message, bot, state=state)
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\utils\redis_game\handler_wrappers.py", line 53, in join_game_handler_wrapper
+    return await join_game_handler(message, bot, state)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\utils\redis_game\handlers.py", line 235, in join_game_handler_redis
+    await _join_game_handler_redis_core(message, bot, state)
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\utils\redis_game\handlers.py", line 220, in _join_game_handler_redis_core
+    await update_players_list_redis(game_id, bot)
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\utils\redis_game\handlers.py", line 283, in update_players_list_redis
+    clean_name = html.escape((user.full_name if user and user.full_name else player.first_name) or "O'yinchi")
+                 ^^^^
+NameError: name 'html' is not defined
+2026-10-01 01:03:23,018 - INFO - Polling stopped
+2026-10-01 01:03:23,019 - ERROR - Failed to fetch updates - TelegramNetworkError: HTTP Client says - ServerDisconnectedError: Server disconnected
+2026-10-01 01:03:23,020 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8884302733)
+2026-10-01 01:03:23,284 - INFO - Polling stopped for bot @test_empire_bot id=8884302733 - 'emp test'
+2026-10-01 01:03:34,084 - INFO - Failed to load SSL library: <class 'OSError'> (no library called "ssl" found)
+2026-10-01 01:03:34,085 - INFO - cryptg module not installed and libssl not found, falling back to (slower) Python encryption
+2026-10-01 01:03:34,363 - WARNING - NFT katalog avto-sinxronlash xato: unable to open database file
+2026-10-01 01:03:38,623 - INFO - Bot POLLING rejimida ishga tushdi...
+2026-10-01 01:03:38,627 - INFO - Webapp serveri 127.0.0.1:8000 da ishga tushdi
+2026-10-01 01:03:38,628 - INFO - Start polling
+2026-10-01 01:03:38,741 - INFO - Run polling for bot @test_empire_bot id=8884302733 - 'emp test'
+2026-10-01 01:03:40,554 - INFO - RECEIVED MESSAGE: /game@test_empire_bot from 8765051736 in chat -5391124410
+2026-10-01 01:03:41,725 - INFO - Update id=370589508 is handled. Duration 1171 ms by bot id=8884302733
+2026-10-01 01:03:41,741 - INFO - RECEIVED MESSAGE: None from 8884302733 in chat -5391124410
+2026-10-01 01:03:41,879 - INFO - Update id=370589509 is not handled. Duration 139 ms by bot id=8884302733
+2026-10-01 01:03:46,364 - INFO - RECEIVED MESSAGE: /start game_1 from 8765051736 in chat 8765051736
+2026-10-01 01:03:46,771 - INFO - Update id=370589510 is handled. Duration 406 ms by bot id=8884302733
+2026-10-01 01:05:16,876 - INFO - RECEIVED MESSAGE: None from 1087968824 in chat -1003775265731
+2026-10-01 01:05:16,877 - INFO - RECEIVED MESSAGE: None from 8765051736 in chat -5391124410
+2026-10-01 01:05:17,303 - INFO - Update id=370589511 is not handled. Duration 422 ms by bot id=8884302733
+2026-10-01 01:05:17,464 - INFO - Update id=370589512 is not handled. Duration 594 ms by bot id=8884302733
+2026-10-01 01:05:17,465 - ERROR - Cause exception while process update id=370589512 by bot id=8884302733
+TelegramMigrateToChat: Telegram server says - The group has been migrated to a supergroup with id -1003775265731 from -5391124410
+Original description: Bad Request: group chat was upgraded to a supergroup chat
+(background on this error at: https://core.telegram.org/bots/api#responseparameters)
+Traceback (most recent call last):
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\filters\more.py", line 174, in __call__
+    member = await message.bot.get_chat_member(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\client\bot.py", line 1636, in get_chat_member
+    return await self(call, request_timeout=request_timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\client\bot.py", line 482, in __call__
+    return await self.session(self, method, timeout=request_timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\client\session\base.py", line 254, in __call__
+    return cast(TelegramType, await middleware(bot, method))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\client\session\aiohttp.py", line 185, in make_request
+    response = self.check_response(
+               ^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\client\session\base.py", line 114, in check_response
+    raise TelegramMigrateToChat(
+aiogram.exceptions.TelegramMigrateToChat: Telegram server says - The group has been migrated to a supergroup with id -1003775265731 from -5391124410
+Original description: Bad Request: group chat was upgraded to a supergroup chat
+(background on this error at: https://core.telegram.org/bots/api#responseparameters)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 309, in _process_update
+    response = await self.feed_update(bot, update, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 158, in feed_update
+    response = await self.update.wrap_outer_middleware(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\error.py", line 25, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\middlewares\user_context.py", line 56, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\fsm\middleware.py", line 42, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 121, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 276, in _listen_update
+    return await self.propagate_event(update_type=update_type, event=event, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\bot.py", line 75, in log_all_messages
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 174, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 146, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 141, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\router.py", line 166, in _propagate_event
+    response = await observer.trigger(event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 113, in trigger
+    result, data = await handler.check(event, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 90, in check
+    check = await event_filter.call(*args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 43, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "D:\Empire_Turon_maf_Bot\emp_bot\Empire\filters\more.py", line 180, in __call__
+    await message.answer(
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\methods\base.py", line 84, in emit
+    return await bot(self)
+           ^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\client\bot.py", line 482, in __call__
+    return await self.session(self, method, timeout=request_timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\client\session\base.py", line 254, in __call__
+    return cast(TelegramType, await middleware(bot, method))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\client\session\aiohttp.py", line 185, in make_request
+    response = self.check_response(
+               ^^^^^^^^^^^^^^^^^^^^
+  File "D:\Python\eski_versiya\Lib\site-packages\aiogram\client\session\base.py", line 114, in check_response
+    raise TelegramMigrateToChat(
+aiogram.exceptions.TelegramMigrateToChat: Telegram server says - The group has been migrated to a supergroup with id -1003775265731 from -5391124410
+Original description: Bad Request: group chat was upgraded to a supergroup chat
+(background on this error at: https://core.telegram.org/bots/api#responseparameters)
+2026-10-01 01:36:31,765 - INFO - Failed to load SSL library: <class 'OSError'> (no library called "ssl" found)
+2026-10-01 01:36:31,767 - INFO - cryptg module not installed and libssl not found, falling back to (slower) Python encryption
+2026-10-01 01:36:32,016 - WARNING - NFT katalog avto-sinxronlash xato: unable to open database file
+2026-10-01 01:36:33,176 - INFO - Polling stopped
+2026-10-01 01:36:33,216 - ERROR - Failed to fetch updates - TelegramNetworkError: HTTP Client says - ServerDisconnectedError: Server disconnected
+2026-10-01 01:36:33,218 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8884302733)
+2026-10-01 01:36:33,486 - INFO - Polling stopped for bot @test_empire_bot id=8884302733 - 'emp test'
+2026-10-01 01:36:36,339 - INFO - Bot POLLING rejimida ishga tushdi...
+2026-10-01 01:36:36,349 - INFO - Webapp serveri 127.0.0.1:8000 da ishga tushdi
+2026-10-01 01:36:36,350 - INFO - Start polling
+2026-10-01 01:36:36,459 - INFO - Run polling for bot @test_empire_bot id=8884302733 - 'emp test'
+2026-10-01 01:36:57,697 - INFO - Failed to load SSL library: <class 'OSError'> (no library called "ssl" found)
+2026-10-01 01:36:57,697 - INFO - cryptg module not installed and libssl not found, falling back to (slower) Python encryption
+2026-10-01 01:36:57,873 - WARNING - NFT katalog avto-sinxronlash xato: unable to open database file
+2026-10-01 01:37:02,142 - INFO - Bot POLLING rejimida ishga tushdi...
+2026-10-01 01:37:12,191 - INFO - RECEIVED MESSAGE: /start from 8765051736 in chat 8765051736
+2026-10-01 01:37:12,685 - INFO - Update id=370589513 is handled. Duration 500 ms by bot id=8884302733
+2026-10-01 01:39:50,887 - INFO - Update id=370589514 is handled. Duration 172 ms by bot id=8884302733
+2026-10-01 01:39:59,242 - INFO - RECEIVED MESSAGE: /start from 8765051736 in chat 8765051736
+2026-10-01 01:39:59,402 - INFO - Update id=370589515 is handled. Duration 172 ms by bot id=8884302733
+2026-10-01 02:23:09,793 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:23:09,805 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8884302733)
+2026-10-01 02:23:15,086 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:23:15,087 - WARNING - Sleep for 1.223361 seconds and try again... (tryings = 1, bot id = 8884302733)
+2026-10-01 02:23:20,782 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:23:20,782 - WARNING - Sleep for 1.744657 seconds and try again... (tryings = 2, bot id = 8884302733)
+2026-10-01 02:23:27,264 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:23:27,265 - WARNING - Sleep for 2.201459 seconds and try again... (tryings = 3, bot id = 8884302733)
+2026-10-01 02:23:31,303 - INFO - Connection established (tryings = 4, bot id = 8884302733)
+2026-10-01 02:23:31,316 - INFO - RECEIVED MESSAGE: /start from 8765051736 in chat 8765051736
+2026-10-01 02:23:31,615 - INFO - Update id=370589516 is handled. Duration 296 ms by bot id=8884302733
+2026-10-01 02:23:34,665 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:23:34,666 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8884302733)
+2026-10-01 02:23:41,494 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:23:41,495 - WARNING - Sleep for 1.387435 seconds and try again... (tryings = 1, bot id = 8884302733)
+2026-10-01 02:23:49,402 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:23:49,404 - WARNING - Sleep for 1.769038 seconds and try again... (tryings = 2, bot id = 8884302733)
+2026-10-01 02:23:58,778 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:23:58,779 - WARNING - Sleep for 2.385755 seconds and try again... (tryings = 3, bot id = 8884302733)
+2026-10-01 02:24:09,490 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:24:09,491 - WARNING - Sleep for 3.108959 seconds and try again... (tryings = 4, bot id = 8884302733)
+2026-10-01 02:24:17,770 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:24:17,770 - WARNING - Sleep for 3.917427 seconds and try again... (tryings = 5, bot id = 8884302733)
+2026-10-01 02:24:26,764 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:24:26,765 - WARNING - Sleep for 5.016157 seconds and try again... (tryings = 6, bot id = 8884302733)
+2026-10-01 02:24:37,051 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:24:37,052 - WARNING - Sleep for 4.975116 seconds and try again... (tryings = 7, bot id = 8884302733)
+2026-10-01 02:24:47,286 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:24:47,287 - WARNING - Sleep for 4.986239 seconds and try again... (tryings = 8, bot id = 8884302733)
+2026-10-01 02:24:57,478 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:24:57,478 - WARNING - Sleep for 4.981119 seconds and try again... (tryings = 9, bot id = 8884302733)
+2026-10-01 02:25:07,604 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:25:07,605 - WARNING - Sleep for 4.949903 seconds and try again... (tryings = 10, bot id = 8884302733)
+2026-10-01 02:25:17,782 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:25:17,783 - WARNING - Sleep for 4.871365 seconds and try again... (tryings = 11, bot id = 8884302733)
+2026-10-01 02:25:27,844 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:25:27,844 - WARNING - Sleep for 5.020522 seconds and try again... (tryings = 12, bot id = 8884302733)
+2026-10-01 02:25:38,025 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:25:38,025 - WARNING - Sleep for 5.009456 seconds and try again... (tryings = 13, bot id = 8884302733)
+2026-10-01 02:25:48,422 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:25:48,422 - WARNING - Sleep for 4.970458 seconds and try again... (tryings = 14, bot id = 8884302733)
+2026-10-01 02:25:58,939 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:25:58,940 - WARNING - Sleep for 5.179780 seconds and try again... (tryings = 15, bot id = 8884302733)
+2026-10-01 02:26:09,456 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:26:09,457 - WARNING - Sleep for 5.028175 seconds and try again... (tryings = 16, bot id = 8884302733)
+2026-10-01 02:26:19,683 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:26:19,683 - WARNING - Sleep for 4.976065 seconds and try again... (tryings = 17, bot id = 8884302733)
+2026-10-01 02:26:29,979 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:26:29,979 - WARNING - Sleep for 4.729187 seconds and try again... (tryings = 18, bot id = 8884302733)
+2026-10-01 02:26:39,938 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:26:39,939 - WARNING - Sleep for 5.108637 seconds and try again... (tryings = 19, bot id = 8884302733)
+2026-10-01 02:26:50,297 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:26:50,298 - WARNING - Sleep for 5.089834 seconds and try again... (tryings = 20, bot id = 8884302733)
+2026-10-01 02:27:00,671 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:27:00,672 - WARNING - Sleep for 4.952635 seconds and try again... (tryings = 21, bot id = 8884302733)
+2026-10-01 02:27:10,931 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:27:10,932 - WARNING - Sleep for 5.052717 seconds and try again... (tryings = 22, bot id = 8884302733)
+2026-10-01 02:27:21,302 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:27:21,303 - WARNING - Sleep for 5.059709 seconds and try again... (tryings = 23, bot id = 8884302733)
+2026-10-01 02:27:31,490 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:27:31,491 - WARNING - Sleep for 4.872163 seconds and try again... (tryings = 24, bot id = 8884302733)
+2026-10-01 02:27:41,486 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:27:41,487 - WARNING - Sleep for 5.144759 seconds and try again... (tryings = 25, bot id = 8884302733)
+2026-10-01 02:27:51,841 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:27:51,842 - WARNING - Sleep for 5.114949 seconds and try again... (tryings = 26, bot id = 8884302733)
+2026-10-01 02:28:02,219 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:28:02,219 - WARNING - Sleep for 5.096828 seconds and try again... (tryings = 27, bot id = 8884302733)
+2026-10-01 02:28:12,419 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:28:12,419 - WARNING - Sleep for 4.919789 seconds and try again... (tryings = 28, bot id = 8884302733)
+2026-10-01 02:28:22,764 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:28:22,765 - WARNING - Sleep for 5.092296 seconds and try again... (tryings = 29, bot id = 8884302733)
+2026-10-01 02:28:33,146 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:28:33,146 - WARNING - Sleep for 4.863996 seconds and try again... (tryings = 30, bot id = 8884302733)
+2026-10-01 02:28:43,401 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:28:43,401 - WARNING - Sleep for 5.034885 seconds and try again... (tryings = 31, bot id = 8884302733)
+2026-10-01 02:28:53,596 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:28:53,596 - WARNING - Sleep for 4.939169 seconds and try again... (tryings = 32, bot id = 8884302733)
+2026-10-01 02:29:03,857 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:29:03,858 - WARNING - Sleep for 4.991106 seconds and try again... (tryings = 33, bot id = 8884302733)
+2026-10-01 02:29:14,064 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:29:14,064 - WARNING - Sleep for 5.118188 seconds and try again... (tryings = 34, bot id = 8884302733)
+2026-10-01 02:29:29,311 - INFO - Connection established (tryings = 35, bot id = 8884302733)
+2026-10-01 02:29:33,567 - INFO - RECEIVED MESSAGE: None from 8713774854 in chat -1003775265731
+2026-10-01 02:29:33,593 - INFO - Update id=370589517 is not handled. Duration 31 ms by bot id=8884302733
+2026-10-01 02:29:34,049 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:29:34,050 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8884302733)
+2026-10-01 02:29:39,309 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:29:39,310 - WARNING - Sleep for 1.276432 seconds and try again... (tryings = 1, bot id = 8884302733)
+2026-10-01 02:29:43,210 - INFO - Connection established (tryings = 2, bot id = 8884302733)
+2026-10-01 02:29:43,212 - INFO - RECEIVED MESSAGE: /game@test_empire_bot from 8713774854 in chat -1003775265731
+2026-10-01 02:29:44,024 - INFO - RECEIVED MESSAGE: /start from 8765051736 in chat 8765051736
+2026-10-01 02:29:44,309 - INFO - Update id=370589519 is handled. Duration 280 ms by bot id=8884302733
+2026-10-01 02:29:44,754 - INFO - Update id=370589518 is handled. Duration 1531 ms by bot id=8884302733
+2026-10-01 02:29:45,175 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:29:45,175 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8884302733)
+2026-10-01 02:29:51,062 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:29:51,063 - WARNING - Sleep for 1.257441 seconds and try again... (tryings = 1, bot id = 8884302733)
+2026-10-01 02:29:57,569 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:29:57,569 - WARNING - Sleep for 1.361727 seconds and try again... (tryings = 2, bot id = 8884302733)
+2026-10-01 02:30:04,793 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:30:04,794 - WARNING - Sleep for 1.864415 seconds and try again... (tryings = 3, bot id = 8884302733)
+2026-10-01 02:30:13,331 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:30:13,333 - WARNING - Sleep for 2.424618 seconds and try again... (tryings = 4, bot id = 8884302733)
+2026-10-01 02:30:23,442 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:30:23,443 - WARNING - Sleep for 3.088732 seconds and try again... (tryings = 5, bot id = 8884302733)
+2026-10-01 02:30:27,159 - INFO - Connection established (tryings = 6, bot id = 8884302733)
+2026-10-01 02:30:27,160 - INFO - RECEIVED MESSAGE: /game@test_empire_bot from 8765051736 in chat -1003775265731
+2026-10-01 02:30:28,015 - INFO - Update id=370589520 is handled. Duration 858 ms by bot id=8884302733
+2026-10-01 02:30:28,066 - INFO - RECEIVED MESSAGE: None from 8884302733 in chat -1003775265731
+2026-10-01 02:30:28,258 - INFO - Update id=370589521 is not handled. Duration 203 ms by bot id=8884302733
+2026-10-01 02:30:32,000 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:30:32,001 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8884302733)
+2026-10-01 02:30:35,582 - INFO - Connection established (tryings = 1, bot id = 8884302733)
+2026-10-01 02:30:36,437 - INFO - Update id=370589523 is handled. Duration 843 ms by bot id=8884302733
+2026-10-01 02:30:37,281 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:30:37,281 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8884302733)
+2026-10-01 02:30:39,632 - INFO - Connection established (tryings = 1, bot id = 8884302733)
+2026-10-01 02:30:39,634 - INFO - RECEIVED MESSAGE: /start game_1 from 8765051736 in chat 8765051736
+2026-10-01 02:30:40,072 - INFO - Update id=370589524 is handled. Duration 438 ms by bot id=8884302733
+2026-10-01 02:30:42,942 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:30:42,942 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8884302733)
+2026-10-01 02:30:49,073 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:30:49,074 - WARNING - Sleep for 1.208102 seconds and try again... (tryings = 1, bot id = 8884302733)
+2026-10-01 02:30:55,711 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:30:55,712 - WARNING - Sleep for 1.695686 seconds and try again... (tryings = 2, bot id = 8884302733)
+2026-10-01 02:31:03,630 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:31:03,630 - WARNING - Sleep for 2.156954 seconds and try again... (tryings = 3, bot id = 8884302733)
+2026-10-01 02:31:12,832 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:31:12,833 - WARNING - Sleep for 2.669158 seconds and try again... (tryings = 4, bot id = 8884302733)
+2026-10-01 02:31:23,663 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:31:23,664 - WARNING - Sleep for 3.467734 seconds and try again... (tryings = 5, bot id = 8884302733)
+2026-10-01 02:31:32,341 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:31:32,342 - WARNING - Sleep for 4.527367 seconds and try again... (tryings = 6, bot id = 8884302733)
+2026-10-01 02:31:42,140 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:31:42,140 - WARNING - Sleep for 5.162750 seconds and try again... (tryings = 7, bot id = 8884302733)
+2026-10-01 02:31:51,577 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:31:51,578 - WARNING - Sleep for 4.918160 seconds and try again... (tryings = 8, bot id = 8884302733)
+2026-10-01 02:32:00,876 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:32:00,877 - WARNING - Sleep for 5.138520 seconds and try again... (tryings = 9, bot id = 8884302733)
+2026-10-01 02:32:10,277 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:32:10,278 - WARNING - Sleep for 4.841673 seconds and try again... (tryings = 10, bot id = 8884302733)
+2026-10-01 02:32:19,431 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:32:19,432 - WARNING - Sleep for 5.026840 seconds and try again... (tryings = 11, bot id = 8884302733)
+2026-10-01 02:32:25,675 - INFO - Connection established (tryings = 12, bot id = 8884302733)
+2026-10-01 02:32:25,679 - INFO - RECEIVED MESSAGE: original emp bot from 8765051736 in chat -1003775265731
+2026-10-01 02:32:25,831 - INFO - Update id=370589529 is not handled. Duration 156 ms by bot id=8884302733
+2026-10-01 02:32:28,979 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:32:28,980 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8884302733)
+2026-10-01 02:32:34,995 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:32:34,995 - WARNING - Sleep for 1.294022 seconds and try again... (tryings = 1, bot id = 8884302733)
+2026-10-01 02:32:37,295 - INFO - Connection established (tryings = 2, bot id = 8884302733)
+2026-10-01 02:32:37,296 - INFO - RECEIVED MESSAGE: test qilishga from 8765051736 in chat -1003775265731
+2026-10-01 02:32:37,493 - INFO - Update id=370589531 is not handled. Duration 203 ms by bot id=8884302733
+2026-10-01 02:32:40,562 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:32:40,563 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8884302733)
+2026-10-01 02:32:46,114 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:32:46,114 - WARNING - Sleep for 1.227547 seconds and try again... (tryings = 1, bot id = 8884302733)
+2026-10-01 02:32:52,334 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:32:52,335 - WARNING - Sleep for 1.517284 seconds and try again... (tryings = 2, bot id = 8884302733)
+2026-10-01 02:32:59,322 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:32:59,323 - WARNING - Sleep for 1.795469 seconds and try again... (tryings = 3, bot id = 8884302733)
+2026-10-01 02:33:07,067 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:33:07,067 - WARNING - Sleep for 2.421003 seconds and try again... (tryings = 4, bot id = 8884302733)
+2026-10-01 02:33:13,797 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:33:13,798 - WARNING - Sleep for 3.095254 seconds and try again... (tryings = 5, bot id = 8884302733)
+2026-10-01 02:33:21,183 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:33:21,184 - WARNING - Sleep for 3.862984 seconds and try again... (tryings = 6, bot id = 8884302733)
+2026-10-01 02:33:29,701 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:33:29,701 - WARNING - Sleep for 4.946245 seconds and try again... (tryings = 7, bot id = 8884302733)
+2026-10-01 02:33:39,599 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:33:39,600 - WARNING - Sleep for 5.075433 seconds and try again... (tryings = 8, bot id = 8884302733)
+2026-10-01 02:33:50,300 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:33:50,300 - WARNING - Sleep for 4.856548 seconds and try again... (tryings = 9, bot id = 8884302733)
+2026-10-01 02:33:58,556 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:33:58,556 - WARNING - Sleep for 5.137278 seconds and try again... (tryings = 10, bot id = 8884302733)
+2026-10-01 02:34:08,069 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:34:08,069 - WARNING - Sleep for 4.971542 seconds and try again... (tryings = 11, bot id = 8884302733)
+2026-10-01 02:34:18,380 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:34:18,381 - WARNING - Sleep for 5.045260 seconds and try again... (tryings = 12, bot id = 8884302733)
+2026-10-01 02:34:28,755 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:34:28,756 - WARNING - Sleep for 4.975258 seconds and try again... (tryings = 13, bot id = 8884302733)
+2026-10-01 02:34:39,276 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:34:39,276 - WARNING - Sleep for 4.893912 seconds and try again... (tryings = 14, bot id = 8884302733)
+2026-10-01 02:34:49,468 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:34:49,469 - WARNING - Sleep for 4.939614 seconds and try again... (tryings = 15, bot id = 8884302733)
+2026-10-01 02:34:59,666 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:34:59,666 - WARNING - Sleep for 5.033128 seconds and try again... (tryings = 16, bot id = 8884302733)
+2026-10-01 02:35:10,110 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:35:10,110 - WARNING - Sleep for 4.979559 seconds and try again... (tryings = 17, bot id = 8884302733)
+2026-10-01 02:35:20,280 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:35:20,280 - WARNING - Sleep for 4.997880 seconds and try again... (tryings = 18, bot id = 8884302733)
+2026-10-01 02:35:30,652 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:35:30,652 - WARNING - Sleep for 5.031555 seconds and try again... (tryings = 19, bot id = 8884302733)
+2026-10-01 02:35:41,149 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:35:41,149 - WARNING - Sleep for 4.947019 seconds and try again... (tryings = 20, bot id = 8884302733)
+2026-10-01 02:35:51,499 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:35:51,500 - WARNING - Sleep for 4.871039 seconds and try again... (tryings = 21, bot id = 8884302733)
+2026-10-01 02:36:01,930 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:36:01,931 - WARNING - Sleep for 5.053404 seconds and try again... (tryings = 22, bot id = 8884302733)
+2026-10-01 02:36:12,277 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:36:12,279 - WARNING - Sleep for 4.891435 seconds and try again... (tryings = 23, bot id = 8884302733)
+2026-10-01 02:36:22,527 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:36:22,527 - WARNING - Sleep for 4.920752 seconds and try again... (tryings = 24, bot id = 8884302733)
+2026-10-01 02:36:29,606 - WARNING - NFT katalog avto-sinxronlash xato: unable to open database file
+2026-10-01 02:36:32,856 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:36:32,856 - WARNING - Sleep for 5.154762 seconds and try again... (tryings = 25, bot id = 8884302733)
+2026-10-01 02:36:43,307 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:36:43,308 - WARNING - Sleep for 5.018537 seconds and try again... (tryings = 26, bot id = 8884302733)
+2026-10-01 02:36:53,565 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:36:53,566 - WARNING - Sleep for 4.989017 seconds and try again... (tryings = 27, bot id = 8884302733)
+2026-10-01 02:37:03,818 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:37:03,818 - WARNING - Sleep for 4.992205 seconds and try again... (tryings = 28, bot id = 8884302733)
+2026-10-01 02:37:14,228 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:37:14,228 - WARNING - Sleep for 5.135153 seconds and try again... (tryings = 29, bot id = 8884302733)
+2026-10-01 02:37:24,612 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:37:24,612 - WARNING - Sleep for 5.162119 seconds and try again... (tryings = 30, bot id = 8884302733)
+2026-10-01 02:37:34,935 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:37:34,935 - WARNING - Sleep for 5.031384 seconds and try again... (tryings = 31, bot id = 8884302733)
+2026-10-01 02:37:40,416 - INFO - Connection established (tryings = 32, bot id = 8884302733)
+2026-10-01 02:37:40,420 - INFO - RECEIVED MESSAGE: /roles from 6913838682 in chat 6913838682
+2026-10-01 02:37:41,142 - INFO - Update id=370589535 is handled. Duration 718 ms by bot id=8884302733
+2026-10-01 02:37:44,289 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:37:44,289 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8884302733)
+2026-10-01 02:37:50,043 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:37:50,044 - WARNING - Sleep for 1.455899 seconds and try again... (tryings = 1, bot id = 8884302733)
+2026-10-01 02:37:56,630 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:37:56,631 - WARNING - Sleep for 2.004032 seconds and try again... (tryings = 2, bot id = 8884302733)
+2026-10-01 02:38:04,333 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:38:04,334 - WARNING - Sleep for 2.723210 seconds and try again... (tryings = 3, bot id = 8884302733)
+2026-10-01 02:38:10,528 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:38:10,528 - WARNING - Sleep for 3.535902 seconds and try again... (tryings = 4, bot id = 8884302733)
+2026-10-01 02:38:18,323 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:38:18,324 - WARNING - Sleep for 4.500179 seconds and try again... (tryings = 5, bot id = 8884302733)
+2026-10-01 02:38:27,989 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:38:27,990 - WARNING - Sleep for 5.092728 seconds and try again... (tryings = 6, bot id = 8884302733)
+2026-10-01 02:38:38,496 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:38:38,499 - WARNING - Sleep for 4.999861 seconds and try again... (tryings = 7, bot id = 8884302733)
+2026-10-01 02:38:48,800 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:38:48,800 - WARNING - Sleep for 4.979648 seconds and try again... (tryings = 8, bot id = 8884302733)
+2026-10-01 02:38:59,127 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:38:59,127 - WARNING - Sleep for 4.951976 seconds and try again... (tryings = 9, bot id = 8884302733)
+2026-10-01 02:39:09,432 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:39:09,433 - WARNING - Sleep for 4.939540 seconds and try again... (tryings = 10, bot id = 8884302733)
+2026-10-01 02:39:19,768 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:39:19,768 - WARNING - Sleep for 4.990305 seconds and try again... (tryings = 11, bot id = 8884302733)
+2026-10-01 02:39:30,125 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:39:30,126 - WARNING - Sleep for 4.782682 seconds and try again... (tryings = 12, bot id = 8884302733)
+2026-10-01 02:39:40,316 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:39:40,316 - WARNING - Sleep for 4.854087 seconds and try again... (tryings = 13, bot id = 8884302733)
+2026-10-01 02:39:50,534 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:39:50,534 - WARNING - Sleep for 4.850333 seconds and try again... (tryings = 14, bot id = 8884302733)
+2026-10-01 02:40:00,771 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:40:00,771 - WARNING - Sleep for 4.977883 seconds and try again... (tryings = 15, bot id = 8884302733)
+2026-10-01 02:40:11,127 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:40:11,127 - WARNING - Sleep for 5.011617 seconds and try again... (tryings = 16, bot id = 8884302733)
+2026-10-01 02:40:21,427 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:40:21,427 - WARNING - Sleep for 5.220035 seconds and try again... (tryings = 17, bot id = 8884302733)
+2026-10-01 02:40:32,020 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:40:32,021 - WARNING - Sleep for 5.004462 seconds and try again... (tryings = 18, bot id = 8884302733)
+2026-10-01 02:40:42,464 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:40:42,464 - WARNING - Sleep for 5.051856 seconds and try again... (tryings = 19, bot id = 8884302733)
+2026-10-01 02:40:52,711 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:40:52,712 - WARNING - Sleep for 5.080700 seconds and try again... (tryings = 20, bot id = 8884302733)
+2026-10-01 02:41:03,205 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:41:03,205 - WARNING - Sleep for 5.051740 seconds and try again... (tryings = 21, bot id = 8884302733)
+2026-10-01 02:41:13,539 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:41:13,539 - WARNING - Sleep for 4.977107 seconds and try again... (tryings = 22, bot id = 8884302733)
+2026-10-01 02:41:23,886 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:41:23,886 - WARNING - Sleep for 5.051965 seconds and try again... (tryings = 23, bot id = 8884302733)
+2026-10-01 02:41:34,255 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:41:34,255 - WARNING - Sleep for 4.688523 seconds and try again... (tryings = 24, bot id = 8884302733)
+2026-10-01 02:41:44,127 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:41:44,127 - WARNING - Sleep for 4.961141 seconds and try again... (tryings = 25, bot id = 8884302733)
+2026-10-01 02:41:54,357 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:41:54,357 - WARNING - Sleep for 5.026281 seconds and try again... (tryings = 26, bot id = 8884302733)
+2026-10-01 02:42:04,574 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:42:04,574 - WARNING - Sleep for 5.016783 seconds and try again... (tryings = 27, bot id = 8884302733)
+2026-10-01 02:42:14,892 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:42:14,894 - WARNING - Sleep for 4.926439 seconds and try again... (tryings = 28, bot id = 8884302733)
+2026-10-01 02:42:25,256 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:42:25,258 - WARNING - Sleep for 4.964702 seconds and try again... (tryings = 29, bot id = 8884302733)
+2026-10-01 02:42:35,599 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:42:35,599 - WARNING - Sleep for 5.069783 seconds and try again... (tryings = 30, bot id = 8884302733)
+2026-10-01 02:42:45,859 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:42:45,860 - WARNING - Sleep for 5.081462 seconds and try again... (tryings = 31, bot id = 8884302733)
+2026-10-01 02:42:56,158 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:42:56,158 - WARNING - Sleep for 5.019799 seconds and try again... (tryings = 32, bot id = 8884302733)
+2026-10-01 02:43:06,472 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:43:06,472 - WARNING - Sleep for 4.944865 seconds and try again... (tryings = 33, bot id = 8884302733)
+2026-10-01 02:43:16,765 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:43:16,767 - WARNING - Sleep for 5.017311 seconds and try again... (tryings = 34, bot id = 8884302733)
+2026-10-01 02:43:27,200 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:43:27,201 - WARNING - Sleep for 5.011151 seconds and try again... (tryings = 35, bot id = 8884302733)
+2026-10-01 02:43:37,511 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:43:37,512 - WARNING - Sleep for 5.057646 seconds and try again... (tryings = 36, bot id = 8884302733)
+2026-10-01 02:43:52,736 - INFO - Connection established (tryings = 37, bot id = 8884302733)
+2026-10-01 02:47:40,393 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:47:40,396 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8884302733)
+2026-10-01 02:47:45,712 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:47:45,712 - WARNING - Sleep for 1.227498 seconds and try again... (tryings = 1, bot id = 8884302733)
+2026-10-01 02:47:51,574 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:47:51,575 - WARNING - Sleep for 1.542156 seconds and try again... (tryings = 2, bot id = 8884302733)
+2026-10-01 02:47:58,170 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:47:58,170 - WARNING - Sleep for 1.903103 seconds and try again... (tryings = 3, bot id = 8884302733)
+2026-10-01 02:48:05,602 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:48:05,602 - WARNING - Sleep for 2.321542 seconds and try again... (tryings = 4, bot id = 8884302733)
+2026-10-01 02:48:09,280 - INFO - Connection established (tryings = 5, bot id = 8884302733)
+2026-10-01 02:48:09,285 - INFO - RECEIVED MESSAGE: blya vashshe pzds bob yotbdi bot from 8765051736 in chat -1003775265731
+2026-10-01 02:48:09,963 - INFO - Update id=370589536 is not handled. Duration 686 ms by bot id=8884302733
+2026-10-01 02:48:14,232 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:48:14,234 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8884302733)
+2026-10-01 02:48:22,443 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:48:22,443 - WARNING - Sleep for 1.355227 seconds and try again... (tryings = 1, bot id = 8884302733)
+2026-10-01 02:48:25,407 - INFO - Connection established (tryings = 2, bot id = 8884302733)
+2026-10-01 02:48:25,409 - INFO - RECEIVED MESSAGE: jala boshim ogrib ketdi korib from 8765051736 in chat -1003775265731
+2026-10-01 02:48:25,590 - INFO - Update id=370589537 is not handled. Duration 186 ms by bot id=8884302733
+2026-10-01 02:48:32,080 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:48:32,080 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8884302733)
+2026-10-01 02:48:37,406 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:48:37,407 - WARNING - Sleep for 1.302860 seconds and try again... (tryings = 1, bot id = 8884302733)
+2026-10-01 02:48:41,346 - INFO - Connection established (tryings = 2, bot id = 8884302733)
+2026-10-01 02:48:41,348 - INFO - RECEIVED MESSAGE: skvordi mashu githubam from 8765051736 in chat -1003775265731
+2026-10-01 02:48:41,524 - INFO - Update id=370589539 is not handled. Duration 188 ms by bot id=8884302733
+2026-10-01 02:48:43,329 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:48:43,330 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8884302733)
+2026-10-01 02:48:49,385 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:48:49,385 - WARNING - Sleep for 1.374131 seconds and try again... (tryings = 1, bot id = 8884302733)
+2026-10-01 02:48:56,422 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:48:56,423 - WARNING - Sleep for 1.665392 seconds and try again... (tryings = 2, bot id = 8884302733)
+2026-10-01 02:49:04,435 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2026-10-01 02:49:04,435 - WARNING - Sleep for 1.960415 seconds and try again... (tryings = 3, bot id = 8884302733)
+2026-10-09 23:34:40,728 - WARNING - Real Redis ping/auth failed (Error 22 connecting to localhost:6379. Удаленный компьютер отклонил это сетевое подключение.). Falling back to FakeRedis.
