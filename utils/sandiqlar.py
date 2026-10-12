@@ -171,6 +171,10 @@ async def process_vip_emoji_message(message: Message, state: FSMContext):
         await message.answer("❗ Iltimos, status uchun emoji yoki matn yuboring.")
         return
 
+    if input_text.startswith("/"):
+        await message.answer("❗ Buyruq emoji sifatida o'rnatilmaydi. VIP emoji o'rnatish bekor qilindi.")
+        return
+
     custom_emoji = None
     if message.entities:
         for entity in message.entities:
@@ -178,7 +182,14 @@ async def process_vip_emoji_message(message: Message, state: FSMContext):
                 custom_emoji = entity
                 break
 
-    emoji_char = input_text[:16]
+    if custom_emoji:
+        emoji_char = (
+            message.text[custom_emoji.offset : custom_emoji.offset + custom_emoji.length]
+            if message.text and custom_emoji.offset + custom_emoji.length <= len(message.text)
+            else "✨"
+        )
+    else:
+        emoji_char = input_text[:4]
 
     # Admin editing target user
     if target_user_id:
