@@ -13,7 +13,7 @@ from utils.redis_game.repositories.game_repository import game_repository as gam
 from utils.redis_game.repositories.player_repository import player_repository as player_repo
 from utils.database import redis_client as _redis
 from utils.role_names import RoleNames
-from utils.premium_emojis import role_display, get_vip_prefix
+from utils.premium_emojis import role_display, get_vip_prefix, get_item_display
 from collections import defaultdict
 from config import tinch_rollar as tinchlar, mafia_rollar as mafialar, yakka_rollar as yakkalar
 
@@ -645,15 +645,15 @@ async def _send_player_end_game_profile_dm(bot: Bot, uid: int, is_winner: bool, 
             f"👤 <b>{user_name}</b>{vip_text}\n\n"
             f"{m_disp} Dollar: <b>{profile.dollar:,}</b>\n"
             f"{d_disp} Olmos: <b>{profile.diamond:,}</b>\n\n"
-            f"🛡 Himoya: <b>{profile.himoya}</b>\n"
-            f"📜 Hujjat: <b>{profile.hujjat}</b>\n"
-            f"🔒 Osishdan himoya qilish: <b>{profile.osishdan_himoya}</b>\n"
-            f"📦 Qotildan himoya: <b>{profile.qotildan_himoya}</b>\n"
-            f"🔫 Miltiq: <b>{profile.miltiq}</b>\n"
-            f"💊 Doridan himoya: <b>{profile.doridan_himoya}</b>\n"
-            f"🎭 Maska: <b>{profile.maska}</b>\n"
-            f"📜 Sirpanishdan himoya: <b>{profile.slip_himoya}</b>\n"
-            f"📦 Geroydan himoya: <b>{profile.geroy_himoya}</b>\n\n"
+            f"{get_item_display('himoya')} Himoya: <b>{profile.himoya}</b>\n"
+            f"{get_item_display('hujjat')} Hujjat: <b>{profile.hujjat}</b>\n"
+            f"{get_item_display('osishdan_himoya')} Osishdan himoya qilish: <b>{profile.osishdan_himoya}</b>\n"
+            f"{get_item_display('qotildan_himoya')} Qotildan himoya: <b>{profile.qotildan_himoya}</b>\n"
+            f"{get_item_display('miltiq')} Miltiq: <b>{profile.miltiq}</b>\n"
+            f"{get_item_display('doridan_himoya')} Doridan himoya: <b>{profile.doridan_himoya}</b>\n"
+            f"{get_item_display('maska')} Maska: <b>{profile.maska}</b>\n"
+            f"{get_item_display('slip_himoya')} Sirpanishdan himoya: <b>{profile.slip_himoya}</b>\n"
+            f"{get_item_display('geroy_himoya')} Geroydan himoya: <b>{profile.geroy_himoya}</b>\n\n"
             f"🎯 G'alaba: <b>{profile.wins}</b>\n"
             f"📜 Barcha o'yinlar: <b>{profile.games_count}</b>\n\n"
             f"Sizning parangiz: {para_str}\n\n"

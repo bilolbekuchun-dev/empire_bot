@@ -36,13 +36,15 @@ def strip_dead_emojis(text):
 DEFAULT_CONFIG = {
     "roles": {},
     "weapons": {
-        "miltiq": None,
         "himoya": None,
-        "doridan_himoya": None,
-        "mask": None,
         "hujjat": None,
         "osishdan_himoya": None,
-        "jon": None
+        "qotildan_himoya": None,
+        "miltiq": None,
+        "doridan_himoya": None,
+        "maska": None,
+        "slip_himoya": None,
+        "geroy_himoya": None,
     },
     "currency": {
         "diamond": None,
@@ -51,13 +53,15 @@ DEFAULT_CONFIG = {
 }
 
 WEAPON_NAMES = {
-    "miltiq": ("🔫", "Miltiq"),
     "himoya": ("🛡", "Himoya"),
-    "doridan_himoya": ("💊", "Doridan himoya"),
-    "mask": ("🎭", "Niqob"),
     "hujjat": ("📜", "Hujjat"),
     "osishdan_himoya": ("🔒", "Osishdan himoya"),
-    "jon": ("❤️", "Jon (Life)")
+    "qotildan_himoya": ("📦", "Qotildan himoya"),
+    "miltiq": ("🔫", "Miltiq"),
+    "doridan_himoya": ("💊", "Doridan himoya"),
+    "maska": ("🎭", "Maska"),
+    "slip_himoya": ("🪵", "Sirpanishdan himoya"),
+    "geroy_himoya": ("📦", "Geroydan himoya"),
 }
 
 CURRENCY_NAMES = {
@@ -194,6 +198,11 @@ def set_custom_emoji(category: str, key: str, emoji_html: str | None):
 def get_custom_emoji(category: str, key: str) -> str | None:
     config = _load_config()
     val = config.get(category, {}).get(key)
+    if not val and category == "weapons":
+        if key == "maska":
+            val = config.get(category, {}).get("mask")
+        elif key == "mask":
+            val = config.get(category, {}).get("maska")
     if val:
         m = _re.search(r"emoji-id=['\"]?(\d{15,})", str(val)) or _re.search(r"^(\d{15,})$", str(val).strip())
         if m and m.group(1) in DEAD_EMOJI_IDS:
@@ -469,7 +478,24 @@ def get_item_display(key: str) -> str:
     if custom:
         return custom
     info = WEAPON_NAMES.get(key)
-    return info[0] if info else "📦"
+    if info:
+        return info[0]
+    fallbacks = {
+        "mask": "🎭",
+        "maska": "🎭",
+        "himoya": "🛡",
+        "hujjat": "📜",
+        "osishdan_himoya": "🔒",
+        "osish_himoya": "🔒",
+        "qotildan_himoya": "📦",
+        "miltiq": "🔫",
+        "doridan_himoya": "💊",
+        "dori_himoya": "💊",
+        "slip_himoya": "🪵",
+        "geroy_himoya": "📦",
+        "geroydan_himoya": "📦",
+    }
+    return fallbacks.get(key, "📦")
 
 def get_diamond_display() -> str:
     """Olmos emojisi"""

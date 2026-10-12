@@ -34,13 +34,15 @@
     "🔄 Reverser": "<tg-emoji emoji-id='5341615890771258224'>🔄</tg-emoji>"
   },
   "weapons": {
-    "miltiq": null,
     "himoya": null,
-    "doridan_himoya": null,
-    "mask": null,
     "hujjat": null,
     "osishdan_himoya": null,
-    "jon": null
+    "qotildan_himoya": null,
+    "miltiq": null,
+    "doridan_himoya": null,
+    "maska": null,
+    "slip_himoya": null,
+    "geroy_himoya": null
   },
   "currency": {
     "diamond": "<tg-emoji emoji-id='5330052211017817180'>💎</tg-emoji>",
