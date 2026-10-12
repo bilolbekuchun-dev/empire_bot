@@ -445,12 +445,20 @@ async def get_chat_lang(chat_id: int) -> str:
         from utils.database import redis_client
         cached_lang = await redis_client.get(f"chat:{chat_id}:lang")
         if cached_lang:
-            return clean_lang(str(cached_lang))
+            raw = cached_lang.decode("utf-8") if isinstance(cached_lang, bytes) else str(cached_lang)
+            return clean_lang(raw)
 
         from models.game_data import Chat
         chat = await Chat.filter(chat_id=chat_id).first()
         if chat and getattr(chat, "lang", None):
             l = clean_lang(chat.lang)
+            await redis_client.set(f"chat:{chat_id}:lang", l)
+            return l
+
+        from models.user import User
+        user = await User.filter(user_id=chat_id).first()
+        if user and getattr(user, "lang", None):
+            l = clean_lang(user.lang)
             await redis_client.set(f"chat:{chat_id}:lang", l)
             return l
     except Exception:

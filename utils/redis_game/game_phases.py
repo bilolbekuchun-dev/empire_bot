@@ -49,8 +49,9 @@ async def _alive_players_text(players: list, *, dawn: bool = False, lang: str = 
         from models.user import VipUser
         for user in await User.filter(user_id__in=list(set(user_ids))):
             users[user.user_id] = user
-        for vip in await VipUser.filter(user__user_id__in=list(set(user_ids))):
-            vips[vip.user_id] = vip
+        for vip in await VipUser.filter(user__user_id__in=list(set(user_ids))).prefetch_related("user"):
+            if vip.user:
+                vips[vip.user.user_id] = vip
 
     numbered = []
     for idx, player in enumerate(alive_players, 1):
@@ -85,8 +86,10 @@ async def _alive_players_text(players: list, *, dawn: bool = False, lang: str = 
     def faction_block(title: str, group: list) -> list:
         if not group:
             return []
-        roles_str = ", ".join(role_display(p.role, lang=lang) for p in group)
-        return [f"\n<b>{title} - {len(group)}:</b> {roles_str}"]
+        role_items = [role_display(p.role, lang=lang) for p in group]
+        chunk_lines = [", ".join(role_items[i:i+8]) for i in range(0, len(role_items), 8)]
+        roles_str = "\n   ".join(chunk_lines)
+        return [f"\n<b>{title} - {len(group)}:</b>\n   {roles_str}"]
 
     lines.append("")
     lines.extend(faction_block(lbls["tinch"], tinch))
@@ -212,7 +215,8 @@ async def execute_night_phase_redis(
             "tr": f"\n\nŞafağa ⏳ {game_times.night_time} saniye kaldı"
         }
         players_text += timer_texts.get(chat_lang, timer_texts["uz"])
-        await bot.send_message(chat.chat_id, players_text, parse_mode="HTML", reply_markup=bot_link_markup)
+        from utils.telegram_utils import send_long_message
+        await send_long_message(bot, chat.chat_id, players_text, parse_mode="HTML", reply_markup=bot_link_markup)
     except Exception as e:
         print(f"O'yinchilar ro'yxatini ko'rsatishda xato: {e}")
     
@@ -227,27 +231,31 @@ async def execute_night_phase_redis(
     comp_key = f"game:{game_id}:night:{night_number}:completed_users"
     total_seconds = int(getattr(game_times, "night_time", 45))
 
-    for elapsed in range(total_seconds):
-        await asyncio.sleep(1)
-        g_check = await game_repo.load_game(game_id)
-        if not g_check or not g_check.is_active:
-            return
+    check_interval = 0.25
+    total_ticks = int(total_seconds / check_interval)
+
+    for tick in range(total_ticks):
+        await asyncio.sleep(check_interval)
+        if tick % 4 == 0:
+            g_check = await game_repo.load_game(game_id)
+            if not g_check or not g_check.is_active:
+                return
         try:
             exp_raw = await r.smembers(exp_key)
             if exp_raw is not None:
                 exp_set = {x.decode() if isinstance(x, bytes) else str(x) for x in exp_raw}
-                if not exp_set and elapsed >= 3:
+                if not exp_set and (tick * check_interval) >= 2.0:
                     break
                 comp_raw = await r.smembers(comp_key)
                 comp_set = {x.decode() if isinstance(x, bytes) else str(x) for x in comp_raw} if comp_raw else set()
                 if exp_set and exp_set.issubset(comp_set):
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(0.3)
                     break
         except Exception:
             pass
 
-    # Kichik kutish (grace period) - oxirgi soniyadagi harakatlar saqlanishiga imkon berish
-    await asyncio.sleep(2)
+    # Kichik kutish (oxirgi harakatlar yozilishi uchun)
+    await asyncio.sleep(0.4)
 
     game_state = await game_repo.load_game(game_id)
     if not game_state or not game_state.is_active:
@@ -311,7 +319,8 @@ async def execute_day_phase_redis(
         from utils.i18n import get_chat_lang
         chat_lang = await get_chat_lang(chat.chat_id)
         players_text = await _alive_players_text(players, dawn=True, lang=chat_lang)
-        await bot.send_message(chat.chat_id, players_text, parse_mode="HTML", disable_web_page_preview=True)
+        from utils.telegram_utils import send_long_message
+        await send_long_message(bot, chat.chat_id, players_text, parse_mode="HTML", disable_web_page_preview=True)
     except Exception as e:
         print(f"O'yinchilar ro'yxatini ko'rsatishda xato: {e}")
     
@@ -382,13 +391,37 @@ async def execute_day_phase_redis(
     if paralar and "para" in (await game_repo.load_game(game_id)).mode:
         await check_paralar_lst_redis(game_id, paralar, bot, chat)
     
-    # Wait for voting
-    await asyncio.sleep(game_times.vote_time)
+    # Wait for voting - dinamik muddatidan oldin yakunlash (hamma tiriklar ovoz bergan bo'lsa)
+    vote_seconds = int(getattr(game_times, "vote_time", 30) or 30)
+    from utils.redis_game.services.vote_service import VoteService
+    alive_uids = {p.user_id for p in players if getattr(p, "is_alive", True)}
+    total_vote_ticks = int(vote_seconds / 0.5)
+
+    for _ in range(total_vote_ticks):
+        await asyncio.sleep(0.5)
+        g_check = await game_repo.load_game(game_id)
+        if not g_check or not g_check.is_active:
+            return
+        try:
+            if alive_uids:
+                current_votes = await VoteService.get_all_votes(int(game_id), day_number)
+                if alive_uids.issubset(set(current_votes.keys())):
+                    await asyncio.sleep(0.3)
+                    break
+        except Exception:
+            pass
 
     # Check if game is still active
     game_state = await game_repo.load_game(game_id)
     if not game_state or not game_state.is_active:
         return
+
+    # Qolgan barcha yig'ilgan ovozlarni guruhga chiqarish
+    try:
+        from utils.redis_game.night_callbacks import flush_day_votes
+        await flush_day_votes(int(game_id), bot)
+    except Exception:
+        pass
 
     # Ovozlarni sanab, like/dislike orqali osishni qo'llash
     try:

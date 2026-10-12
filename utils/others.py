@@ -7,7 +7,7 @@ from models.game_data import Giveaway, Chat, GamePlayer, Game
 from config import ADMINS, DIAMOND_SHOP_USERNAME, SUPPORT_ADMIN, PRIMARY_ADMIN_IDS
 from keyboards.main_keyboard import get_start_markup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from utils.premium_emojis import get_diamond_display, get_dollar_display, role_display, get_vip_prefix
+from utils.premium_emojis import get_diamond_display, get_dollar_display, role_display, get_vip_prefix, get_custom_emoji_id
 
 # Emojilar va tg-emoji teglari
 EMOJI_QOTIL_HIMOYA = "<tg-emoji emoji-id='5411452114838761907'>🔪</tg-emoji> Qotildan himoya"
@@ -87,7 +87,7 @@ async def get_profile(bot: Bot, message: Message):
 
     active_roles = await ActiveRole.filter(profile=profile, is_active=True).all()
     if active_roles:
-        roles_text = ", ".join(r.role for r in active_roles)
+        roles_text = ", ".join(html.escape(r.role) for r in active_roles)
     else:
         roles_text = none_str
 
@@ -110,8 +110,13 @@ async def get_profile(bot: Bot, message: Message):
     lbl_partner = lbls.get('partner', 'Sizning parangiz')
     lbl_roles = lbls.get('active_roles', 'Faol rollar')
 
+    # HTML escape for all user-generated content
+    safe_name = html.escape(user.full_name or "Unknown")
+    safe_roles = html.escape(roles_text)
+    safe_para = html.escape(para_text)
+    
     text = (
-        f"👤 <b>{html.escape(user.full_name)}</b>{vip_text}\n\n"
+        f"👤 <b>{safe_name}</b>{vip_text}\n\n"
         f"{m_disp} {lbl_dollar}: <b>{profile.dollar:,}</b>\n"
         f"{d_disp} {lbl_diamond}: <b>{profile.diamond:,}</b>\n\n"
         f"🛡 {lbl_himoya}: <b>{profile.himoya}</b>\n"
@@ -125,14 +130,22 @@ async def get_profile(bot: Bot, message: Message):
         f"📦 {lbl_geroy}: <b>{profile.geroy_himoya}</b>\n\n"
         f"🎯 {lbl_wins}: <b>{profile.wins}</b>\n"
         f"📜 {lbl_games}: <b>{profile.games_count}</b>\n\n"
-        f"{lbl_partner}: {para_text}\n\n"
-        f"🏙 {lbl_roles}: {roles_text}"
+        f"{lbl_partner}: {safe_para}\n\n"
+        f"🏙 {lbl_roles}: {safe_roles}"
     )
     from keyboards.user_keyboards import profile_keyboards_on_private, profile_keyboards
-    if message.chat.type == "private":
-        await message.answer(text, reply_markup=profile_keyboards_on_private(profile, is_vip=is_vip, lang=lang), parse_mode="HTML")
-    else:
-        await message.answer(text, reply_markup=profile_keyboards(lang=lang), parse_mode="HTML")
+    try:
+        if message.chat.type == "private":
+            await message.answer(text, reply_markup=profile_keyboards_on_private(profile, is_vip=is_vip, lang=lang), parse_mode="HTML")
+        else:
+            await message.answer(text, reply_markup=profile_keyboards(lang=lang), parse_mode="HTML")
+    except Exception as e:
+        # Fallback to plain text if HTML fails
+        plain_text = text.replace("<b>", "").replace("</b>", "")
+        if message.chat.type == "private":
+            await message.answer(plain_text, reply_markup=profile_keyboards_on_private(profile, is_vip=is_vip, lang=lang))
+        else:
+            await message.answer(plain_text, reply_markup=profile_keyboards(lang=lang))
 
 async def transfer_funds_handler(message: Message, bot: Bot = None):
     """
@@ -744,11 +757,11 @@ GIVEAWAY_STRINGS = {
         "title_redis": "🎁 <b>Katta Giveaway e'lon qilindi!</b>",
         "title_channel": "📢 <b>Kanal Giveaway e'lon qilindi!</b>",
         "count": "🔢 Sovg'alar soni: <b>{count} ta</b>",
-        "reward": "💎 Mukofot: <b>Olmos</b>",
+        "reward": "Mukofot: <b>Olmos</b>",
         "body": "<i>Qatnashish va sovg'ani olish uchun quyidagi tugmani bosing!</i>",
         "btn_enter": "🎁 Qatnashish ({remaining} ta qoldi)",
         "btn_ended": "🏁 Giveaway yakunlandi",
-        "alert_success": "🎉 Tabriklaymiz! Siz giveawaydan 💎 {reward} olmos yutib oldingiz!",
+        "alert_success": "🎉 Tabriklaymiz! Siz giveawaydan {reward} ta olmos yutib oldingiz!",
         "alert_already": "❌ Siz ushbu giveawaydan allaqachon sovg'a olgansiz!",
         "alert_ended": "🏁 Afsuski, barcha sovg'alar tugadi!",
         "alert_wait": "⏳ Iltimos, kuting..."
@@ -757,11 +770,11 @@ GIVEAWAY_STRINGS = {
         "title_redis": "🎁 <b>Объявлен Большой Гивавей!</b>",
         "title_channel": "📢 <b>Объявлен Канал Гивавей!</b>",
         "count": "🔢 Количество призов: <b>{count} шт.</b>",
-        "reward": "💎 Награда: <b>Алмазы</b>",
+        "reward": "Награда: <b>Алмазы</b>",
         "body": "<i>Нажмите кнопку ниже, чтобы участвовать и получить приз!</i>",
         "btn_enter": "🎁 Участвовать (осталось {remaining})",
         "btn_ended": "🏁 Гивавей завершён",
-        "alert_success": "🎉 Поздравляем! Вы выиграли 💎 {reward} алм. в гивавее!",
+        "alert_success": "🎉 Поздравляем! Вы выиграли {reward} алмаз(а) в гивавее!",
         "alert_already": "❌ Вы уже получили приз в этом гивавее!",
         "alert_ended": "🏁 К сожалению, все призы закончились!",
         "alert_wait": "⏳ Пожалуйста, подождите..."
@@ -770,11 +783,11 @@ GIVEAWAY_STRINGS = {
         "title_redis": "🎁 <b>Big Giveaway Announced!</b>",
         "title_channel": "📢 <b>Channel Giveaway Announced!</b>",
         "count": "🔢 Number of prizes: <b>{count}</b>",
-        "reward": "💎 Reward: <b>Diamonds</b>",
+        "reward": "Reward: <b>Diamonds</b>",
         "body": "<i>Click the button below to enter and claim your prize!</i>",
         "btn_enter": "🎁 Enter (left: {remaining})",
         "btn_ended": "🏁 Giveaway ended",
-        "alert_success": "🎉 Congratulations! You won 💎 {reward} diamonds in the giveaway!",
+        "alert_success": "🎉 Congratulations! You won {reward} diamond(s) in the giveaway!",
         "alert_already": "❌ You have already claimed a prize from this giveaway!",
         "alert_ended": "🏁 Unfortunately, all prizes are claimed!",
         "alert_wait": "⏳ Please wait..."
@@ -783,11 +796,11 @@ GIVEAWAY_STRINGS = {
         "title_redis": "🎁 <b>Büyük Çekiliş Duyuruldu!</b>",
         "title_channel": "📢 <b>Kanal Çekilişi Duyuruldu!</b>",
         "count": "🔢 Ödül sayısı: <b>{count} adet</b>",
-        "reward": "💎 Ödül: <b>Elmas</b>",
+        "reward": "Ödül: <b>Elmas</b>",
         "body": "<i>Katılmak ve ödülü almak için aşağıdaki butona basın!</i>",
         "btn_enter": "🎁 Katıl ({remaining} kaldı)",
         "btn_ended": "🏁 Çekiliş bitti",
-        "alert_success": "🎉 Tebrikler! Çekilişten 💎 {reward} elmas kazandınız!",
+        "alert_success": "🎉 Tebrikler! Çekilişten {reward} elmas kazandınız!",
         "alert_already": "❌ Bu çekilişten zaten ödül aldınız!",
         "alert_ended": "🏁 Maalesef tüm ödüller bitti!",
         "alert_wait": "⏳ Lütfen bekleyin..."
@@ -796,16 +809,35 @@ GIVEAWAY_STRINGS = {
 
 async def start_giveaway_redis(message: Message, bot: Bot):
     from utils.i18n import get_chat_lang
+    from utils.giveaways_redis import create_giveaway
     lang = await get_chat_lang(message.chat.id)
     strs = GIVEAWAY_STRINGS.get(lang, GIVEAWAY_STRINGS["uz"])
     count = _parse_giveaway_count(message, default=10)
-    giveaway_id = message.message_id
+    
+    # Redisda giveaway yaratish
+    giveaway = await create_giveaway(
+        creator_id=message.from_user.id if message.from_user else bot.id,
+        chat_id=message.chat.id,
+        message_id=message.message_id,
+        total_amount=count
+    )
+    
+    if not giveaway:
+        await message.answer("❌ Giveaway yaratishda xatolik!")
+        return
+    
+    giveaway_id = giveaway["id"]
+    dia_id = get_custom_emoji_id("currency", "diamond")
+    d_disp = get_diamond_display()
     kb = InlineKeyboardBuilder()
-    kb.button(text=strs["btn_enter"].format(remaining=count), callback_data=f"giveaway_{giveaway_id}_{count}_{count}")
+    if dia_id:
+        kb.button(text=strs["btn_enter"].format(remaining=count), callback_data=f"giveaway_{giveaway_id}_{count}_{count}", icon_custom_emoji_id=dia_id)
+    else:
+        kb.button(text=strs["btn_enter"].format(remaining=count), callback_data=f"giveaway_{giveaway_id}_{count}_{count}")
     msg = (
         f"{strs['title_redis']}\n\n"
         f"{strs['count'].format(count=count)}\n"
-        f"{strs['reward']}\n\n"
+        f"{d_disp} {strs['reward']}\n\n"
         f"{strs['body']}"
     )
     sent = await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
@@ -813,15 +845,34 @@ async def start_giveaway_redis(message: Message, bot: Bot):
         await send_big_giveaway_report(bot, message.from_user, message.chat, "Umumiy giveaway", count)
 
 async def start_giveaway_channel(message: Message, bot: Bot):
+    from utils.giveaways_redis import create_giveaway
     strs = GIVEAWAY_STRINGS["uz"]
     count = _parse_giveaway_count(message, default=10)
-    giveaway_id = message.message_id
+    
+    # Redisda giveaway yaratish
+    giveaway = await create_giveaway(
+        creator_id=message.from_user.id if message.from_user else bot.id,
+        chat_id=message.chat.id,
+        message_id=message.message_id,
+        total_amount=count
+    )
+    
+    if not giveaway:
+        await message.answer("❌ Giveaway yaratishda xatolik!")
+        return
+    
+    giveaway_id = giveaway["id"]
+    dia_id = get_custom_emoji_id("currency", "diamond")
+    d_disp = get_diamond_display()
     kb = InlineKeyboardBuilder()
-    kb.button(text=strs["btn_enter"].format(remaining=count), callback_data=f"channel-giveaway_{giveaway_id}_{count}_{count}")
+    if dia_id:
+        kb.button(text=strs["btn_enter"].format(remaining=count), callback_data=f"channel-giveaway_{giveaway_id}_{count}_{count}", icon_custom_emoji_id=dia_id)
+    else:
+        kb.button(text=strs["btn_enter"].format(remaining=count), callback_data=f"channel-giveaway_{giveaway_id}_{count}_{count}")
     msg = (
         f"{strs['title_channel']}\n\n"
         f"{strs['count'].format(count=count)}\n"
-        f"{strs['reward']}\n\n"
+        f"{d_disp} {strs['reward']}\n\n"
         f"{strs['body']}"
     )
     sent = await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
@@ -837,8 +888,9 @@ async def giveaway_callback_redis(call: CallbackQuery, bot: Bot):
 async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, is_channel: bool = False):
     from models.user import User, Profile
     from utils.giveaways_redis import (
-        is_collected_user, add_collected_user, is_processing,
-        mark_as_processing, unmark_as_processing, add_winner_detail, get_winner_details
+        is_collected_user, queue_collected_user, is_processing,
+        mark_as_processing, unmark_as_processing, queue_winner_detail, get_winner_details,
+        get_giveaway, update_giveaway, flush_all_giveaway_buffers
     )
     from utils.i18n import get_chat_lang
     import random
@@ -869,6 +921,15 @@ async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, i
         total = 1
 
     user_id = call.from_user.id
+    
+    # Redisdan giveaway ma'lumotlarini olish (bot restart bo'lganda ham ishlaydi)
+    giveaway_data = await get_giveaway(giveaway_id)
+    if giveaway_data:
+        # Redisda ma'lumot bor - u yerdan olish
+        remaining = giveaway_data["remaining_amount"]
+        total = giveaway_data["total_amount"]
+    # Agar Redisda yo'q bo'lsa, callback data'dan foydalanamiz (backward compatibility)
+    
     if is_processing(giveaway_id, user_id):
         await call.answer(strs["alert_wait"], show_alert=True)
         return
@@ -881,7 +942,11 @@ async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, i
         await call.answer(strs["alert_ended"], show_alert=True)
         return
 
-    mark_as_processing(giveaway_id, user_id)
+    # Atomic lock olish
+    lock_acquired = await mark_as_processing(giveaway_id, user_id)
+    if not lock_acquired:
+        await call.answer(strs["alert_wait"], show_alert=True)
+        return
     try:
         user, _ = await User.get_or_create(
             user_id=user_id,
@@ -903,30 +968,51 @@ async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, i
             caption="Umumiy giveaway yutug'i"
         )
 
-        add_collected_user(giveaway_id, user_id)
+        # Queue for batch write to Redis (reduces load under high traffic)
+        await queue_collected_user(giveaway_id, user_id)
         u_name = call.from_user.full_name or f"User_{user_id}"
-        add_winner_detail(giveaway_id, user_id, u_name, reward)
+        await queue_winner_detail(giveaway_id, user_id, u_name, reward)
 
         new_remaining = remaining - reward
+        
+        # Redisdan ham yangilash (bot restart bo'lganda davom etishi uchun)
+        if giveaway_data:
+            await update_giveaway(giveaway_id, {"remaining_amount": new_remaining})
 
         if new_remaining > 0:
             cb_prefix = "channel-giveaway" if is_channel else "giveaway"
             kb = InlineKeyboardBuilder()
-            kb.button(text=strs["btn_enter"].format(remaining=new_remaining), callback_data=f"{cb_prefix}_{giveaway_id}_{new_remaining}_{total}")
+            dia_id = get_custom_emoji_id("currency", "diamond")
+            if dia_id:
+                kb.button(text=strs["btn_enter"].format(remaining=new_remaining), callback_data=f"{cb_prefix}_{giveaway_id}_{new_remaining}_{total}", icon_custom_emoji_id=dia_id)
+            else:
+                kb.button(text=strs["btn_enter"].format(remaining=new_remaining), callback_data=f"{cb_prefix}_{giveaway_id}_{new_remaining}_{total}")
             if call.message:
                 try:
                     await call.message.edit_reply_markup(reply_markup=kb.as_markup())
                 except Exception:
                     pass
         else:
+            # Flush all buffers before showing winners
+            await flush_all_giveaway_buffers(giveaway_id)
+            
             winners = get_winner_details(giveaway_id)
             d_disp = get_diamond_display()
             header = "<b>Ajratilgan sovg'alar tugadi!</b>"
             await send_split_winners_list(call, header, winners, d_disp, chunk_size=25)
 
         await call.answer(strs["alert_success"].format(reward=reward), show_alert=True)
+        try:
+            d_disp = get_diamond_display()
+            await bot.send_message(
+                user_id,
+                f"🎉 <b>Tabriklaymiz!</b> Siz giveawaydan <b>{reward} {d_disp}</b> olmos yutib oldingiz!",
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
     finally:
-        unmark_as_processing(giveaway_id, user_id)
+        await unmark_as_processing(giveaway_id, user_id)
 
 
 def _parse_giveaway_count(message: Message, default: int = 1) -> int:
@@ -1398,10 +1484,18 @@ def _build_mgive_text_and_kb(data: dict, winners: list, is_ended: bool = False):
     kb = None
     if not is_ended and rem > 0:
         builder = InlineKeyboardBuilder()
-        builder.button(
-            text=f"🎁 Olish uchun bosing ({rem} ta qoldi)",
-            callback_data=f"mgive_claim_{data['id']}"
-        )
+        currency_id = get_custom_emoji_id("currency", "diamond" if is_diamond else "dollar")
+        if currency_id:
+            builder.button(
+                text=f"Olish uchun bosing ({rem} ta qoldi)",
+                callback_data=f"mgive_claim_{data['id']}",
+                icon_custom_emoji_id=currency_id
+            )
+        else:
+            builder.button(
+                text=f"🎁 Olish uchun bosing ({rem} ta qoldi)",
+                callback_data=f"mgive_claim_{data['id']}"
+            )
         kb = builder.as_markup()
 
     return text, kb
@@ -1522,8 +1616,17 @@ async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
     w_name = user.full_name or f"User_{user.id}"
     winners.append((user.id, w_name, per_person))
 
-    unit_disp = get_diamond_display() if game["is_diamond"] else get_dollar_display()
-    await call.answer(f"🎉 Tabriklaymiz! Siz {per_person} {unit_disp} yutib oldingiz!", show_alert=True)
+    currency_name = "olmos" if game["is_diamond"] else "dollar"
+    await call.answer(f"🎉 Tabriklaymiz! Siz {per_person} ta {currency_name} yutib oldingiz!", show_alert=True)
+    try:
+        unit_disp = get_diamond_display() if game["is_diamond"] else get_dollar_display()
+        await bot.send_message(
+            user.id,
+            f"🎉 <b>Tabriklaymiz!</b> Siz giveawaydan <b>{per_person} {unit_disp}</b> {currency_name} yutib oldingiz!",
+            parse_mode="HTML"
+        )
+    except Exception:
+        pass
 
     import time
     now = time.time()
@@ -2107,10 +2210,14 @@ async def get_premium_groups_on_profile(call: CallbackQuery, bot: Bot):
 async def lang_command_handler(message: Message):
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
     from models.user import User
+    from utils.i18n import get_chat_lang
 
-    user_id = message.from_user.id if message.from_user else None
-    user = await User.filter(user_id=user_id).first() if user_id else None
-    curr_lang = user.lang if (user and user.lang) else "uz"
+    chat_type = message.chat.type
+    if chat_type in ["group", "supergroup"]:
+        curr_lang = await get_chat_lang(message.chat.id)
+    else:
+        user_id = message.from_user.id if message.from_user else None
+        curr_lang = await get_chat_lang(user_id) if user_id else "uz"
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [
@@ -2139,6 +2246,7 @@ async def set_lang_callback(call: CallbackQuery, bot: Bot = None):
     from models.user import User
     from models.game_data import Chat
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    from utils.i18n import get_chat_lang
 
     lang = call.data.split("_")[1]
     if lang not in ["uz", "ru", "en", "tr", "kk"]:
@@ -2147,6 +2255,24 @@ async def set_lang_callback(call: CallbackQuery, bot: Bot = None):
     user_id = call.from_user.id
     chat_id = call.message.chat.id
     chat_type = call.message.chat.type
+
+    # Guruhda faqat adminlar tilni o'zgartira oladi
+    if chat_type in ["group", "supergroup"]:
+        try:
+            member = await call.bot.get_chat_member(chat_id, user_id)
+            if member.status not in ["creator", "administrator"]:
+                no_perm = {
+                    "uz": "❌ Guruh tilini faqat adminlar o'zgartira oladi!",
+                    "ru": "❌ Только администраторы могут менять язык группы!",
+                    "en": "❌ Only admins can change group language!",
+                    "tr": "❌ Grup dilini sadece yöneticiler değiştirebilir!",
+                    "kk": "❌ Топ тілін тек админдер өзгерте алады!"
+                }
+                curr = await get_chat_lang(chat_id)
+                await call.answer(no_perm.get(curr, no_perm["uz"]), show_alert=True)
+                return
+        except Exception:
+            pass
 
     user = await User.filter(user_id=user_id).first()
     if user:
@@ -2160,8 +2286,10 @@ async def set_lang_callback(call: CallbackQuery, bot: Bot = None):
             lang=lang
         )
 
+    from utils.database import redis_client
+    await redis_client.set(f"chat:{user_id}:lang", lang)
+
     if chat_type in ["group", "supergroup"]:
-        from utils.database import redis_client
         await redis_client.set(f"chat:{chat_id}:lang", lang)
         chat = await Chat.filter(chat_id=chat_id).first()
         if chat:
@@ -2209,19 +2337,22 @@ async def set_lang_callback(call: CallbackQuery, bot: Bot = None):
     except Exception:
         pass
 
-    if chat_type in ["group", "supergroup"] and bot:
+    if chat_type in ["group", "supergroup"] and (bot or getattr(call, "bot", None)):
+        b = bot or call.bot
         try:
-            from utils.redis_game.services.game_service import GameRepository
+            from utils.redis_game.repositories.game_repository import GameRepository
             from utils.redis_game.handlers import update_players_list_redis
-            redis_game = await GameRepository.get_game_by_chat(chat_id)
-            if redis_game and redis_game.phase in ["waiting", "starting"]:
-                await update_players_list_redis(redis_game.game_id, bot)
+            active_gid = await GameRepository.get_active_game(chat_id)
+            if active_gid:
+                redis_game = await GameRepository.load_game(active_gid)
+                if redis_game and redis_game.phase in ["waiting", "starting"]:
+                    await update_players_list_redis(redis_game.game_id, b)
             else:
                 from models.game_data import Game
                 from utils.game_logic import update_players_list
                 game = await Game.filter(chat__chat_id=chat_id, is_active=True, phase="waiting").first()
                 if game:
-                    await update_players_list(game, bot)
+                    await update_players_list(game, b)
         except Exception as e:
             print(f"realtime group language refresh error: {e}")
 

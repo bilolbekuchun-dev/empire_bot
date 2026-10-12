@@ -3,7 +3,7 @@ from models.game_set import GameModeSet, GameSetTime, GameSetListRoles, GameSetP
 from models.user import User, Profile
 from utils.role_names import RoleNames
 from keyboards.main_keyboard import bot_link_markup
-from keyboards.settings_buttons import nickpack_menu_btn, wolf_or_fox_btn, back_set_menu, can_gaming_btn, open_settings_button, set_time_types_button, set_time_values_button, set_roles_types_button, set_roles_values_button, set_leave_button, set_give_types_button, set_give_values_button, set_adv_view_button, set_mafs_vote_button, set_max_players_values_button, set_more_types_button, set_command_permission_values_button, set_command_permissions_button, set_write_group_perm_types_button, set_write_group_perm_values_button, set_rollarni_guruhlash_button, game_mode_select_btn, game_mode_info_btn, game_mode_menu_btn, set_weapons_types_button, set_weapons_values_button, set_weapons_combined_button
+from keyboards.settings_buttons import nickpack_menu_btn, wolf_or_fox_btn, back_set_menu, can_gaming_btn, open_settings_button, set_time_types_button, set_time_values_button, set_roles_types_button, set_roles_values_button, set_leave_button, set_give_types_button, set_give_values_button, set_adv_view_button, set_mafs_vote_button, set_max_players_values_button, set_more_types_button, set_command_permission_values_button, set_command_permissions_button, set_write_group_perm_types_button, set_write_group_perm_values_button, set_rollarni_guruhlash_button, game_mode_select_btn, game_mode_info_btn, game_mode_menu_btn, set_weapons_types_button, set_weapons_values_button, set_weapons_combined_button, set_group_lang_button
 from aiogram.filters import Command
 from models.game_set import NickList, NickListItem, NickModeSet, WolfOrFoxSet
 from models.game_data import Chat, Game
@@ -414,7 +414,14 @@ async def open_set_more_answer(call: CallbackQuery):
         case 3:
             more_type = points[2]
             more_set, _ = await GroupMoreSet.get_or_create(chat_id=chat_id)
-            if more_type == "mafs-vote":
+            if more_type == "lang":
+                from utils.i18n import get_chat_lang
+                default_lang = await get_chat_lang(chat_id)
+                await call.message.edit_text(
+                    "🌐 Guruh tilini tanlang / Choose group language:",
+                    reply_markup=set_group_lang_button(chat_id=chat_id, more_type=more_type, default=default_lang)
+                )
+            elif more_type == "mafs-vote":
                 default = more_set.mafning_ovozi
                 await call.message.edit_text(
                     "3 ta mafianing ovozi donnikidan ustun kelsinmi??",
@@ -449,7 +456,36 @@ async def open_set_more_answer(call: CallbackQuery):
             more_type = points[2]
             value = points[3]
             more_set, _ = await GroupMoreSet.get_or_create(chat_id=chat_id)
-            if more_type == "mafs-vote":
+            if more_type == "lang":
+                from utils.i18n import clean_lang
+                new_lang = clean_lang(value)
+                from utils.database import redis_client
+                await redis_client.set(f"chat:{chat_id}:lang", new_lang)
+                chat_obj = await Chat.filter(chat_id=chat_id).first()
+                if chat_obj:
+                    chat_obj.lang = new_lang
+                    await chat_obj.save()
+                else:
+                    await Chat.create(
+                        chat_id=chat_id,
+                        title=f"Chat_{chat_id}",
+                        type="supergroup",
+                        lang=new_lang
+                    )
+                await call.message.edit_reply_markup(
+                    reply_markup=set_group_lang_button(chat_id=chat_id, more_type=more_type, default=new_lang)
+                )
+                try:
+                    from utils.redis_game.repositories.game_repository import GameRepository
+                    from utils.redis_game.handlers import update_players_list_redis
+                    active_gid = await GameRepository.get_active_game(chat_id)
+                    if active_gid:
+                        redis_game = await GameRepository.load_game(active_gid)
+                        if redis_game and redis_game.phase in ["waiting", "starting"]:
+                            await update_players_list_redis(redis_game.game_id, call.bot)
+                except Exception:
+                    pass
+            elif more_type == "mafs-vote":
                 new_value = True if value == "0" else False
                 if more_set.mafning_ovozi != new_value:
                     more_set.mafning_ovozi = new_value

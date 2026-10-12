@@ -486,7 +486,24 @@ DEFAULT_VIP_EMOJI_ID = "5400087962086028460"
 DEFAULT_VIP_EMOJI_CHAR = "✅"
 
 def build_vip_prefix(emoji_id: str = None, emoji_char: str = None) -> str:
-    return f'<tg-emoji emoji-id="{emoji_id or DEFAULT_VIP_EMOJI_ID}">{emoji_char or DEFAULT_VIP_EMOJI_CHAR}</tg-emoji> '
+    s_emoji_id = str(emoji_id).strip() if emoji_id and str(emoji_id).strip() else None
+    s_emoji_char = str(emoji_char).strip() if emoji_char and str(emoji_char).strip() else None
+
+    # 1. Agar foydalanuvchi emoji_id o'rnatmagan bo'lsa:
+    if not s_emoji_id:
+        if s_emoji_char:
+            # Foydalanuvchi o'zi matnli emoji tanlagan (masalan: 👑 yoki ⭐️)
+            return f"{s_emoji_char} "
+        # Standart holat (VIP obuna bo'lgan barcha foydalanuvchilar uchun premium VIP nishoni)
+        return f'<tg-emoji emoji-id="{DEFAULT_VIP_EMOJI_ID}">{DEFAULT_VIP_EMOJI_CHAR}</tg-emoji> '
+
+    # 2. Agar emoji_id yaroqsiz (o'lik/yopiq) ro'yxatda bo'lsa, oddiy emoji char qaytaramiz
+    if s_emoji_id in DEAD_EMOJI_IDS:
+        char = s_emoji_char or "⭐"
+        return f"{char} "
+
+    char = s_emoji_char or (DEFAULT_VIP_EMOJI_CHAR if s_emoji_id == DEFAULT_VIP_EMOJI_ID else "✨")
+    return f'<tg-emoji emoji-id="{s_emoji_id}">{char}</tg-emoji> '
 
 def get_vip_prefix(vip_user) -> str:
     if not vip_user:

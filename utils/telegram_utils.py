@@ -1,6 +1,7 @@
 """
 Telegram message utilities - xabar uzunligi va formatlashni boshqarish.
 """
+import asyncio
 from typing import List
 from aiogram import Bot
 from aiogram.types import Message
@@ -109,6 +110,8 @@ async def send_long_message(
     sent_messages = []
     
     for i, msg_text in enumerate(messages):
+        if i > 0:
+            await asyncio.sleep(0.3)
         # Only add reply_markup to last message
         current_markup = reply_markup if i == len(messages) - 1 else None
         
@@ -240,7 +243,6 @@ def format_large_list(
         messages.append(current_text)
     
     return messages
-
 
 
 async def get_chat_join_link(bot: Bot, chat_id: int) -> str:

@@ -164,6 +164,7 @@ def back_set_menu(chat_id):
 
 def set_more_types_button(chat_id):
     builder = InlineKeyboardBuilder()
+    builder.button(text="Guruh tili 🌐", callback_data=f"set-more_{chat_id}_lang")
     builder.button(text="Mafianing ovozi", callback_data=f"set-more_{chat_id}_mafs-vote")
     builder.button(text="Advokatni ko'rish", callback_data=f"set-more_{chat_id}_adv-view")
     builder.button(text="Maksimal o'yinchilar soni", callback_data=f"set-more_{chat_id}_max-players")
@@ -172,6 +173,22 @@ def set_more_types_button(chat_id):
     builder.button(text="O'yin o'ynashni cheklash", callback_data=f"set-more_{chat_id}_can-gaming")
     builder.button(text="🔙 Orqaga", callback_data=f"show-settings_{chat_id}")
     builder.adjust(1)
+    return builder.as_markup()
+
+def set_group_lang_button(chat_id, more_type="lang", default="uz"):
+    builder = InlineKeyboardBuilder()
+    langs = [
+        ("uz", "🇺🇿 O'zbekcha"),
+        ("ru", "🇷🇺 Русский"),
+        ("en", "🇬🇧 English"),
+        ("tr", "🇹🇷 Türkçe"),
+        ("kk", "🇰🇿 Qazaqsha")
+    ]
+    for code, label in langs:
+        selected = "◾️" if default == code else "▫️"
+        builder.button(text=f"{label} {selected}", callback_data=f"set-more_{chat_id}_{more_type}_{code}")
+    builder.button(text="🔙 Orqaga", callback_data=f"set-more_{chat_id}")
+    builder.adjust(2, 2, 1, 1)
     return builder.as_markup()
 
 def wolf_or_fox_btn(chat_id, default=True):

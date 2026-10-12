@@ -17,7 +17,7 @@ import asyncio
 import html
 import random
 from datetime import datetime, timezone
-from typing import List, Optional, Dict, Union
+from typing import List, Optional, Dict, Union, Any
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramRetryAfter
@@ -395,7 +395,9 @@ async def send_night_actions(
             continue
 
         # Harakati bor tirik rol foydalanuvchisi
-        expected_uids.add(uid)
+        # Don tirik bo'lsa, oddiy mafia a'zolari tong otishini to'xtatib turmasligi uchun expected_uids ga qo'shilmaydi
+        if not (role == RoleNames.MAFIA and any(q.is_alive and q.role == RoleNames.DON for q in alive)):
+            expected_uids.add(uid)
 
         # Nishon ro'yxati (o'zini istisno qilish)
         others = [q for q in alive if q.user_id != uid]
@@ -475,12 +477,14 @@ async def send_night_actions(
             else:
                 tcode, label = "se", ns.get("sehrgar_prompt", "🧙 <b>Sehrgar</b>: almashtirish uchun <b>1-nishon</b>ni tanlang.")
             await _send_private(bot, uid, label, _target_kb(tcode, game_id, night_num, mk_targets, skip_label=skip_label))
+            await asyncio.sleep(0.04)
             continue
 
         # --- Oddiy bitta nishonli harakatlar ---
         target_fmt = ns.get("target_prompt", "🌙 {role} — nishonni tanlang:")
         label = target_fmt.format(role=role_display(role))
         await _send_private(bot, uid, label, _target_kb(code, game_id, night_num, mk_targets, skip_label=skip_label))
+        await asyncio.sleep(0.04)
 
     # Tungi kutilayotgan harakatlarni Redis keshiga saqlaymiz
     key_exp = f"game:{game_id}:night:{night_num}:expected_users"
@@ -557,24 +561,47 @@ async def queue_death_message(game_id: int, text: str) -> None:
         pass
 
 
-async def flush_pending_deaths(game_id: int, bot: Bot, chat: Chat) -> None:
+async def flush_pending_deaths(game_id: int, bot: Bot, chat: Any) -> int:
     """Yig'ilgan o'lim xabarlarini guruhga yuborish (tongdan keyin, ro'yxatdan oldin)."""
     try:
         key = f"game:{game_id}:pending_deaths"
         items = await r.lrange(key, 0, -1)
         if not items:
-            return
+            return 0
         await r.delete(key)
     except Exception:
-        return
-    for raw in items:
-        text = raw.decode() if isinstance(raw, bytes) else raw
+        return 0
+
+    chat_id = (
+        getattr(chat, "chat_id", None)
+        or getattr(chat, "id", None)
+        or (chat if isinstance(chat, int) else None)
+    )
+    if not chat_id:
         try:
-            await bot.send_message(
-                chat.chat_id, text, parse_mode="HTML", disable_web_page_preview=True
-            )
+            chat_id = int(chat)
         except Exception:
-            pass
+            return 0
+
+    texts = [
+        raw.decode() if isinstance(raw, bytes) else str(raw)
+        for raw in items
+        if raw
+    ]
+    texts = [t.strip() for t in texts if t.strip()]
+    if not texts:
+        return 0
+
+    from utils.telegram_utils import send_long_message
+    combined_text = "\n\n".join(texts)
+    try:
+        await send_long_message(
+            bot, chat_id, combined_text, parse_mode="HTML", disable_web_page_preview=True
+        )
+        return len(texts)
+    except Exception as exc:
+        logger.error(f"Error flushing pending deaths for game {game_id}: {exc}")
+        return 0
 
 
 async def _user_lang_map(uids: List[int], chat_id: int = 0) -> Dict[int, str]:
@@ -724,31 +751,56 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
             t_user = await User.filter(user_id=target).first()
             if t_user:
                 t_prof = await Profile.filter(user=t_user).first()
+                if not t_prof:
+                    t_prof = await Profile.create(user=t_user)
                 if t_prof:
+                    t_lang = lang_map.get(target, "uz")
                     # Yoki pul (85%) YOKI 1 olmos (15%)
                     if random.random() < 0.15:
-                        t_prof.diamond += 1
+                        t_prof.diamond = (t_prof.diamond or 0) + 1
                         await t_prof.save()
-                        msg = "🧞 <b>Jin sizga 💎 1 olmos in'om etdi!</b>"
+                        diamond_msgs = {
+                            "uz": "🧞 <b>Jin sizga 💎 1 olmos in'om etdi!</b>",
+                            "ru": "🧞 <b>Джинн одарил вас 💎 1 алмазом!</b>",
+                            "en": "🧞 <b>The Genie granted you 💎 1 diamond!</b>",
+                            "tr": "🧞 <b>Cin size 💎 1 elmas hediye etti!</b>",
+                            "kk": "🧞 <b>Жын сізге 💎 1 алмаз сыйлады!</b>"
+                        }
+                        msg = diamond_msgs.get(t_lang, diamond_msgs["uz"])
                     else:
                         # 1$ - 500$ random pul, 150$ dan baland pul olish imkoniyati pastroq (20%)
                         if random.random() < 0.80:
                             money_given = random.randint(1, 150)
                         else:
                             money_given = random.randint(151, 500)
-                        t_prof.money += money_given
+                        t_prof.dollar = (t_prof.dollar or 0) + money_given
                         await t_prof.save()
-                        msg = f"🧞 <b>Jin sizga 💰 {money_given}$ pul in'om etdi!</b>"
+                        dollar_msgs = {
+                            "uz": f"🧞 <b>Jin sizga 💰 {money_given}$ pul in'om etdi!</b>",
+                            "ru": f"🧞 <b>Джинн одарил вас 💰 {money_given}$!</b>",
+                            "en": f"🧞 <b>The Genie granted you 💰 {money_given}$!</b>",
+                            "tr": f"🧞 <b>Cin size 💰 {money_given}$ hediye etti!</b>",
+                            "kk": f"🧞 <b>Жын сізге 💰 {money_given}$ ақша сыйлады!</b>"
+                        }
+                        msg = dollar_msgs.get(t_lang, dollar_msgs["uz"])
                     await _send_private(bot, target, msg)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"Error giving Jin money reward to target {target}: {e}")
 
     # --- Jin hayot (himoya) xabari ---
     for target in jin_protect:
         try:
-            await _send_private(bot, target, "🧞 <b>Jin sizni bu tun 🛡️ o'limdan saqlab qoldi!</b>")
-        except Exception:
-            pass
+            t_lang = lang_map.get(target, "uz")
+            life_msgs = {
+                "uz": "🧞 <b>Jin sizni bu tun 🛡️ o'limdan saqlab qoldi!</b>",
+                "ru": "🧞 <b>Джинн защитил вас этой ночью 🛡️ от смерти!</b>",
+                "en": "🧞 <b>The Genie protected you from 🛡️ death tonight!</b>",
+                "tr": "🧞 <b>Cin sizi bu gece 🛡️ ölümden korudu!</b>",
+                "kk": "🧞 <b>Жын сізді бұл түнде 🛡️ өлімнен қорғап қалды!</b>"
+            }
+            await _send_private(bot, target, life_msgs.get(t_lang, life_msgs["uz"]))
+        except Exception as e:
+            logger.error(f"Error sending Jin protect msg to {target}: {e}")
 
     # --- Sehrgar: ikki nishon rolini almashtirish ---
     for actor_uid, tgts in swaps.items():
@@ -836,10 +888,10 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
                     if killer not in kill_sources[target]:
                         kill_sources[target].append(killer)
 
-                # Qasoskor roli bo'lsa - hujum qilgan odamni qasosga yozib qo'yamiz (faqat o'lganda!)
-                target_p = by_uid.get(target)
-                if target_p and target_p.role == RoleNames.QASOSKOR and attacker_id:
-                    qasoskor_revenge_queue.append((attacker_id, target))
+            # Qasoskor roli bo'lsa - hujum qilgan odamni qasosga yozib qo'yamiz
+            target_p = by_uid.get(target)
+            if target_p and target_p.role == RoleNames.QASOSKOR and attacker_id:
+                qasoskor_revenge_queue.append((attacker_id, target))
 
     # --- Qasoskor qasosi: o'ziga hujum qilgan odamni o'ldiradi ---
     for attacker_id, qasoskor_id in qasoskor_revenge_queue:
@@ -858,11 +910,7 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
                 if t not in dead_uids:
                     dead_uids.append(t)
 
-    # --- Jin qotillik ---
-    for target in jin_kill:
-        if target not in healed and target not in protected:
-            dead_uids.append(target)
-            kill_sources.setdefault(target, RoleNames.JIN)
+    # --- Jin qotillik: jin_kill hujumlari yuqoridagi kill_attempts ro'yxatida to'liq hisobga olingan. ---
 
     # --- Faol rollarning harakatsizligini tekshirish (Inactivity: 2 tun harakat qilmasa uxlab qolib vafot etadi) ---
     completed_key = f"game:{game_id}:night:{night_num}:completed_users"
@@ -879,7 +927,8 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
     inactivity_custom_texts = {}
     for p in players:
         # Faqat o'yinda tirik bo'lgan va tungi faol roli bor o'yinchilar
-        if not p.is_alive or p.role not in NIGHT_ACTION_ROLES:
+        # DIQQAT: Mafia roli hech qachon uxlab qolib o'yindan chiqmaydi (Don tirik payti harakatsiz bo'lishi tabiiy)
+        if not p.is_alive or p.role not in NIGHT_ACTION_ROLES or p.role == RoleNames.MAFIA:
             continue
 
         # Kezuvchi yoki Jin tomonidan majburiy uxlatilgan bo'lsa uxlash hisoblanmaydi
@@ -1003,7 +1052,17 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
         if random.random() < 0.25:
             await _kill(game_id, actor_uid, by_uid, bot, chat, names, reason=get_msg(actor_uid, "konchi_kill_reason"))
         else:
-            await _send_private(bot, actor_uid, get_msg(actor_uid, "konchi_win", no=kon_no, count=random.choice([1, 2, 3])))
+            mined_diamonds = random.choice([1, 2, 3])
+            try:
+                from models.user import User, Profile
+                u = await User.filter(user_id=actor_uid).first()
+                if u:
+                    prof, _ = await Profile.get_or_create(user=u)
+                    prof.diamond += mined_diamonds
+                    await prof.save(update_fields=["diamond"])
+            except Exception as e:
+                logger.error(f"Error saving konchi diamonds for {actor_uid}: {e}")
+            await _send_private(bot, actor_uid, get_msg(actor_uid, "konchi_win", no=(kon_no or 1), count=mined_diamonds))
 
     # --- Qaroqchi ---
     for actor_uid, tgt in qaroqchi:
@@ -1243,7 +1302,23 @@ async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot,
     await r.set(f"game:{game_id}:phase:{day_num}:like_msg", str(msg.message_id), ex=7200)
     await r.set(f"game:{game_id}:phase:{day_num}:like_target", str(victim.user_id), ex=7200)
 
-    await asyncio.sleep(max(0, int(like_time or 0)))
+    # Like/dislike dynamic early finish if all alive players voted
+    like_duration = max(0, int(like_time or 0))
+    alive_count = len([p for p in all_players if p.is_alive])
+    total_like_ticks = int(like_duration / 0.5) if like_duration else 0
+
+    for _ in range(total_like_ticks):
+        await asyncio.sleep(0.5)
+        g_check = await game_repo.load_game(game_id)
+        if not g_check or not g_check.is_active:
+            return
+        try:
+            tally = await VoteService.get_vote_like_results(game_id, day_num, victim.user_id)
+            if (tally.get("likes", 0) + tally.get("dislikes", 0)) >= alive_count:
+                await asyncio.sleep(0.3)
+                break
+        except Exception:
+            pass
 
     game_state = await game_repo.load_game(game_id)
     if not game_state or not game_state.is_active:

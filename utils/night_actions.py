@@ -76,3 +76,12 @@ async def sehrgar_night_action_handler(call: CallbackQuery, bot: Bot, state: FSM
 
 async def konchi_action_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
     await _register_action(call, "konchi", "👷🏻‍♂️ Konchi: Kon qazish qabul qilindi!")
+
+async def jin_action_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
+    await _register_action(call, "jin", "🧞 Jin: Tanlov qabul qilindi!")
+
+async def jin_choice_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
+    await _register_action(call, "jin_choice", "🧞 Jin: Tilak qabul qilindi!")
+
+async def jin_victim_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
+    await _register_action(call, "jin_victim", "🧞 Jin: Qotillik nishoni qabul qilindi!")
