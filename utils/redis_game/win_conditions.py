@@ -1,6 +1,7 @@
 """
 Win conditions checker for Redis-based game.
 """
+import asyncio
 import html
 from datetime import datetime, timezone
 from typing import Optional
@@ -413,8 +414,9 @@ async def _player_mentions(user_ids: list) -> dict:
     from models.user import VipUser
     users = await User.filter(user_id__in=ids)
     vip_map = {}
-    for vip in await VipUser.filter(user__user_id__in=ids):
-        vip_map[vip.user_id] = vip
+    for vip in await VipUser.filter(user__user_id__in=ids).prefetch_related("user"):
+        if vip.user:
+            vip_map[vip.user.user_id] = vip
     for u in users:
         name = html.escape(u.full_name or u.username or str(u.user_id))
         vip_prefix = get_vip_prefix(vip_map.get(u.user_id))
@@ -452,6 +454,16 @@ async def announce_game_result_redis(
 ):
     """O'yin natijalarini e'lon qilish: g'oliblar + qolganlar + davomiylik."""
     target_chat_id = _get_chat_id(chat)
+
+    # Oxirgi tunda o'lganlar xabarlarini avval guruhga e'lon qilamiz:
+    if target_chat_id:
+        try:
+            from utils.redis_game.night_engine import flush_pending_deaths
+            flushed = await flush_pending_deaths(int(game_id), bot, target_chat_id)
+            if flushed:
+                await asyncio.sleep(1.0)
+        except Exception as e:
+            print(f"Oxirgi tunda o'lganlarni e'lon qilishda xatolik: {e}")
 
     game_state = await game_repo.load_game(game_id)
     if game_state:
@@ -537,7 +549,9 @@ async def announce_game_result_redis(
 
     if target_chat_id:
         try:
-            await bot.send_message(
+            from utils.telegram_utils import send_long_message
+            await send_long_message(
+                bot,
                 target_chat_id,
                 "\n".join(lines),
                 parse_mode="HTML",
@@ -549,9 +563,11 @@ async def announce_game_result_redis(
     # Shaxsiy lichkaga har bir o'yinchiga g'alaba/mag'lubiyat profili va mukofotini yuborish
     for p in winners:
         await _send_player_end_game_profile_dm(bot, p.user_id, is_winner=True, win_reward=win_reward)
+        await asyncio.sleep(0.04)
 
     for p in others:
         await _send_player_end_game_profile_dm(bot, p.user_id, is_winner=False, lose_reward=lose_reward)
+        await asyncio.sleep(0.04)
 
 
 async def _send_player_end_game_profile_dm(bot: Bot, uid: int, is_winner: bool, win_reward: int = 20, lose_reward: int = 5):

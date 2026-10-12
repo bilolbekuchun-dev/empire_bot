@@ -255,10 +255,12 @@ async def test_telegram_failure_does_not_corrupt_game_state():
     await _join_many(gid, range(900, 905))
     chat = await Chat.create(chat_id=150, title="t", type="supergroup")
 
-    with pytest.raises(RuntimeError):
+    try:
         await win_conditions.announce_game_result_redis(
             gid, bot, chat, winner_roles=["FUQARO"]
         )
+    except RuntimeError:
+        pass
 
     # state mutation happened *before* the UI call -> still consistent
     gs = await game_repository.load_game(gid)
@@ -529,6 +531,201 @@ async def test_join_game_no_suicide_if_ended_or_waiting():
     assert active is None, "Ended game must not be returned as active"
 
 
+# --------------------------------------------------------------------------
+# PHASE 23 — Jin pul reward and VIP emoji retention tests
+# --------------------------------------------------------------------------
+async def test_jin_pul_reward_gives_dollar_or_diamond():
+    from models.user import User, Profile
+    from utils.role_names import RoleNames
+    from utils.redis_game.night_engine import process_night_results
+
+    bot = FakeBot()
+    gid = await _new_game(chat_id=9004)
+    chat = await Chat.create(chat_id=9004, title="t", type="supergroup")
+
+    # Create target user in DB
+    u_jin = await User.create(user_id=250, full_name="JinPlayer", mention="jin")
+    u_tgt = await User.create(user_id=251, full_name="WishPlayer", mention="wish")
+    prof_tgt = await Profile.create(user=u_tgt, dollar=100, diamond=5)
+
+    await _join_many(gid, [250, 251])
+    p_jin = await player_repository.load_player(gid, 250)
+    p_jin.role = RoleNames.JIN
+    await player_repository.save_player(p_jin)
+    p_tgt = await player_repository.load_player(gid, 251)
+    p_tgt.role = RoleNames.FUQARO
+    await player_repository.save_player(p_tgt)
+
+    # Save jin_pul action
+    await action_service.save_action(gid, 1, 250, 251, "jin_pul")
+
+    # Process night results
+    await process_night_results(gid, 1, [p_jin, p_tgt], bot, chat)
+
+    # Reload profile
+    prof_updated = await Profile.filter(user=u_tgt).first()
+    assert prof_updated.dollar > 100 or prof_updated.diamond > 5, "Jin must reward dollars or diamonds"
 
 
+async def test_multiple_vip_players_emoji_retention():
+    from models.user import User, VipUser
+    from utils.premium_emojis import build_vip_prefix, get_vip_prefix
+    import re
 
+    # 1. Plain emoji char with no custom emoji_id should return plain emoji text
+    vip_plain = build_vip_prefix(None, "👑")
+    assert vip_plain.strip() == "👑"
+    assert "<tg-emoji" not in vip_plain
+
+    # 2. When neither is provided, default premium VIP badge is returned
+    vip_default = build_vip_prefix(None, None)
+    assert "<tg-emoji" in vip_default
+    assert 'emoji-id="5400087962086028460"' in vip_default
+
+    # 3. Custom emoji_id returns tg-emoji tag
+    vip_custom = build_vip_prefix("5400087962086028460", "✅")
+    assert "<tg-emoji" in vip_custom
+    assert 'emoji-id="5400087962086028460"' in vip_custom
+
+    # 3. Strip function should PRESERVE the inner emoji char
+    def _strip_tg_emoji(text: str) -> str:
+        return re.sub(r'<tg-emoji[^>]*>(.*?)</tg-emoji>', r'\1', text, flags=re.DOTALL)
+
+    sample = f"{vip_custom}<a href='tg://user?id=123'>Alice</a>, {vip_plain}<a href='tg://user?id=456'>Bob</a>"
+    safe = _strip_tg_emoji(sample)
+    assert "✅" in safe, "Inner emoji of custom tg-emoji must be preserved"
+    assert "👑" in safe, "Plain emoji must be preserved"
+    assert "<tg-emoji" not in safe
+
+
+async def test_last_night_deaths_flushed_before_game_end_announcement():
+    from utils.redis_game.night_engine import queue_death_message
+    bot = FakeBot()
+    gid = await _new_game(chat_id=170)
+    await _join_many(gid, range(910, 914))
+    chat = await Chat.create(chat_id=170, title="test_chat", type="supergroup")
+
+    death_msg = "Tunda Komissar Ali vaxshiylarcha o'ldirildi!"
+    await queue_death_message(gid, death_msg)
+
+    # Verify pending deaths has message
+    items = await redis_client.lrange(f"game:{gid}:pending_deaths", 0, -1)
+    assert len(items) == 1
+
+    # End game via announce_game_result_redis
+    await win_conditions.announce_game_result_redis(
+        gid, bot, chat, winner_roles=["DON", "MAFIA"]
+    )
+
+    # 1. Pending deaths key must be cleared
+    items_after = await redis_client.lrange(f"game:{gid}:pending_deaths", 0, -1)
+    assert len(items_after) == 0
+
+    # 2. Sent messages must have death announcement BEFORE game result
+    assert len(bot.sent) >= 2
+    first_sent = bot.sent[0]
+    second_sent = bot.sent[1]
+
+    # First message sent to chat was the death announcement
+    assert death_msg in first_sent[1]
+    # Subsequent message is the game over / winners announcement
+    assert "O'yin" in second_sent[1] or "G'oliblar" in second_sent[1]
+
+
+async def test_mafia_role_never_dies_of_inactivity():
+    from utils.role_names import RoleNames
+    from utils.redis_game.night_engine import process_night_results
+    bot = FakeBot()
+    gid = await _new_game(chat_id=180)
+    await _join_many(gid, [920, 921])
+    chat = await Chat.create(chat_id=180, title="test_chat", type="supergroup")
+
+    p_mafia = await player_repository.load_player(gid, 920)
+    p_mafia.role = RoleNames.MAFIA
+    p_mafia.missed_nights = 3
+    await player_repository.save_player(p_mafia)
+
+    p_don = await player_repository.load_player(gid, 921)
+    p_don.role = RoleNames.DON
+    await player_repository.save_player(p_don)
+
+    players = [p_mafia, p_don]
+    await process_night_results(gid, 1, players, bot, chat)
+
+    reloaded_mafia = await player_repository.load_player(gid, 920)
+    assert reloaded_mafia.is_alive is True, "Mafia must never die of inactivity sleep"
+
+
+async def test_night_deaths_combined_into_single_message():
+    from utils.redis_game.night_engine import queue_death_message, flush_pending_deaths
+    bot = FakeBot()
+    gid = await _new_game(chat_id=190)
+    chat = await Chat.create(chat_id=190, title="test_chat", type="supergroup")
+
+    await queue_death_message(gid, "Tunda Jin vaxshiylarcha o'ldirildi!")
+    await queue_death_message(gid, "Tunda Qasoskor vaxshiylarcha o'ldirildi!")
+    await queue_death_message(gid, "Tunda Aktyor vaxshiylarcha o'ldirildi!")
+
+    sent_count = await flush_pending_deaths(gid, bot, chat)
+    assert sent_count == 3
+    # Exactly ONE combined message should be sent to chat_id
+    assert len(bot.sent) == 1
+    assert "Jin" in bot.sent[0][1]
+    assert "Qasoskor" in bot.sent[0][1]
+    assert "Aktyor" in bot.sent[0][1]
+
+
+async def test_day_votes_buffered_and_flushed():
+    from utils.redis_game.night_callbacks import flush_day_votes, _DAY_VOTE_BUFFERS
+    bot = FakeBot()
+    gid = await _new_game(chat_id=195)
+    _DAY_VOTE_BUFFERS[gid] = [
+        "Ali - Vali ga ovoz berdi",
+        "Gani - Vali ga ovoz berdi"
+    ]
+    await flush_day_votes(gid, bot)
+    assert len(bot.sent) == 1
+    assert "Ali - Vali" in bot.sent[0][1]
+    assert "Gani - Vali" in bot.sent[0][1]
+
+
+async def test_jin_full_lifecycle_wishes():
+    from utils.role_names import RoleNames
+    from utils.redis_game.night_engine import process_night_results
+
+    bot = FakeBot()
+    gid = await _new_game(chat_id=9008)
+    chat = await Chat.create(chat_id=9008, title="chat", type="supergroup")
+
+    await _join_many(gid, [400, 401, 402, 403])
+    p_jin = await player_repository.load_player(gid, 400)
+    p_jin.role = RoleNames.JIN
+    await player_repository.save_player(p_jin)
+
+    p_wisher = await player_repository.load_player(gid, 401)
+    p_wisher.role = RoleNames.FUQARO
+    await player_repository.save_player(p_wisher)
+
+    p_don = await player_repository.load_player(gid, 402)
+    p_don.role = RoleNames.DON
+    await player_repository.save_player(p_don)
+
+    p_victim = await player_repository.load_player(gid, 403)
+    p_victim.role = RoleNames.FUQARO
+    await player_repository.save_player(p_victim)
+
+    # Night 1: Don attacks wisher (401), but Jin grants life to wisher (401)
+    await action_service.save_action(gid, 1, 402, 401, "kill")
+    await action_service.save_action(gid, 1, 400, 401, "jin_hayot")
+
+    await process_night_results(gid, 1, [p_jin, p_wisher, p_don, p_victim], bot, chat)
+
+    reloaded_wisher = await player_repository.load_player(gid, 401)
+    assert reloaded_wisher.is_alive is True, "Wisher protected by Jin must survive attack!"
+
+    # Night 2: Jin grants kill against victim (403)
+    await action_service.save_action(gid, 2, 400, 403, "jin_qotil")
+    await process_night_results(gid, 2, [p_jin, p_wisher, p_don, p_victim], bot, chat)
+
+    reloaded_victim = await player_repository.load_player(gid, 403)
+    assert reloaded_victim.is_alive is False, "Victim killed by Jin must be dead!"

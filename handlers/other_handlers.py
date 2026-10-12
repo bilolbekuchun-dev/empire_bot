@@ -404,6 +404,8 @@ async def onboard_lang_cb(call: CallbackQuery, bot: Bot, state: FSMContext):
     )
     user.lang = lang
     await user.save()
+    from utils.database import redis_client
+    await redis_client.set(f"chat:{call.from_user.id}:lang", lang)
     await state.update_data(onboard_lang_selected=True)
 
     try:

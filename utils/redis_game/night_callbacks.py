@@ -7,6 +7,7 @@ Callback formatlari:
     vl|{gid}|{day}|{target}|1/0            -> osish like/dislike
 """
 import html
+import asyncio
 
 from aiogram import Router, F, Bot
 from aiogram.types import CallbackQuery
@@ -101,7 +102,7 @@ NIGHT_ACTION_ANNOUNCE = {
         RoleNames.SEHRGAR: "{role} sehr tayyorlamoqda...",
         RoleNames.KONCHI: "{role} shaxtaga tushdi...",
         RoleNames.QAROQCHI: "{role} o'lja izlab ketdi...",
-        RoleNames.JIN: "{role} lampa yonida paydo bo'ldi...",
+        RoleNames.JIN: "{role} o'z chirog'idan tashqariga chiqdi!",
     },
     "ru": {
         RoleNames.DOKTOR: "{role} отправился(лась) на ночное дежурство...",
@@ -120,7 +121,7 @@ NIGHT_ACTION_ANNOUNCE = {
         RoleNames.SEHRGAR: "{role} готовит заклинание...",
         RoleNames.KONCHI: "{role} спустился(лась) в шахту...",
         RoleNames.QAROQCHI: "{role} отправился(лась) на поиски добычи...",
-        RoleNames.JIN: "{role} появился(лась) из лампы...",
+        RoleNames.JIN: "{role} вышел(ла) из своей лампы!",
     },
     "en": {
         RoleNames.DOKTOR: "{role} went on night duty...",
@@ -139,7 +140,7 @@ NIGHT_ACTION_ANNOUNCE = {
         RoleNames.SEHRGAR: "{role} is preparing a spell...",
         RoleNames.KONCHI: "{role} went into the mine...",
         RoleNames.QAROQCHI: "{role} went searching for loot...",
-        RoleNames.JIN: "{role} appeared from the lamp...",
+        RoleNames.JIN: "{role} emerged from the lamp!",
     },
     "tr": {
         RoleNames.DOKTOR: "{role} gece nöbetine çıktı...",
@@ -158,7 +159,7 @@ NIGHT_ACTION_ANNOUNCE = {
         RoleNames.SEHRGAR: "{role} büyü hazırlıyor...",
         RoleNames.KONCHI: "{role} madene indi...",
         RoleNames.QAROQCHI: "{role} ganimet aramaya gitti...",
-        RoleNames.JIN: "{role} lambadan çıktı...",
+        RoleNames.JIN: "{role} lambasından dışarı çıktı!",
     },
     "kk": {
         RoleNames.DOKTOR: "{role} түнгі кезекшілікке кетті...",
@@ -177,7 +178,7 @@ NIGHT_ACTION_ANNOUNCE = {
         RoleNames.SEHRGAR: "{role} сиқыр дайындауда...",
         RoleNames.KONCHI: "{role} шахтаға түсті...",
         RoleNames.QAROQCHI: "{role} олжа іздеп кетті...",
-        RoleNames.JIN: "{role} шамның жанында пайда болды...",
+        RoleNames.JIN: "{role} өз шамынан сыртқа шықты!",
     }
 }
 
@@ -436,6 +437,10 @@ async def night_action_cb(call: CallbackQuery, bot=None):
     if code == "ji" and kind == "t" and int(target) != 0:
         jin_uid = uid
         target_uid = int(target)
+        target_player = await player_repo.load_player(gid, target_uid)
+        if not target_player or not target_player.is_alive:
+            await call.answer("Bu o'yinchi allaqachon o'yindan chiqqan!", show_alert=True)
+            return
         target_name = await _player_name(target_uid)
         await _announce_night_action(call, gid, ph, jin_uid, role)
         await _confirm_choice(call, role, f"🧞 <b>{target_name}</b> huzuriga bordingiz.\nU o'z tilagini tanlamoqda...", lang=chat_lang, gid=gid)
@@ -487,8 +492,37 @@ async def night_action_cb(call: CallbackQuery, bot=None):
     await call.answer()
 
 
+_DAY_VOTE_BUFFERS: dict[int, list[str]] = {}
+_DAY_VOTE_TASKS: dict[int, asyncio.Task] = {}
+_DAY_VOTE_LOCK = asyncio.Lock()
+
+async def flush_day_votes(gid: int, bot=None) -> None:
+    async with _DAY_VOTE_LOCK:
+        items = _DAY_VOTE_BUFFERS.pop(gid, [])
+        task = _DAY_VOTE_TASKS.pop(gid, None)
+        if task and not task.done():
+            task.cancel()
+
+    if not items:
+        return
+
+    try:
+        game_state = await game_repo.load_game(gid)
+        if not game_state or not game_state.chat_id:
+            return
+        combined_text = "\n".join(items)
+        if bot:
+            await bot.send_message(
+                game_state.chat_id,
+                combined_text,
+                parse_mode="HTML",
+                disable_web_page_preview=True,
+            )
+    except Exception as e:
+        print(f"Error flushing day votes for game {gid}: {e}")
+
 async def _announce_day_vote(call: CallbackQuery, gid: int, uid: int, target_uid=None, *, skipped: bool = False) -> None:
-    """Kunduzgi ovoz e'loni — har bir ovoz harakati (yangi ovoz yoki o'zgargan ovoz) guruhga e'lon qilinadi."""
+    """Kunduzgi ovoz e'loni — ovozlar umumlashtirilib (batch/debounce) guruhga e'lon qilinadi."""
     try:
         game_state = await game_repo.load_game(gid)
         if not game_state:
@@ -503,12 +537,39 @@ async def _announce_day_vote(call: CallbackQuery, gid: int, uid: int, target_uid
             target = await _player_mention(int(target_uid))
             text = f"{voter} - {target}ga ovoz berdi"
 
-        await call.bot.send_message(
-            game_state.chat_id,
-            text,
-            parse_mode="HTML",
-            disable_web_page_preview=True,
-        )
+        async with _DAY_VOTE_LOCK:
+            if gid not in _DAY_VOTE_BUFFERS:
+                _DAY_VOTE_BUFFERS[gid] = []
+            _DAY_VOTE_BUFFERS[gid].append(text)
+
+            # Agar 10 ta ovoz yig'ilsa, zudlik bilan yuborish
+            if len(_DAY_VOTE_BUFFERS[gid]) >= 10:
+                items = _DAY_VOTE_BUFFERS.pop(gid, [])
+                task = _DAY_VOTE_TASKS.pop(gid, None)
+                if task and not task.done():
+                    task.cancel()
+                try:
+                    await call.bot.send_message(
+                        game_state.chat_id,
+                        "\n".join(items),
+                        parse_mode="HTML",
+                        disable_web_page_preview=True,
+                    )
+                except Exception as e:
+                    print(f"Error sending batch day votes: {e}")
+                return
+
+            # Belgilangan vaqt (2.0s) ichida kelgan ovozlarni birlashtirib yuborish
+            if gid not in _DAY_VOTE_TASKS or _DAY_VOTE_TASKS[gid].done():
+                async def _delayed_flush():
+                    try:
+                        await asyncio.sleep(2.0)
+                        await flush_day_votes(gid, call.bot)
+                    except asyncio.CancelledError:
+                        pass
+
+                _DAY_VOTE_TASKS[gid] = asyncio.create_task(_delayed_flush())
+
     except Exception as e:
         print(f"Error in _announce_day_vote: {e}")
 
@@ -779,6 +840,11 @@ async def jin_kill_target_cb(call: CallbackQuery, bot=None):
         return
 
     if not await _ensure_night_phase(call, gid, ph):
+        return
+
+    victim_player = await player_repo.load_player(gid, victim_uid)
+    if not victim_player or not victim_player.is_alive:
+        await call.answer("Bu o'yinchi allaqachon o'yindan chiqqan!", show_alert=True)
         return
 
     from utils.i18n import get_chat_lang

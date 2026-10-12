@@ -14,6 +14,7 @@ from models.user import User, Profile, Paralar
 from models.game_data import Chat
 from models.game_set import GamingOnChat, CommandPermissionsChat, GameModeSet, GameSetPermissions, GroupMoreSet
 from keyboards.game_keyboard import join_game_button, join_vsgame_button, go_group_button
+from utils.telegram_utils import get_chat_join_link
 from utils.redis_game import game_service, player_service
 from utils.redis_game.repositories.game_repository import game_repository as game_repo
 from utils.redis_game.repositories.player_repository import player_repository as player_repo
@@ -207,15 +208,17 @@ async def _join_game_handler_redis_core(message: Message, bot: Bot, state: FSMCo
             if existing_player.team != color_name:
                 existing_player.team = color_name
                 await player_repo.save_player(existing_player)
+                _fresh_link = await get_chat_join_link(bot, chat.chat_id)
                 await message.answer(
                     f"Siz jamoangizni almashtirdingiz!", 
-                    reply_markup=go_group_button(chat.invite_link, lang=user_lang)
+                    reply_markup=go_group_button(_fresh_link, lang=user_lang)
                 )
                 await update_players_list_redis(game_id, bot)
                 return
+        _fresh_link = await get_chat_join_link(bot, chat.chat_id)
         await message.answer(
             already_texts.get(user_lang, already_texts["uz"]), 
-            reply_markup=go_group_button(chat.invite_link, lang=user_lang)
+            reply_markup=go_group_button(_fresh_link, lang=user_lang)
         )
         return
 
@@ -274,9 +277,10 @@ async def _join_game_handler_redis_core(message: Message, bot: Bot, state: FSMCo
         max_team_players = more_set.max_players // teams_count
         
         if len(team_players) >= max_team_players:
+            _fresh_link = await get_chat_join_link(bot, chat.chat_id)
             await message.answer(
                 f"Kechirasiz, bu jamoasi to'lgan!", 
-                reply_markup=go_group_button(chat.invite_link, lang=user_lang)
+                reply_markup=go_group_button(_fresh_link, lang=user_lang)
             )
             return
         
@@ -290,9 +294,10 @@ async def _join_game_handler_redis_core(message: Message, bot: Bot, state: FSMCo
             await message.answer("Kechirasiz, qo'shilishda xatolik yuz berdi!")
             return
         
+        _fresh_link = await get_chat_join_link(bot, chat.chat_id)
         await message.answer(
             joined_texts.get(user_lang, joined_texts["uz"]), 
-            reply_markup=go_group_button(chat.invite_link, lang=user_lang)
+            reply_markup=go_group_button(_fresh_link, lang=user_lang)
         )
     else:
         # Normal game - no team
@@ -304,9 +309,10 @@ async def _join_game_handler_redis_core(message: Message, bot: Bot, state: FSMCo
         if not success:
             await message.answer("Kechirasiz, qo'shilishda xatolik yuz berdi!")
             return
+        _fresh_link2 = await get_chat_join_link(bot, chat.chat_id)
         await message.answer(
             joined_texts.get(user_lang, joined_texts["uz"]), 
-            reply_markup=go_group_button(chat.invite_link, lang=user_lang)
+            reply_markup=go_group_button(_fresh_link2, lang=user_lang)
         )
     
     # Update player list
@@ -364,15 +370,24 @@ async def update_players_list_redis(game_id: str, bot: Bot, new_msg: bool = Fals
     
     # VS game: group by teams
     from models.user import VipUser
-    from utils.premium_emojis import get_vip_prefix
+    from utils.premium_emojis import get_vip_prefix, strip_dead_emojis
+
+    uids = [player.user_id for player in players]
+    users_dict = {u.user_id: u for u in await User.filter(user_id__in=uids)} if uids else {}
+    vips_dict = {}
+    if uids:
+        for vip in await VipUser.filter(user__user_id__in=uids).prefetch_related("user"):
+            if vip.user:
+                vips_dict[vip.user.user_id] = vip
+
     if ":vsgame" in game_state.mode:
         colors_dict = TeamColors.all_colors_dict() if hasattr(TeamColors, 'all_colors_dict') else {}
         teams = {}
         for player in players:
             if player.team not in teams:
                 teams[player.team] = []
-            user = await User.get_or_none(user_id=player.user_id)
-            vip = await VipUser.get_or_none(user=user) if user else None
+            user = users_dict.get(player.user_id)
+            vip = vips_dict.get(player.user_id)
             vip_prefix = get_vip_prefix(vip)
             clean_name = html.escape((user.full_name if user and user.full_name else player.first_name) or "O'yinchi")
             mention = f"{vip_prefix}<a href='tg://user?id={player.user_id}'>{clean_name}</a>"
@@ -388,8 +403,8 @@ async def update_players_list_redis(game_id: str, bot: Bot, new_msg: bool = Fals
         # Normal game: shuffle and show as comma-separated list
         player_mentions = []
         for player in players:
-            user = await User.get_or_none(user_id=player.user_id)
-            vip = await VipUser.get_or_none(user=user) if user else None
+            user = users_dict.get(player.user_id)
+            vip = vips_dict.get(player.user_id)
             vip_prefix = get_vip_prefix(vip)
             clean_name = html.escape((user.full_name if user and user.full_name else player.first_name) or "O'yinchi")
             mention = f"{vip_prefix}<a href='tg://user?id={player.user_id}'>{clean_name}</a>"
@@ -400,6 +415,7 @@ async def update_players_list_redis(game_id: str, bot: Bot, new_msg: bool = Fals
         join_markup = await join_game_button(game_id, lang=chat_lang)
     
     message_text += reg_total.get(chat_lang, reg_total["uz"]).format(count=len(players))
+    message_text = strip_dead_emojis(message_text)
     
     # All menu message mutations go through the canonical manager so that
     # joins/leaves/refreshes can never orphan or duplicate the /game menu.
@@ -409,8 +425,8 @@ async def update_players_list_redis(game_id: str, bot: Bot, new_msg: bool = Fals
     import re as _re
 
     def _strip_tg_emoji(text: str) -> str:
-        """Strip <tg-emoji ...>...</tg-emoji> tags (fallback when custom emoji causes API error)."""
-        return _re.sub(r'<tg-emoji[^>]*>.*?</tg-emoji>', '', text, flags=_re.DOTALL)
+        """Strip <tg-emoji ...>...</tg-emoji> tags but PRESERVE the inner emoji character."""
+        return _re.sub(r'<tg-emoji[^>]*>(.*?)</tg-emoji>', r'\1', text, flags=_re.DOTALL)
 
     async def _send_new_menu():
         try:
@@ -463,22 +479,28 @@ async def update_players_list_redis(game_id: str, bot: Bot, new_msg: bool = Fals
                 parse_mode="HTML",
             )
         except Exception as exc:
-            # First try stripping tg-emoji and editing in place.
-            # This avoids deleting the message when only a custom emoji is bad.
-            _safe_text = _strip_tg_emoji(message_text)
+            err_str = str(exc).lower()
+            if "message is not modified" in err_str:
+                return
+            if "retry after" in err_str:
+                return
+
+            # First try stripping tg-emoji and editing in place ONLY if error is entity/custom emoji related.
             _edit_recovered = False
-            if _safe_text != message_text:
-                try:
-                    await bot.edit_message_text(
-                        chat_id=game_state.chat_id,
-                        message_id=menu_id,
-                        text=_safe_text,
-                        reply_markup=join_markup,
-                        parse_mode="HTML",
-                    )
-                    _edit_recovered = True
-                except Exception:
-                    pass
+            if any(err in err_str for err in ["entity", "custom_emoji", "document_invalid", "can't parse"]):
+                _safe_text = _strip_tg_emoji(message_text)
+                if _safe_text != message_text:
+                    try:
+                        await bot.edit_message_text(
+                            chat_id=game_state.chat_id,
+                            message_id=menu_id,
+                            text=_safe_text,
+                            reply_markup=join_markup,
+                            parse_mode="HTML",
+                        )
+                        _edit_recovered = True
+                    except Exception:
+                        pass
             if not _edit_recovered:
                 # Stale/inaccessible message -> publish a fresh canonical menu.
                 print(f"Menu edit failed, replacing (game={game_id}): {exc}")
@@ -842,11 +864,28 @@ async def starting_game_redis(game_id: str, message: Optional[Message], bot: Bot
     game_state = await game_repo.load_game(game_id)
     if not game_state:
         return
-    
+
+    # ── Atomic start-guard ───────────────────────────────────────────────────
+    # Use Redis SET NX so that even if /start, autostart-timer, and
+    # max-players trigger all fire at the same millisecond, exactly ONE of
+    # them proceeds.  The key has a short TTL so it never leaks.
+    if start:
+        _lock_key = f"game:{game_id}:starting_lock"
+        _acquired = await redis_client.set(_lock_key, "1", nx=True, ex=30)
+        if not _acquired:
+            # Another coroutine already claimed the start slot → bail out.
+            return
+        # Extra safety: re-read fresh state inside the critical window.
+        game_state = await game_repo.load_game(game_id)
+        if not game_state or game_state.phase != "waiting":
+            await redis_client.delete(_lock_key)
+            return
+    # ─────────────────────────────────────────────────────────────────────────
+
     chat_id = game_state.chat_id
     chat = await Chat.get(chat_id=chat_id)
     game_times, _ = await GameSetTime.get_or_create(chat_id=chat_id)
-    
+
     if start:
         # Mark game as started
         game_state.phase = "night"
