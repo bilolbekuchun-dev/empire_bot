@@ -7,7 +7,7 @@ from models.game_data import Giveaway, Chat, GamePlayer, Game
 from config import ADMINS, DIAMOND_SHOP_USERNAME, SUPPORT_ADMIN, PRIMARY_ADMIN_IDS
 from keyboards.main_keyboard import get_start_markup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from utils.premium_emojis import get_diamond_display, get_dollar_display, role_display, get_vip_prefix, get_custom_emoji_id
+from utils.premium_emojis import get_diamond_display, get_dollar_display, role_display, get_vip_prefix, get_custom_emoji_id, get_item_display
 
 # Emojilar va tg-emoji teglari
 EMOJI_QOTIL_HIMOYA = "<tg-emoji emoji-id='5411452114838761907'>🔪</tg-emoji> Qotildan himoya"
@@ -125,15 +125,15 @@ async def get_profile(bot: Bot, message: Message):
         f"👤 <b>{safe_name}</b>{vip_text}\n\n"
         f"{m_disp} {lbl_dollar}: <b>{profile.dollar:,}</b>\n"
         f"{d_disp} {lbl_diamond}: <b>{profile.diamond:,}</b>\n\n"
-        f"🛡 {lbl_himoya}: <b>{profile.himoya}</b>\n"
-        f"📜 {lbl_hujjat}: <b>{profile.hujjat}</b>\n"
-        f"🔒 {lbl_osish}: <b>{profile.osishdan_himoya}</b>\n"
-        f"📦 {lbl_qotil}: <b>{profile.qotildan_himoya}</b>\n"
-        f"🔫 {lbl_miltiq}: <b>{profile.miltiq}</b>\n"
-        f"💊 {lbl_dori}: <b>{profile.doridan_himoya}</b>\n"
-        f"🎭 {lbl_maska}: <b>{profile.maska}</b>\n"
-        f"🪵 {lbl_slip}: <b>{profile.slip_himoya}</b>\n"
-        f"📦 {lbl_geroy}: <b>{profile.geroy_himoya}</b>\n\n"
+        f"{get_item_display('himoya')} {lbl_himoya}: <b>{profile.himoya}</b>\n"
+        f"{get_item_display('hujjat')} {lbl_hujjat}: <b>{profile.hujjat}</b>\n"
+        f"{get_item_display('osishdan_himoya')} {lbl_osish}: <b>{profile.osishdan_himoya}</b>\n"
+        f"{get_item_display('qotildan_himoya')} {lbl_qotil}: <b>{profile.qotildan_himoya}</b>\n"
+        f"{get_item_display('miltiq')} {lbl_miltiq}: <b>{profile.miltiq}</b>\n"
+        f"{get_item_display('doridan_himoya')} {lbl_dori}: <b>{profile.doridan_himoya}</b>\n"
+        f"{get_item_display('maska')} {lbl_maska}: <b>{profile.maska}</b>\n"
+        f"{get_item_display('slip_himoya')} {lbl_slip}: <b>{profile.slip_himoya}</b>\n"
+        f"{get_item_display('geroy_himoya')} {lbl_geroy}: <b>{profile.geroy_himoya}</b>\n\n"
         f"🎯 {lbl_wins}: <b>{profile.wins}</b>\n"
         f"📜 {lbl_games}: <b>{profile.games_count}</b>\n\n"
         f"{lbl_partner}: {para_text}\n\n"
@@ -2405,15 +2405,15 @@ async def open_protections_menu(call: CallbackQuery):
 
     text = (
         "🛡 <b>Sizning himoyalaringiz va anjomlaringiz:</b>\n\n"
-        f"🔰 Tinch axoli himoyasi: <b>{profile.himoya} ta</b>\n"
-        f"🔪 Qotildan himoya: <b>{profile.qotildan_himoya} ta</b>\n"
-        f"🪢 Osishdan himoya: <b>{profile.osishdan_himoya} ta</b>\n"
-        f"🩺 Doridan himoya: <b>{profile.doridan_himoya} ta</b>\n"
-        f"🎯 Miltiq: <b>{profile.miltiq} ta</b>\n"
-        f"📄 Hujjat: <b>{profile.hujjat} ta</b>\n"
-        f"🎭 Maska: <b>{profile.maska} ta</b>\n"
-        f"🚷 Slip himoya: <b>{profile.slip_himoya} ta</b>\n"
-        f"👑 Geroy himoya: <b>{profile.geroy_himoya} ta</b>"
+        f"{get_item_display('himoya')} Tinch axoli himoyasi: <b>{profile.himoya} ta</b>\n"
+        f"{get_item_display('qotildan_himoya')} Qotildan himoya: <b>{profile.qotildan_himoya} ta</b>\n"
+        f"{get_item_display('osishdan_himoya')} Osishdan himoya: <b>{profile.osishdan_himoya} ta</b>\n"
+        f"{get_item_display('doridan_himoya')} Doridan himoya: <b>{profile.doridan_himoya} ta</b>\n"
+        f"{get_item_display('miltiq')} Miltiq: <b>{profile.miltiq} ta</b>\n"
+        f"{get_item_display('hujjat')} Hujjat: <b>{profile.hujjat} ta</b>\n"
+        f"{get_item_display('maska')} Maska: <b>{profile.maska} ta</b>\n"
+        f"{get_item_display('slip_himoya')} Slip himoya: <b>{profile.slip_himoya} ta</b>\n"
+        f"{get_item_display('geroy_himoya')} Geroy himoya: <b>{profile.geroy_himoya} ta</b>"
     )
 
     kb = InlineKeyboardBuilder()
