@@ -489,6 +489,10 @@ def build_vip_prefix(emoji_id: str = None, emoji_char: str = None) -> str:
     s_emoji_id = str(emoji_id).strip() if emoji_id and str(emoji_id).strip() else None
     s_emoji_char = str(emoji_char).strip() if emoji_char and str(emoji_char).strip() else None
 
+    # Agar s_emoji_char buyruq yoki oddiy so'z bo'lsa (masalan "/profile"), uni tozalaymiz
+    if s_emoji_char and (s_emoji_char.startswith("/") or any(c.isalnum() for c in s_emoji_char) or len(s_emoji_char) > 4):
+        s_emoji_char = None
+
     # 1. Agar foydalanuvchi emoji_id o'rnatmagan bo'lsa:
     if not s_emoji_id:
         if s_emoji_char:

@@ -65,6 +65,14 @@ async def get_profile(bot: Bot, message: Message):
 
     vip_obj = await VipUser.get_or_none(user=user)
     is_vip = bool(vip_obj)
+    if vip_obj and getattr(vip_obj, "emoji_char", None):
+        if str(vip_obj.emoji_char).startswith("/") or any(c.isalnum() for c in str(vip_obj.emoji_char)):
+            vip_obj.emoji_char = None
+            try:
+                await vip_obj.save(update_fields=["emoji_char"])
+            except Exception:
+                pass
+
     vip_prefix = get_vip_prefix(vip_obj)
     vip_text = f" ⭐ VIP {vip_prefix}".rstrip() if is_vip else ""
 
@@ -110,10 +118,8 @@ async def get_profile(bot: Bot, message: Message):
     lbl_partner = lbls.get('partner', 'Sizning parangiz')
     lbl_roles = lbls.get('active_roles', 'Faol rollar')
 
-    # HTML escape for all user-generated content
+    # HTML escape user name, while para_text and roles_text already contain proper escaped HTML
     safe_name = html.escape(user.full_name or "Unknown")
-    safe_roles = html.escape(roles_text)
-    safe_para = html.escape(para_text)
     
     text = (
         f"👤 <b>{safe_name}</b>{vip_text}\n\n"
@@ -130,8 +136,8 @@ async def get_profile(bot: Bot, message: Message):
         f"📦 {lbl_geroy}: <b>{profile.geroy_himoya}</b>\n\n"
         f"🎯 {lbl_wins}: <b>{profile.wins}</b>\n"
         f"📜 {lbl_games}: <b>{profile.games_count}</b>\n\n"
-        f"{lbl_partner}: {safe_para}\n\n"
-        f"🏙 {lbl_roles}: {safe_roles}"
+        f"{lbl_partner}: {para_text}\n\n"
+        f"🏙 {lbl_roles}: {roles_text}"
     )
     from keyboards.user_keyboards import profile_keyboards_on_private, profile_keyboards
     try:
@@ -875,9 +881,13 @@ async def start_giveaway_channel(message: Message, bot: Bot):
         f"{d_disp} {strs['reward']}\n\n"
         f"{strs['body']}"
     )
-    sent = await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
-    if message.from_user:
-        await send_big_giveaway_report(bot, message.from_user, message.chat, "Kanal giveaway", count)
+    try:
+        sent = await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+        if message.from_user:
+            await send_big_giveaway_report(bot, message.from_user, message.chat, "Kanal giveaway", count)
+    except Exception as e:
+        import logging
+        logging.warning(f"start_giveaway_channel failed: {e}")
 
 async def giveaway_callback_channel(call: CallbackQuery, bot: Bot):
     await _handle_interactive_giveaway_callback(call, bot, is_channel=True)
@@ -1201,9 +1211,20 @@ async def start_change_giveaway(message: Message, bot: Bot):
         "tr": f"Biri <b>{count} {unit_disp}</b> kazanabilir!\n\nKatılımcılar:\n<i>Henüz kimse katılmadı</i>\n\nKatılımcı sayısı: 0/{max_participants}",
         "kk": f"Біреу <b>{count} {unit_disp}</b> ұтып алуы мүмкін!\n\nҚатысушылар:\n<i>Әлі ешкім қатыспады</i>\n\nҚатысушылар саны: 0/{max_participants}"
     }
-    await message.answer(msg_map.get(c_lang, msg_map["uz"]), reply_markup=kb.as_markup(), parse_mode="HTML")
-    if message.from_user:
-        await send_big_giveaway_report(bot, message.from_user, message.chat, "Almashtirish konkursi", count)
+    try:
+        await message.answer(msg_map.get(c_lang, msg_map["uz"]), reply_markup=kb.as_markup(), parse_mode="HTML")
+        if message.from_user:
+            await send_big_giveaway_report(bot, message.from_user, message.chat, "Almashtirish konkursi", count)
+    except Exception as e:
+        import logging
+        logging.warning(f"start_change_giveaway failed in chat {message.chat.id}: {e}")
+        if not is_channel and not is_admin and message.from_user and 'p_db' in locals():
+            if is_diamond:
+                p_db.diamond += count
+            else:
+                p_db.dollar += count
+            await p_db.save()
+        return
 
 async def change_giveaway_callback(call: CallbackQuery, bot: Bot):
     user = call.from_user
@@ -1550,14 +1571,23 @@ async def start_money_giveaway(message: Message, bot: Bot, is_dollar: bool = Fal
 
     _money_giveaways[game_id] = data
 
-    text, kb = _build_mgive_text_and_kb(data, winners=[], is_ended=False)
-    sent = await message.answer(text, reply_markup=kb, parse_mode="HTML")
-    if sent:
-        data["msg_id"] = sent.message_id
-
-    if message.from_user:
-        label = "Pul giveaway" if is_dollar else "Olmos giveaway"
-        await send_big_giveaway_report(bot, message.from_user, message.chat, label, actual_total)
+    try:
+        sent = await message.answer(text, reply_markup=kb, parse_mode="HTML")
+        if sent:
+            data["msg_id"] = sent.message_id
+        if message.from_user:
+            label = "Pul giveaway" if is_dollar else "Olmos giveaway"
+            await send_big_giveaway_report(bot, message.from_user, message.chat, label, actual_total)
+    except Exception as e:
+        import logging
+        logging.warning(f"start_money_giveaway failed in chat {message.chat.id}: {e}")
+        if not is_channel and not is_admin and message.from_user and 'p_db' in locals():
+            if not is_dollar:
+                p_db.diamond += actual_total
+            else:
+                p_db.dollar += actual_total
+            await p_db.save()
+        return
 
 
 async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
