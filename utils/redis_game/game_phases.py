@@ -6,6 +6,7 @@ import html
 import asyncio
 from datetime import datetime, timezone
 
+from typing import Optional
 from aiogram import Bot
 from aiogram.types import Message
 
@@ -279,72 +280,87 @@ async def execute_day_phase_redis(
     players: list,
     bot: Bot,
     chat: Chat,
-    message: Message,
+    message: Optional[Message],
     game_times: GameSetTime,
-    paralar=None
+    paralar=None,
+    resume_from_voting: bool = False
 ):
     """
     Kun fazasini amalga oshirish.
     """
     from utils.redis_game.game_models_schema import GamePhaseState
-    
-    morning_phase = GamePhaseState(
-        game_id=game_id,
-        phase_num=day_number,
-        phase_type="morning",
-        is_end=False,
-        created_at=datetime.now(timezone.utc)
-    )
 
-    try:
-        from utils.redis_game.presentation import send_day_presentation
-        await send_day_presentation(bot, chat.chat_id, int(game_id), day_number)
-    except Exception as e:
-        print(f"Kunni taqdim etishda xato: {e}")
+    if not resume_from_voting:
+        morning_phase = GamePhaseState(
+            game_id=game_id,
+            phase_num=day_number,
+            phase_type="morning",
+            is_end=False,
+            created_at=datetime.now(timezone.utc)
+        )
 
-    try:
-        from utils.redis_game.night_engine import flush_pending_deaths
-        await flush_pending_deaths(int(game_id), bot, chat)
-    except Exception as e:
-        print(f"Tunda o'lganlar xabarini yuborishda xato: {e}")
-
-    if paralar and "para" in (await game_repo.load_game(game_id)).mode:
-        await check_paralar_lst_redis(game_id, paralar, bot, chat)
-    
-    more_set, _ = await GroupMoreSet.get_or_create(chat_id=chat.chat_id)
-    weapons_set, _ = await GameSetWeapons.get_or_create(chat_id=chat.chat_id)
-    
-    # Show players list
-    try:
-        from utils.i18n import get_chat_lang
-        chat_lang = await get_chat_lang(chat.chat_id)
-        players_text = await _alive_players_text(players, dawn=True, lang=chat_lang)
-        from utils.telegram_utils import send_long_message
-        await send_long_message(bot, chat.chat_id, players_text, parse_mode="HTML", disable_web_page_preview=True)
-    except Exception as e:
-        print(f"O'yinchilar ro'yxatini ko'rsatishda xato: {e}")
-    
-    if weapons_set.geroy:
         try:
-            pass
+            from utils.redis_game.presentation import send_day_presentation
+            await send_day_presentation(bot, chat.chat_id, int(game_id), day_number)
         except Exception as e:
-            print(f"Geroy xabarini yuborishda xato: {e}")
-    
-    await asyncio.sleep(game_times.day_time)
-    
-    game_state = await game_repo.load_game(game_id)
-    if not game_state or not game_state.is_active:
-        return
-    
-    morning_phase.is_end = True
-    
-    if "para" not in (await game_repo.load_game(game_id)).mode:
+            print(f"Kunni taqdim etishda xato: {e}")
+
         try:
-            pass
+            from utils.redis_game.night_engine import flush_pending_deaths
+            await flush_pending_deaths(int(game_id), bot, chat)
         except Exception as e:
-            print(f"Geroy natijalarini ko'rsatishda xato: {e}")
-    
+            print(f"Tunda o'lganlar xabarini yuborishda xato: {e}")
+
+        if paralar and "para" in (await game_repo.load_game(game_id)).mode:
+            await check_paralar_lst_redis(game_id, paralar, bot, chat)
+
+        more_set, _ = await GroupMoreSet.get_or_create(chat_id=chat.chat_id)
+        weapons_set, _ = await GameSetWeapons.get_or_create(chat_id=chat.chat_id)
+
+        # Show players list
+        try:
+            from utils.i18n import get_chat_lang
+            chat_lang = await get_chat_lang(chat.chat_id)
+            players_text = await _alive_players_text(players, dawn=True, lang=chat_lang)
+            from utils.telegram_utils import send_long_message
+            await send_long_message(bot, chat.chat_id, players_text, parse_mode="HTML", disable_web_page_preview=True)
+        except Exception as e:
+            print(f"O'yinchilar ro'yxatini ko'rsatishda xato: {e}")
+
+        if weapons_set.geroy:
+            try:
+                pass
+            except Exception as e:
+                print(f"Geroy xabarini yuborishda xato: {e}")
+
+        await asyncio.sleep(game_times.day_time)
+
+        game_state = await game_repo.load_game(game_id)
+        if not game_state or not game_state.is_active:
+            return
+
+        morning_phase.is_end = True
+
+        if "para" not in (await game_repo.load_game(game_id)).mode:
+            try:
+                pass
+            except Exception as e:
+                print(f"Geroy natijalarini ko'rsatishda xato: {e}")
+
     # Voting message
+    if resume_from_voting:
+        try:
+            from utils.redis_game.services.vote_service import VoteService
+            await VoteService.clear_votes(int(game_id), day_number)
+            await VoteService.clear_vote_likes(int(game_id), day_number)
+        except Exception:
+            pass
+
+    try:
+        await r.set(f"game:{game_id}:day:{day_number}:voting_started", "1", ex=3600)
+    except Exception:
+        pass
+
     vote_url = BOT_URL if BOT_URL and BOT_URL.startswith("http") else "https://t.me/Empire_testbot"
     from utils.i18n import get_chat_lang
     chat_lang = await get_chat_lang(chat.chat_id)
@@ -352,7 +368,8 @@ async def execute_day_phase_redis(
         "uz": f"<b>Aybdorlarni aniqlash va jazolash vaqti keldi.</b>\nOvoz berish uchun {game_times.vote_time} sekund\n<a href='{vote_url}'>Ovoz berish</a>",
         "ru": f"<b>Время найти и наказать виновных.</b>\nНа голосование даётся {game_times.vote_time} сек.\n<a href='{vote_url}'>Голосовать</a>",
         "en": f"<b>It is time to find and punish the guilty.</b>\nVoting time: {game_times.vote_time} seconds\n<a href='{vote_url}'>Vote</a>",
-        "tr": f"<b>Suçluları bulma ve cezalandırma zamanı.</b>\nOy verme süresi: {game_times.vote_time} saniye\n<a href='{vote_url}'>Oy Ver</a>"
+        "tr": f"<b>Suçluları bulma ve cezalandırma zamanı.</b>\nOy verme süresi: {game_times.vote_time} saniye\n<a href='{vote_url}'>Oy Ver</a>",
+        "kk": f"<b>Кінәлілерді анықтау және жазалау уақыты келді.</b>\nДауыс беру үшін {game_times.vote_time} секунд\n<a href='{vote_url}'>Дауыс беру</a>"
     }
     await bot.send_message(
         chat.chat_id,
@@ -464,3 +481,8 @@ async def execute_day_phase_redis(
     
     # Check joker card selection penalty
     # TODO: joker_card_penalty_redis
+
+    try:
+        await r.delete(f"game:{game_id}:day:{day_number}:voting_started")
+    except Exception:
+        pass

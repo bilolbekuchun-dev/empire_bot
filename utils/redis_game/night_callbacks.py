@@ -8,6 +8,7 @@ Callback formatlari:
 """
 import html
 import asyncio
+from typing import Optional
 
 from aiogram import Router, F, Bot
 from aiogram.types import CallbackQuery
@@ -496,11 +497,14 @@ _DAY_VOTE_BUFFERS: dict[int, list[str]] = {}
 _DAY_VOTE_TASKS: dict[int, asyncio.Task] = {}
 _DAY_VOTE_LOCK = asyncio.Lock()
 
+
 async def flush_day_votes(gid: int, bot=None) -> None:
+    """Bufferda yig'ilgan ovozlarni guruhlab yuborish (True Mafia uslubida)."""
     async with _DAY_VOTE_LOCK:
         items = _DAY_VOTE_BUFFERS.pop(gid, [])
+        curr_task = asyncio.current_task()
         task = _DAY_VOTE_TASKS.pop(gid, None)
-        if task and not task.done():
+        if task and task is not curr_task and not task.done():
             task.cancel()
 
     if not items:
@@ -521,12 +525,25 @@ async def flush_day_votes(gid: int, bot=None) -> None:
     except Exception as e:
         print(f"Error flushing day votes for game {gid}: {e}")
 
-async def _announce_day_vote(call: CallbackQuery, gid: int, uid: int, target_uid=None, *, skipped: bool = False) -> None:
-    """Kunduzgi ovoz e'loni — ovozlar umumlashtirilib (batch/debounce) guruhga e'lon qilinadi."""
+
+async def _announce_day_vote(call: CallbackQuery, gid: int, uid: int, target_uid=None, *, skipped: bool = False, day: Optional[int] = None) -> None:
+    """Kunduzgi ovoz e'loni — ovozlar umumlashtirilib (True Mafia kabi debounced batch) guruhga e'lon qilinadi."""
     try:
         game_state = await game_repo.load_game(gid)
-        if not game_state:
+        if not game_state or not game_state.chat_id:
             return
+
+        if day is None:
+            day_raw = await r.get(f"game:{gid}:day_num")
+            day = int(day_raw) if day_raw is not None else 0
+
+        dup_key = f"game:{gid}:day:{day}:vote_announced:{uid}"
+        try:
+            first_time = await r.set(dup_key, "1", nx=True, ex=7200)
+            if not first_time:
+                return
+        except Exception:
+            pass
 
         player = await player_repo.load_player(gid, uid)
         is_janob = player and player.role == RoleNames.JANOB
@@ -537,38 +554,29 @@ async def _announce_day_vote(call: CallbackQuery, gid: int, uid: int, target_uid
             target = await _player_mention(int(target_uid))
             text = f"{voter} - {target}ga ovoz berdi"
 
+        should_flush = False
         async with _DAY_VOTE_LOCK:
             if gid not in _DAY_VOTE_BUFFERS:
                 _DAY_VOTE_BUFFERS[gid] = []
             _DAY_VOTE_BUFFERS[gid].append(text)
 
-            # Agar 10 ta ovoz yig'ilsa, zudlik bilan yuborish
-            if len(_DAY_VOTE_BUFFERS[gid]) >= 10:
-                items = _DAY_VOTE_BUFFERS.pop(gid, [])
-                task = _DAY_VOTE_TASKS.pop(gid, None)
-                if task and not task.done():
-                    task.cancel()
-                try:
-                    await call.bot.send_message(
-                        game_state.chat_id,
-                        "\n".join(items),
-                        parse_mode="HTML",
-                        disable_web_page_preview=True,
-                    )
-                except Exception as e:
-                    print(f"Error sending batch day votes: {e}")
-                return
-
-            # Belgilangan vaqt (2.0s) ichida kelgan ovozlarni birlashtirib yuborish
-            if gid not in _DAY_VOTE_TASKS or _DAY_VOTE_TASKS[gid].done():
-                async def _delayed_flush():
+            # Agar 6 ta ovoz yig'ilsa, zudlik bilan guruhlab yuborish
+            if len(_DAY_VOTE_BUFFERS[gid]) >= 6:
+                should_flush = True
+            elif gid not in _DAY_VOTE_TASKS or _DAY_VOTE_TASKS[gid].done():
+                # Debounced grouping: 2 soniya ichidagi ovozlarni birlashtirib yuborish
+                async def _delayed_flush(target_gid=gid, target_bot=call.bot):
                     try:
                         await asyncio.sleep(2.0)
-                        await flush_day_votes(gid, call.bot)
+                        await flush_day_votes(target_gid, target_bot)
                     except asyncio.CancelledError:
                         pass
 
                 _DAY_VOTE_TASKS[gid] = asyncio.create_task(_delayed_flush())
+
+        if should_flush:
+            await flush_day_votes(gid, call.bot)
+            return
 
     except Exception as e:
         print(f"Error in _announce_day_vote: {e}")
@@ -623,7 +631,7 @@ async def day_vote_cb(call: CallbackQuery, bot=None):
 
     if target == "s":
         await VoteService.save_vote(gid, day, uid, 0)
-        await _announce_day_vote(call, gid, uid, skipped=True)
+        await _announce_day_vote(call, gid, uid, skipped=True, day=day)
         await call.answer("Hech kimni tanlamaslikka qaror qildingiz!")
         group_markup = await _get_go_group_markup(call.bot, gid)
         try:
@@ -652,7 +660,7 @@ async def day_vote_cb(call: CallbackQuery, bot=None):
 
     await VoteService.save_vote(gid, day, uid, target_id)
     name = await _player_name(target_id)
-    await _announce_day_vote(call, gid, uid, target_id)
+    await _announce_day_vote(call, gid, uid, target_id, day=day)
     await call.answer(f"Siz {name}ga ovoz berdingiz!")
     text = f"Siz {name}ga ovoz berdingiz!"
     group_markup = await _get_go_group_markup(call.bot, gid)

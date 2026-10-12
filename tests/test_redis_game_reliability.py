@@ -729,3 +729,49 @@ async def test_jin_full_lifecycle_wishes():
 
     reloaded_victim = await player_repository.load_player(gid, 403)
     assert reloaded_victim.is_alive is False, "Victim killed by Jin must be dead!"
+
+
+# --------------------------------------------------------------------------
+# PHASE RESUME TESTS — auto resumption on bot restart
+# --------------------------------------------------------------------------
+async def test_vote_service_clear_votes():
+    gid = await _new_game(chat_id=8801)
+    await _join_many(gid, [501, 502])
+    await vote_service.save_vote(gid, 1, 501, 502)
+    votes = await vote_service.get_all_votes(gid, 1)
+    assert votes == {501: 502}
+
+    await vote_service.clear_votes(gid, 1)
+    cleared = await vote_service.get_all_votes(gid, 1)
+    assert cleared == {}
+
+
+async def test_resume_active_games_night_detection(monkeypatch):
+    from utils.game_logic import resume_active_games
+    from utils.redis_game.game_models_schema import GameState
+
+    gid = await _new_game(chat_id=8802)
+    await _join_many(gid, [511, 512, 513])
+
+    # Mark game as active in night phase
+    st = await game_repository.load_game(gid)
+    st.phase = "night"
+    st.is_active = True
+    await game_repository.save_game(st)
+    await redis_client.set(f"game:{gid}:night_num", "2")
+
+    started_tasks = []
+    async def mock_starting_game_redis(game_id, message, bot, start=False, paralar=None, is_resumed=False):
+        started_tasks.append((game_id, is_resumed))
+
+    from utils.redis_game import handlers
+    monkeypatch.setattr(handlers, "starting_game_redis", mock_starting_game_redis)
+
+    from unittest.mock import MagicMock
+    bot = MagicMock()
+    await resume_active_games(bot)
+
+    # Let the background task execute
+    await asyncio.sleep(0.05)
+
+    assert (str(gid), True) in started_tasks
