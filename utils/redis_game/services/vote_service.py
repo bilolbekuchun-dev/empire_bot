@@ -279,6 +279,11 @@ class VoteService:
         """Barcha vote like'larni tozalash."""
         await r.delete(f"game:{game_id}:phase:{phase_id}:vote_likes")
 
+    @staticmethod
+    async def clear_votes(game_id: int, phase_id: int):
+        """Barcha ovozlarni tozalash."""
+        await r.delete(f"game:{game_id}:phase:{phase_id}:votes")
+
 
 # Global instance
 vote_service = VoteService()

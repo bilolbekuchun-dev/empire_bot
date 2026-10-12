@@ -56,10 +56,103 @@ async def safe_send_message(bot: Bot, chat_id: int, text: str, reply_markup=None
 
 
 async def resume_active_games(bot: Bot):
-    """Bot qayta yoqilganda faol o'yinlarni tiklash"""
+    """Bot qayta yoqilganda barcha to'xtab qolgan faol o'yinlarni fazasidan davom ettirish."""
+    from datetime import datetime, timezone
+    from utils.database import redis_client as r
+    from utils.redis_game.game_models_crud import game_repo
+    from utils.redis_game.repositories.player_repository import player_repository as player_repo
+    from utils.redis_game.win_conditions import cleanup_game_redis
+    from utils.redis_game.handlers import starting_game_redis
+
     try:
-        active_games = await Game.filter(is_active=True).all()
-        print(f"🔄 Tiklanayotgan faol o'yinlar soni: {len(active_games)} ta")
+        active_game_ids = set()
+
+        # 1. global:active_games dan olish
+        try:
+            g_active = await r.smembers("global:active_games")
+            for gid_raw in g_active:
+                gid_str = gid_raw.decode() if isinstance(gid_raw, bytes) else str(gid_raw)
+                if gid_str and gid_str.isdigit():
+                    active_game_ids.add(int(gid_str))
+        except Exception as ge:
+            print(f"⚠️ global:active_games scan xatosi: {ge}")
+
+        # 2. chat:*:active_games orqali tekshirish
+        try:
+            cursor = 0
+            while True:
+                cursor, keys = await r.scan(cursor, match="chat:*:active_games", count=100)
+                for k in keys:
+                    key_str = k.decode() if isinstance(k, bytes) else str(k)
+                    members = await r.smembers(key_str)
+                    for m in members:
+                        m_str = m.decode() if isinstance(m, bytes) else str(m)
+                        if m_str and m_str.isdigit():
+                            active_game_ids.add(int(m_str))
+                if cursor == 0:
+                    break
+        except Exception as ce:
+            print(f"⚠️ chat:*:active_games scan xatosi: {ce}")
+
+        # 3. game:*:state orqali ham tekshirish
+        try:
+            cursor = 0
+            while True:
+                cursor, keys = await r.scan(cursor, match="game:*:state", count=100)
+                for k in keys:
+                    key_str = k.decode() if isinstance(k, bytes) else str(k)
+                    parts = key_str.split(":")
+                    if len(parts) == 3 and parts[1].isdigit():
+                        active_game_ids.add(int(parts[1]))
+                if cursor == 0:
+                    break
+        except Exception as se:
+            print(f"⚠️ game:*:state scan xatosi: {se}")
+
+        print(f"🔄 Redisda topilgan potentsial o'yinlar: {len(active_game_ids)} ta")
+
+        resumed_count = 0
+        for gid in active_game_ids:
+            try:
+                game_state = await game_repo.load_game(gid)
+                if not game_state or not game_state.is_active:
+                    continue
+
+                # Agar o'yin kutish (lobby) rejimida bo'lsa
+                if game_state.phase == "waiting":
+                    # Agar 3 soatdan oshib ketgan bo'lsa, eskirgan deb tozalaymiz
+                    time_diff = (datetime.now(timezone.utc) - game_state.created_at).total_seconds()
+                    if time_diff > 10800:
+                        await cleanup_game_redis(str(gid))
+                    continue
+
+                # Agar o'yin tun yoki kun fazasida bo'lsa
+                if game_state.phase in ("night", "day"):
+                    players = await player_repo.get_alive_players(gid)
+                    if len(players) < 2:
+                        await cleanup_game_redis(str(gid))
+                        continue
+
+                    # Concurrency check
+                    is_running = await r.get(f"game:{gid}:loop_active")
+                    if is_running:
+                        continue
+
+                    print(f"▶️ O'yin tiklanmoqda: Game ID={gid}, Chat ID={game_state.chat_id}, Phase={game_state.phase}")
+                    asyncio.create_task(
+                        starting_game_redis(
+                            game_id=str(gid),
+                            message=None,
+                            bot=bot,
+                            start=False,
+                            is_resumed=True
+                        )
+                    )
+                    resumed_count += 1
+            except Exception as item_err:
+                print(f"⚠️ O'yin {gid} ni tiklashda xatolik: {item_err}")
+
+        print(f"✅ Muvaffaqiyatli tiklangan o'yinlar soni: {resumed_count} ta")
     except Exception as e:
         print(f"⚠️ Active games resume xatosi: {e}")
 

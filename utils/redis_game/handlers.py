@@ -853,10 +853,18 @@ async def _start_game_handler_redis_impl(message: Message, bot: Bot, state):
         create_task(starting_game_redis(active_game_id, message, bot, start=True))
 
 
-async def starting_game_redis(game_id: str, message: Optional[Message], bot: Bot, start=False, paralar=None):
+async def starting_game_redis(
+    game_id: str,
+    message: Optional[Message],
+    bot: Bot,
+    start: bool = False,
+    paralar=None,
+    is_resumed: bool = False
+):
     """
     Redis version of starting_game - main game loop.
     Handles game initialization, role assignment, and game phases.
+    Supports auto-resumption of in-progress games after bot restart.
     """
     import asyncio
     from collections import defaultdict
@@ -865,134 +873,240 @@ async def starting_game_redis(game_id: str, message: Optional[Message], bot: Bot
     if not game_state:
         return
 
-    # ── Atomic start-guard ───────────────────────────────────────────────────
-    # Use Redis SET NX so that even if /start, autostart-timer, and
-    # max-players trigger all fire at the same millisecond, exactly ONE of
-    # them proceeds.  The key has a short TTL so it never leaks.
-    if start:
-        _lock_key = f"game:{game_id}:starting_lock"
-        _acquired = await redis_client.set(_lock_key, "1", nx=True, ex=30)
-        if not _acquired:
-            # Another coroutine already claimed the start slot → bail out.
-            return
-        # Extra safety: re-read fresh state inside the critical window.
-        game_state = await game_repo.load_game(game_id)
-        if not game_state or game_state.phase != "waiting":
-            await redis_client.delete(_lock_key)
-            return
-    # ─────────────────────────────────────────────────────────────────────────
+    # Loop concurrency guard: bir o'yin uchun bir vaqtning o'zida faqat bitta loop ishlashini ta'minlash
+    _loop_key = f"game:{game_id}:loop_active"
+    _loop_acquired = await redis_client.set(_loop_key, "1", nx=True, ex=7200)
+    if not _loop_acquired:
+        # Loop allaqachon boshqa coroutine tomonidan boshqarilmoqda
+        return
 
-    chat_id = game_state.chat_id
-    chat = await Chat.get(chat_id=chat_id)
-    game_times, _ = await GameSetTime.get_or_create(chat_id=chat_id)
+    try:
+        # ── Atomic start-guard ───────────────────────────────────────────────────
+        # Use Redis SET NX so that even if /start, autostart-timer, and
+        # max-players trigger all fire at the same millisecond, exactly ONE of
+        # them proceeds.  The key has a short TTL so it never leaks.
+        if start:
+            _lock_key = f"game:{game_id}:starting_lock"
+            _acquired = await redis_client.set(_lock_key, "1", nx=True, ex=30)
+            if not _acquired:
+                # Another coroutine already claimed the start slot → bail out.
+                return
+            # Extra safety: re-read fresh state inside the critical window.
+            game_state = await game_repo.load_game(game_id)
+            if not game_state or game_state.phase != "waiting":
+                await redis_client.delete(_lock_key)
+                return
+        # ─────────────────────────────────────────────────────────────────────────
 
-    if start:
-        # Mark game as started
-        game_state.phase = "night"
-        game_state.started_at = datetime.now(timezone.utc)
-        await game_repo.save_game(game_state)
-        
-        # Delete waiting message
-        try:
-            await bot.delete_message(chat_id, message_id=game_state.message_id)
-        except:
-            pass
-        # The lobby menu is gone -> drop the canonical pointer.
-        try:
-            from utils.redis_game.menu_manager import clear_canonical_message_id
-            await clear_canonical_message_id(chat_id)
-        except Exception as exc:
-            print(f"Canonical clear failed (chat={chat_id}): {exc}")
-        
-        # Get all players
-        players = await player_repo.get_alive_players(game_id)
-        # Ensure all players have User and Profile records
-        for player in players:
-            user = await User.get_or_none(user_id=player.user_id)
-            await Profile.get_or_create(
-                user=user,
-                defaults={
-                    "dollar": 0,
-                    "diamond": 0,
-                    "himoya": 0,
-                    "qotildan_himoya": 0,
-                    "osishdan_himoya": 0,
-                    "miltiq": 0,
-                    "wins": 0,
-                    "games_count": 0
-                }
+        chat_id = game_state.chat_id
+        chat = await Chat.get_or_none(chat_id=chat_id)
+        if not chat:
+            chat, _ = await Chat.get_or_create(
+                chat_id=chat_id,
+                defaults={"title": "Chat", "type": "supergroup"}
             )
-        
-        # Role assignment
-        await rol_taqsimlash_redis(players, bot, chat.chat_id, game_state.mode)
-        
-        # Role replacement check
-        # await check_and_replace_missing_roles_redis(players, bot, chat, game_id)
-    
-    # Initialize counters
-    night = 0
-    day = 0
-    
-    # Update created_at timestamp
-    game_state.created_at = datetime.now(timezone.utc)
-    await game_repo.save_game(game_state)
-    
-    # Main game loop
-    while game_state.phase != "end" and game_state.is_active:
-        # Reload game state
-        game_state = await game_repo.load_game(game_id)
-        if not game_state or not game_state.is_active:
-            break
-        
-        # Get alive players
-        players = await player_repo.get_alive_players(game_id)
-        
-        # Check win conditions
-        win_result = await check_win_conditions_redis(game_id, players, game_state, bot, chat)
-        if win_result:
-            # Game ended
-            break
-        
-        # Check if no players left
-        if len(players) == 0:
-            await announce_game_result_redis(
-                game_id, bot, chat,
-                winner_roles=[RoleNames.SUIDSID, RoleNames.QASOSKOR, RoleNames.GAZABDOR]
-            )
-            game_state.phase = "end"
-            game_state.is_active = False
-            await game_repo.save_game(game_state)
-            break
-        
-        # Phase execution
-        if game_state.phase == "night":
-            night += 1
-            await execute_night_phase_redis(
-                game_id, night, players, bot, chat, message, game_times, paralar
-            )
-            
-            # Update phase
-            game_state = await game_repo.load_game(game_id)
-            if not game_state or not game_state.is_active:
-                break
-            game_state.phase = "day"
-            await game_repo.save_game(game_state)
-        
-        elif game_state.phase == "day":
-            day += 1
-            await execute_day_phase_redis(
-                game_id, day, players, bot, chat, message, game_times, paralar
-            )
-            
-            # Update phase
-            game_state = await game_repo.load_game(game_id)
-            if not game_state or not game_state.is_active:
-                break
+        game_times, _ = await GameSetTime.get_or_create(chat_id=chat_id)
+
+        if start:
+            # Mark game as started
             game_state.phase = "night"
+            game_state.started_at = datetime.now(timezone.utc)
             await game_repo.save_game(game_state)
-    
-    # Game ended - cleanup
-    await cleanup_game_redis(game_id)
+            
+            # Delete waiting message
+            try:
+                await bot.delete_message(chat_id, message_id=game_state.message_id)
+            except Exception:
+                pass
+            # The lobby menu is gone -> drop the canonical pointer.
+            try:
+                from utils.redis_game.menu_manager import clear_canonical_message_id
+                await clear_canonical_message_id(chat_id)
+            except Exception as exc:
+                print(f"Canonical clear failed (chat={chat_id}): {exc}")
+            
+            # Get all players
+            players = await player_repo.get_alive_players(game_id)
+            # Ensure all players have User and Profile records
+            for player in players:
+                user = await User.get_or_none(user_id=player.user_id)
+                await Profile.get_or_create(
+                    user=user,
+                    defaults={
+                        "dollar": 0,
+                        "diamond": 0,
+                        "himoya": 0,
+                        "qotildan_himoya": 0,
+                        "osishdan_himoya": 0,
+                        "miltiq": 0,
+                        "wins": 0,
+                        "games_count": 0
+                    }
+                )
+            
+            # Role assignment
+            await rol_taqsimlash_redis(players, bot, chat.chat_id, game_state.mode)
+
+        # Initialize counters
+        if is_resumed:
+            raw_night = await redis_client.get(f"game:{game_id}:night_num")
+            raw_day = await redis_client.get(f"game:{game_id}:day_num")
+            night = int(raw_night) if raw_night and str(raw_night).isdigit() else 1
+            day = int(raw_day) if raw_day and str(raw_day).isdigit() else 1
+            first_resumed = True
+        else:
+            night = 0
+            day = 0
+            first_resumed = False
+
+        # Update created_at timestamp
+        if not is_resumed:
+            game_state.created_at = datetime.now(timezone.utc)
+            await game_repo.save_game(game_state)
+
+        # Main game loop
+        while game_state.phase != "end" and game_state.is_active:
+            # Refresh loop key TTL
+            await redis_client.expire(_loop_key, 7200)
+
+            # Reload game state
+            game_state = await game_repo.load_game(game_id)
+            if not game_state or not game_state.is_active:
+                break
+            
+            # Get alive players
+            players = await player_repo.get_alive_players(game_id)
+            
+            # Check win conditions
+            win_result = await check_win_conditions_redis(game_id, players, game_state, bot, chat)
+            if win_result:
+                # Game ended
+                break
+            
+            # Check if no players left
+            if len(players) == 0:
+                await announce_game_result_redis(
+                    game_id, bot, chat,
+                    winner_roles=[RoleNames.SUIDSID, RoleNames.QASOSKOR, RoleNames.GAZABDOR]
+                )
+                game_state.phase = "end"
+                game_state.is_active = False
+                await game_repo.save_game(game_state)
+                break
+            
+            # Phase execution
+            if game_state.phase == "night":
+                if not (is_resumed and first_resumed):
+                    night += 1
+                else:
+                    if night <= 0:
+                        night = 1
+                    try:
+                        await redis_client.delete(f"game:{game_id}:night:{night}:expected_users")
+                        await redis_client.delete(f"game:{game_id}:night:{night}:completed_users")
+                        await redis_client.delete(f"game:{game_id}:phase:{night}:action_keys")
+                        await redis_client.delete(f"game:{game_id}:pending_deaths")
+
+                        cur = 0
+                        while True:
+                            cur, keys = await redis_client.scan(cur, match=f"game:{game_id}:night:{night}:announced:*", count=100)
+                            if keys:
+                                await redis_client.delete(*keys)
+                            if cur == 0:
+                                break
+
+                        from utils.i18n import get_chat_lang, clean_lang
+                        chat_lang = clean_lang(await get_chat_lang(chat.chat_id))
+                        night_resume_texts = {
+                            "uz": "🔄 <b>Bot yangilandi! Bu tun qaytadan boshlanadi!</b>\nRollar o'z harakatlarini qaytadan bajaring.",
+                            "ru": "🔄 <b>Бот обновлен! Эта ночь начинается заново!</b>\nРоли, выполните свои действия заново.",
+                            "en": "🔄 <b>Bot has been updated! This night starts again!</b>\nRoles, please perform your actions again.",
+                            "tr": "🔄 <b>Bot güncellendi! Bu gece yeniden başlıyor!</b>\nRoller, hareketlerinizi yeniden yapın.",
+                            "kk": "🔄 <b>Бот жаңартылды! Бұл түн қайта басталады!</b>\nРөлдер, өз әрекеттеріңізді қайта орындаңыздар."
+                        }
+                        await bot.send_message(
+                            chat.chat_id,
+                            night_resume_texts.get(chat_lang, night_resume_texts["uz"]),
+                            parse_mode="HTML"
+                        )
+                    except Exception as ne_err:
+                        print(f"Night resume announcement error: {ne_err}")
+
+                await execute_night_phase_redis(
+                    game_id, night, players, bot, chat, message, game_times, paralar
+                )
+                
+                # Update phase
+                game_state = await game_repo.load_game(game_id)
+                if not game_state or not game_state.is_active:
+                    break
+                game_state.phase = "day"
+                await game_repo.save_game(game_state)
+                first_resumed = False
+            
+            elif game_state.phase == "day":
+                resume_from_voting = False
+                if not (is_resumed and first_resumed):
+                    day += 1
+                else:
+                    if day <= 0:
+                        day = 1
+                    try:
+                        was_voting = await redis_client.get(f"game:{game_id}:day:{day}:voting_started")
+                        from utils.redis_game.services.vote_service import VoteService
+                        existing_votes = await VoteService.get_all_votes(int(game_id), day)
+                        if was_voting or existing_votes:
+                            resume_from_voting = True
+
+                        from utils.i18n import get_chat_lang, clean_lang
+                        chat_lang = clean_lang(await get_chat_lang(chat.chat_id))
+
+                        if resume_from_voting:
+                            day_resume_texts = {
+                                "uz": "🔄 <b>Bot yangilandi! Ovoz berish bosqichidan davom etamiz!</b>\nOvozlaringizni qaytadan bering.",
+                                "ru": "🔄 <b>Бот обновлен! Продолжаем с этапа голосования!</b>\nОтдайте свои голоса заново.",
+                                "en": "🔄 <b>Bot has been updated! Resuming from voting phase!</b>\nPlease cast your votes again.",
+                                "tr": "🔄 <b>Bot güncellendi! Oylama aşamasından devam ediyoruz!</b>\nOylarınızı yeniden verin.",
+                                "kk": "🔄 <b>Бот жаңартылды! Дауыс беру кезеңінен жалғастырамыз!</b>\nДауыстарыңызды қайта беріңіздер."
+                            }
+                        else:
+                            day_resume_texts = {
+                                "uz": "🔄 <b>Bot yangilandi! Bu kun qaytadan boshlanadi!</b>",
+                                "ru": "🔄 <b>Бот обновлен! Этот день начинается заново!</b>",
+                                "en": "🔄 <b>Bot has been updated! This day starts again!</b>",
+                                "tr": "🔄 <b>Bot güncellendi! Bu gün yeniden başlıyor!</b>",
+                                "kk": "🔄 <b>Бот жаңартылды! Бұл күн қайта басталады!</b>"
+                            }
+
+                        await bot.send_message(
+                            chat.chat_id,
+                            day_resume_texts.get(chat_lang, day_resume_texts["uz"]),
+                            parse_mode="HTML"
+                        )
+                    except Exception as de_err:
+                        print(f"Day resume announcement error: {de_err}")
+
+                await execute_day_phase_redis(
+                    game_id, day, players, bot, chat, message, game_times, paralar,
+                    resume_from_voting=resume_from_voting
+                )
+                
+                # Update phase
+                game_state = await game_repo.load_game(game_id)
+                if not game_state or not game_state.is_active:
+                    break
+                game_state.phase = "night"
+                await game_repo.save_game(game_state)
+                first_resumed = False
+        
+        # Game ended - cleanup
+        await cleanup_game_redis(game_id)
+    finally:
+        try:
+            await redis_client.delete(_loop_key)
+        except Exception:
+            pass
+
 
 
 async def stop_game_handler_redis(message: Message, bot: Bot):
