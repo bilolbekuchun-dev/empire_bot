@@ -822,6 +822,7 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
     # --- O'lim nomzodlari ---
     dead_uids = []
     kill_sources: Dict[int, List[str]] = {}
+    direct_killers: Dict[int, List[int]] = {}
     qasoskor_revenge_queue = []
 
     kill_attempts = [
@@ -887,6 +888,11 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
                         kill_sources[target] = []
                     if killer not in kill_sources[target]:
                         kill_sources[target].append(killer)
+                if attacker_id and attacker_id != target:
+                    if target not in direct_killers:
+                        direct_killers[target] = []
+                    if attacker_id not in direct_killers[target]:
+                        direct_killers[target].append(attacker_id)
 
             # Qasoskor roli bo'lsa - hujum qilgan odamni qasosga yozib qo'yamiz
             target_p = by_uid.get(target)
@@ -902,6 +908,11 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
                 kill_sources[attacker_id] = []
             if RoleNames.QASOSKOR not in kill_sources[attacker_id]:
                 kill_sources[attacker_id].append(RoleNames.QASOSKOR)
+            if qasoskor_id and qasoskor_id != attacker_id:
+                if attacker_id not in direct_killers:
+                    direct_killers[attacker_id] = []
+                if qasoskor_id not in direct_killers[attacker_id]:
+                    direct_killers[attacker_id].append(qasoskor_id)
 
     # --- Zanjir: juftlikdan biri o'lsa, ikkinchisi ham ---
     for actor_uid, tgts in zanjir.items():
@@ -1018,30 +1029,60 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
             }.get(tgt_lang_raw, "🕵️ <b>Kimdir bu tun rolingizga juda qiziqdi...</b>")
             await _send_private(bot, tgt, tgt_notice)
         elif act_role == RoleNames.DAYDI:
-            tgt_p = by_uid.get(tgt)
             target_name = html.escape(names.get(tgt) or str(tgt))
-            if tgt_p and tgt_p.role:
-                tgt_disp = f"<b>{target_name}</b> {role_display(tgt_p.role)}"
-            else:
-                tgt_disp = f"<b>{target_name}</b>"
-
-            visitors = [
-                a["actor_id"] for a in valid_actions 
-                if a.get("target_id") == tgt and a.get("actor_id") != actor_uid
-            ]
-            if visitors:
+            act_lang = lang_map.get(actor_uid, "uz")
+            if tgt in dead_uids and tgt in direct_killers and direct_killers[tgt]:
                 vis_list = []
-                for v in visitors:
-                    v_p = by_uid.get(v)
-                    v_name = html.escape(names.get(v) or str(v))
-                    if v_p and v_p.role:
-                        vis_list.append(f"{role_display(v_p.role)} <b>{v_name}</b>")
+                for k_uid in direct_killers[tgt]:
+                    has_maska = False
+                    try:
+                        from models.user import User, Profile
+                        ku = await User.filter(user_id=k_uid).first()
+                        if ku:
+                            kp = await Profile.filter(user=ku).first()
+                            if kp and kp.maska > 0 and getattr(kp, "on_maska", True):
+                                kp.maska -= 1
+                                await kp.save()
+                                has_maska = True
+                    except Exception as e:
+                        logger.error(f"Error checking maska for killer {k_uid}: {e}")
+
+                    if has_maska:
+                        masked_text = {
+                            "uz": "🎭 <b>Niqoblangan shaxs</b>",
+                            "ru": "🎭 <b>Человек в маске</b>",
+                            "en": "🎭 <b>Masked person</b>",
+                            "tr": "🎭 <b>Maskeli kişi</b>",
+                            "kk": "🎭 <b>Бетперделі адам</b>",
+                        }.get(act_lang, "🎭 <b>Niqoblangan shaxs</b>")
+                        vis_list.append(masked_text)
                     else:
-                        vis_list.append(f"<b>{v_name}</b>")
+                        kp_obj = by_uid.get(k_uid)
+                        k_name = html.escape(names.get(k_uid) or str(k_uid))
+                        if kp_obj and kp_obj.role:
+                            vis_list.append(f"{role_display(kp_obj.role, lang=act_lang)} <b>{k_name}</b>")
+                        else:
+                            vis_list.append(f"<b>{k_name}</b>")
+
                 v_text = ", ".join(vis_list)
-                msg = f"🍾 Siz {tgt_disp} ning jasadi ustida {v_text} turganini ko'rdingiz!"
+                witness_msgs = {
+                    "uz": f"🍾 Siz <b>{target_name}</b> ning jasadi ustida {v_text} turganini ko'rdingiz!",
+                    "ru": f"🍾 Вы увидели, как {v_text} стоял(а) над телом <b>{target_name}</b>!",
+                    "en": f"🍾 You saw {v_text} standing over the corpse of <b>{target_name}</b>!",
+                    "tr": f"🍾 <b>{target_name}</b> cesedinin başında {v_text} durduğunu gördünüz!",
+                    "kk": f"🍾 Сіз <b>{target_name}</b> мәйітінің үстінде {v_text} тұрғанын көрдіңіз!",
+                }
+                msg = witness_msgs.get(act_lang, witness_msgs["uz"])
             else:
-                msg = f"🍾 Siz ichimlik idishini oldingiz va shubhali narsani ko'rmadingiz."
+                nothing_msgs = {
+                    "uz": "🍾 Siz ichimlik idishini oldingiz va shubhali narsani ko'rmadingiz.",
+                    "ru": "🍾 Вы взяли флягу с напитком и не заметили ничего подозрительного.",
+                    "en": "🍾 You took a sip from your flask and saw nothing suspicious.",
+                    "tr": "🍾 İçkinizi yudumladınız ve şüpheli bir şey görmediniz.",
+                    "kk": "🍾 Сіз сусын құтысын алып, күдікті ештеңе көрмедіңіз.",
+                }
+                msg = nothing_msgs.get(act_lang, nothing_msgs["uz"])
+
             await _send_private(bot, actor_uid, msg)
 
     # --- Konchi ---
