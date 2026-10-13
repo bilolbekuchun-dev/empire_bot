@@ -2611,8 +2611,9 @@ async def open_protections_menu(call: CallbackQuery):
 
 async def back_profile(call: CallbackQuery, state):
     from models.user import User, Profile
+    from utils.i18n import clean_lang, PROFILE_LABELS
     from keyboards.user_keyboards import profile_keyboards_on_private
-    from utils.i18n import clean_lang
+    from utils.premium_emojis import get_custom_emoji_id, get_diamond_display, get_dollar_display
     
     user = await User.filter(user_id=call.from_user.id).first()
     if not user:
@@ -2625,9 +2626,27 @@ async def back_profile(call: CallbackQuery, state):
     
     is_vip = user.is_vip if hasattr(user, 'is_vip') else False
     lang = clean_lang(user.lang if user else "uz")
+    l = lang
+    lbls = PROFILE_LABELS.get(l, PROFILE_LABELS["uz"])
+    
+    dia_id = get_custom_emoji_id("currency", "diamond")
+    dollar_id = get_custom_emoji_id("currency", "dollar")
+    
+    d_disp = get_diamond_display(profile.diamond)
+    dollar_disp = get_dollar_display(profile.dollar)
+    
+    # Build profile text
+    text = (
+        f'<tg-emoji emoji-id="{dia_id}">💎</tg-emoji> {lbls.get("lbl_diamond", "Olmos")}: <b>{d_disp}</b>\n'
+        f'<tg-emoji emoji-id="{dollar_id}">💵</tg-emoji> {lbls.get("lbl_dollar", "Dollar")}: <b>{dollar_disp}</b>\n\n'
+        f'<tg-emoji emoji-id="5364235172826885791">⭐️</tg-emoji> {lbls.get("lbl_wins", "G'alabalar")}: <b>{profile.wins}</b>\n'
+        f'<tg-emoji emoji-id="5361612652911048505">⭐️</tg-emoji> {lbls.get("lbl_games", "O'yinlar")}: <b>{profile.games_count}</b>\n\n'
+        f'<tg-emoji emoji-id="5287705169214066018">🤩</tg-emoji> {lbls.get("lbl_partner", "Jufti")}: {user.partner if user.partner else "Yo\'q"}\n\n'
+        f'<tg-emoji emoji-id="5364172633808087023">⭐️</tg-emoji> {lbls.get("lbl_roles", "Faol rollar")}: {user.active_roles if user.active_roles else "Yo\'q"}'
+    )
     
     kb = profile_keyboards_on_private(profile, is_vip=is_vip, lang=lang)
-    await call.message.edit_text("👤 Profil menyusi", reply_markup=kb, parse_mode="HTML")
+    await call.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
 
 async def get_diamond_hamyonlar(call: CallbackQuery):
     from aiogram.utils.keyboard import InlineKeyboardBuilder
