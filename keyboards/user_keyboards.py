@@ -201,19 +201,24 @@ def shop_keyboard(himoya_price, hujjat_price, osish_himoya_price, dori_himoya_pr
     }
     lbls = labels_map.get(l, labels_map["uz"])
 
-    builder.button(text=lbls["himoya"], callback_data="buy_himoya")
-    builder.button(text=lbls["hujjat"], callback_data="buy_hujjat")
-    builder.button(text=lbls["osish"], callback_data="buy_osish_himoya")
-    builder.button(text=lbls["miltiq"], callback_data="buy_miltiq")
-    builder.button(text=lbls["dori"], callback_data="buy_dori_himoya")
-    builder.button(text=lbls["maska"], callback_data="buy_maska")
-    builder.button(text=lbls["qotil"], callback_data="buy_qotildan_himoya")
-    builder.button(text=lbls["slip"], callback_data="buy_slip_himoya")
-    builder.button(text=lbls["geroy_him"], callback_data="buy_geroydan_himoya")
-    builder.button(text=lbls["replace"], callback_data="replace_profile")
-    builder.button(text=lbls["geroy"], callback_data="buy_geroy")
+    # Pul savdosi tugmalari - @zszali ga yonaltirish
+    builder.button(text=lbls["himoya"], url="https://t.me/zszali")
+    builder.button(text=lbls["hujjat"], url="https://t.me/zszali")
+    builder.button(text=lbls["dori"], url="https://t.me/zszali")
+    builder.button(text=lbls["maska"], url="https://t.me/zszali")
+    builder.button(text=lbls["replace"], url="https://t.me/zszali")
+    
+    # Olmos savdosi tugmalari - @zszali ga yonaltirish
+    builder.button(text=lbls["osish"], url="https://t.me/zszali")
+    builder.button(text=lbls["miltiq"], url="https://t.me/zszali")
+    builder.button(text=lbls["qotil"], url="https://t.me/zszali")
+    builder.button(text=lbls["slip"], url="https://t.me/zszali")
+    builder.button(text=lbls["geroy_him"], url="https://t.me/zszali")
+    builder.button(text=lbls["geroy"], url="https://t.me/zszali")
+    builder.button(text=lbls["active_role"], url="https://t.me/zszali")
+    
+    # Boshqa tugmalar
     builder.button(text=lbls["chests"], callback_data="open-sandiq")
-    builder.button(text=lbls["active_role"], callback_data="active_role")
     if is_vip:
         builder.button(text=lbls["vip_emoji"], callback_data="vip_emoji_change")
     builder.button(text=lbls["back"], callback_data="back_profile")
@@ -228,16 +233,11 @@ def active_role_keyboard(role_price: dict):
         # Telegram xato bermasligi uchun premium kodni qirqib, faqat ismini (masalan, " Bo'ri") olyapmiz:
         clean_role = role.split(">")[-1].strip() if "<tg-emoji" in role else role
 
-        if price < 10:
-            builder.button(
-                text=f"{role} - {price}💎",
-                callback_data=f"role-buy_{clean_role}"
-            )
-        else:
-            builder.button(
-                text=f"{role} - {price}💵",
-                callback_data=f"role-buy_{clean_role}"
-            )
+        # Barcha rol savdolari @zszali ga yonaltirish
+        builder.button(
+            text=f"{role} - {price}💎" if price < 10 else f"{role} - {price}💵",
+            url="https://t.me/zszali"
+        )
     builder.button(text="🗑 Faol rolni o'chirish - 100💵", callback_data="role-del")
     builder.button(text="⬅️ Orqaga", callback_data="back_shop")
     builder.adjust(2)
