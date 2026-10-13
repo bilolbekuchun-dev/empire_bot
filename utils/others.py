@@ -2610,10 +2610,12 @@ async def open_protections_menu(call: CallbackQuery):
     await call.answer()
 
 async def back_profile(call: CallbackQuery, state):
-    from models.user import User, Profile
+    from models.user import User, Profile, VipUser, ActiveRole, Paralar
     from utils.i18n import clean_lang, PROFILE_LABELS
     from keyboards.user_keyboards import profile_keyboards_on_private
-    from utils.premium_emojis import get_custom_emoji_id, get_diamond_display, get_dollar_display
+    from utils.premium_emojis import get_custom_emoji_id, get_diamond_display, get_dollar_display, get_vip_prefix, get_item_display
+    import html
+    from tortoise.expressions import Q
     
     user = await User.filter(user_id=call.from_user.id).first()
     if not user:
@@ -2624,35 +2626,84 @@ async def back_profile(call: CallbackQuery, state):
     if not profile:
         profile = await Profile.create(user=user, dollar=0, diamond=0)
     
-    is_vip = user.is_vip if hasattr(user, 'is_vip') else False
-    lang = clean_lang(user.lang if user else "uz")
-    l = lang
-    lbls = PROFILE_LABELS.get(l, PROFILE_LABELS["uz"])
+    vip_obj = await VipUser.get_or_none(user=user)
+    is_vip = bool(vip_obj)
+    if vip_obj and getattr(vip_obj, "emoji_char", None):
+        if str(vip_obj.emoji_char).startswith("/") or any(c.isalnum() for c in str(vip_obj.emoji_char)):
+            vip_obj.emoji_char = None
+            try:
+                await vip_obj.save(update_fields=["emoji_char"])
+            except Exception:
+                pass
     
-    dia_id = get_custom_emoji_id("currency", "diamond")
-    dollar_id = get_custom_emoji_id("currency", "dollar")
+    vip_prefix = get_vip_prefix(vip_obj)
+    vip_text = f" ⭐ VIP {vip_prefix}".rstrip() if is_vip else ""
+    
+    lang = clean_lang(user.lang if user else "uz")
+    lbls = PROFILE_LABELS.get(lang, PROFILE_LABELS["uz"])
     
     d_disp = get_diamond_display()
     dollar_disp = get_dollar_display()
     
-    # Default labels
-    lbl_diamond = lbls.get("lbl_diamond", "Olmos")
-    lbl_dollar = lbls.get("lbl_dollar", "Dollar")
-    lbl_wins = lbls.get("lbl_wins", "G'alabalar")
-    lbl_games = lbls.get("lbl_games", "O'yinlar")
-    lbl_partner = lbls.get("lbl_partner", "Jufti")
-    lbl_roles = lbls.get("lbl_roles", "Faol rollar")
+    # Labels
+    lbl_dollar = lbls.get('dollar', 'Dollar')
+    lbl_diamond = lbls.get('diamond', 'Olmos')
+    lbl_himoya = lbls.get('himoya', 'Himoya')
+    lbl_hujjat = lbls.get('hujjat', 'Hujjat')
+    lbl_osish = lbls.get('osishdan_himoya', 'Osishdan himoya')
+    lbl_qotil = lbls.get('qotildan_himoya', 'Qotildan himoya')
+    lbl_miltiq = lbls.get('miltiq', 'Miltiq')
+    lbl_dori = lbls.get('doridan_himoya', 'Doridan himoya')
+    lbl_maska = lbls.get('maska', 'Maska')
+    lbl_slip = lbls.get('slip_himoya', 'Sirpanishdan himoya')
+    lbl_geroy = lbls.get('geroy_himoya', 'Geroydan himoya')
+    lbl_wins = lbls.get('wins', "G'alaba")
+    lbl_games = lbls.get('games', "Barcha o'yinlar")
+    lbl_partner = lbls.get('partner', 'Sizning parangiz')
+    lbl_roles = lbls.get('active_roles', 'Faol rollar')
     
-    partner_text = user.partner if user.partner else "Yo'q"
-    roles_text = user.active_roles if user.active_roles else "Yo'q"
+    none_val = lbls.get("none", "Yo'q")
+    none_str = f"<i>{none_val}</i>"
     
-    # Build profile text
+    # Partner
+    para = await Paralar.filter(Q(user1=user) | Q(user2=user)).prefetch_related("user1", "user2").first()
+    if para:
+        partner = para.user2 if para.user1_id == user.id else para.user1
+        if partner:
+            p_name = html.escape(partner.full_name or lbls.get("user", "Foydalanuvchi"))
+            para_text = f'<a href="tg://user?id={partner.user_id}">{p_name}</a>'
+        else:
+            para_text = none_str
+    else:
+        para_text = none_str
+    
+    # Active roles
+    active_roles = await ActiveRole.filter(profile=profile, is_active=True).all()
+    if active_roles:
+        roles_text = ", ".join(html.escape(r.role) for r in active_roles)
+    else:
+        roles_text = none_str
+    
+    # Safe name
+    safe_name = html.escape(user.full_name or "Unknown")
+    
+    # Build profile text - same format as get_profile
     text = (
-        f'<tg-emoji emoji-id="{dia_id}">💎</tg-emoji> {lbl_diamond}: <b>{profile.diamond} {d_disp}</b>\n'
-        f'<tg-emoji emoji-id="{dollar_id}">💵</tg-emoji> {lbl_dollar}: <b>{profile.dollar} {dollar_disp}</b>\n\n'
+        f'<tg-emoji emoji-id="5361893895959524356">⭐️</tg-emoji> <b>{safe_name}</b>{vip_text}\n\n'
+        f"{dollar_disp} {lbl_dollar}: <b>{profile.dollar:,}</b>\n"
+        f"{d_disp} {lbl_diamond}: <b>{profile.diamond:,}</b>\n\n"
+        f"{get_item_display('himoya')} {lbl_himoya}: <b>{profile.himoya}</b>\n"
+        f"{get_item_display('hujjat')} {lbl_hujjat}: <b>{profile.hujjat}</b>\n"
+        f"{get_item_display('osishdan_himoya')} {lbl_osish}: <b>{profile.osishdan_himoya}</b>\n"
+        f"{get_item_display('qotildan_himoya')} {lbl_qotil}: <b>{profile.qotildan_himoya}</b>\n"
+        f"{get_item_display('miltiq')} {lbl_miltiq}: <b>{profile.miltiq}</b>\n"
+        f"{get_item_display('doridan_himoya')} {lbl_dori}: <b>{profile.doridan_himoya}</b>\n"
+        f"{get_item_display('maska')} {lbl_maska}: <b>{profile.maska}</b>\n"
+        f"{get_item_display('slip_himoya')} {lbl_slip}: <b>{profile.slip_himoya}</b>\n"
+        f"{get_item_display('geroy_himoya')} {lbl_geroy}: <b>{profile.geroy_himoya}</b>\n\n"
         f'<tg-emoji emoji-id="5364235172826885791">⭐️</tg-emoji> {lbl_wins}: <b>{profile.wins}</b>\n'
         f'<tg-emoji emoji-id="5361612652911048505">⭐️</tg-emoji> {lbl_games}: <b>{profile.games_count}</b>\n\n'
-        f'<tg-emoji emoji-id="5287705169214066018">🤩</tg-emoji> {lbl_partner}: {partner_text}\n\n'
+        f'<tg-emoji emoji-id="5287705169214066018">🤩</tg-emoji> {lbl_partner}: {para_text}\n\n'
         f'<tg-emoji emoji-id="5364172633808087023">⭐️</tg-emoji> {lbl_roles}: {roles_text}'
     )
     
