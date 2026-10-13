@@ -2031,13 +2031,13 @@ async def show_shop(call: CallbackQuery):
             f"🛡️ <b>Himoya</b> - Sizni hayotingizni saqlab qoladi\n\n"
             f"📁 <b>Hujjat</b> - Komissar sizni tekshirganda sizni Tinch aholi qilib ko'rsatadi.\n\n"
             f"⚖️ <b>Ovozdan himoya</b> - Sizni ovozdan keyin o'ldirishdan saqlab qoladi.\n\n"
-            f"🔫 <b>Miltiq</b> - Sizga o'yinda tong vaqtida ham otish imkonini beradi...\n\n"
+            f"🔫 <b>Miltiq</b> - Sizga o'yinda tong vaqtida ham otash imkonini beradi...\n\n"
             f"💊 <b>Doridan himoya</b> - sizni kezuvchining dorisidan himoya qiladi\n\n"
             f"🎭 <b>Maska</b> - Daydi sizni qotillik ustida ko'rib qolsa ham yuzingizni ko'rolmaydi\n\n"
             f"⛑️ <b>Qotildan himoya</b> - Sizni qotil hujumidan qutqaradi\n\n"
             f"🪤 <b>Sirpanishdan himoya</b> - Sizni konchi rolida sirpanishdan saqlab qoladi.\n\n"
             f"🔰 <b>Geroydan himoya</b> - Sizga geroydan bo'lgan har qanday hujumdan omon qolish imkonini beradi.\n\n"
-            f"🥷 <b>Geroy</b> - Sizga kunduz kuni ham otish imkoniyatini beradi!"
+            f"🥷 <b>Geroy</b> - Sizga kunduz kuni ham otash imkoniyatini beradi!"
         ),
         "ru": (
             f"🛡️ <b>Защита</b> - Спасает вашу жизнь в игре\n\n"
@@ -2106,94 +2106,152 @@ async def show_shop(call: CallbackQuery):
         lang=lang,
     )
 
-    if await is_webapp_active() and WEBAPP_URL:
-        btn_webapp_text = {
-            "uz": "🌐 WebApp do'kon",
-            "ru": "🌐 WebApp магазин",
-            "en": "🌐 WebApp shop",
-            "tr": "🌐 WebApp mağazası",
-            "kk": "🌐 WebApp дүкені"
-        }.get(lang, "🌐 WebApp do'kon")
-        labels_map = {
-            "uz": {
-                "himoya": f"🛡 Himoya - 100💵", "hujjat": f"📁 Hujjat - 100💵",
-                "osish": f"⚖️ Ovozdan himoya - 5💎", "miltiq": f"🔫 Miltiq - 5💎",
-                "dori": f"💊 Doridan himoya - 100💵", "maska": f"🎭 Maska - 100💵",
-                "qotil": f"⛑️ Qotildan himoya 5💎", "slip": f"🪤 Sirpanishdan himoya 5💎",
-                "geroy_him": f"🔰 Geroydan himoya 5💎", "replace": f"🔄 Profil almashish {SEND_PROFILE_PRICE}💎",
-                "geroy": f"🥷 Geroy {GEROY_PRICE}💎", "chests": "🗃 Sandiqlar",
-                "active_role": "🃏 Faol rol", "vip_emoji": "🎨 VIP emoji o'zgartirish", "back": "⬅️ Orqaga"
-            },
-            "ru": {
-                "himoya": f"🛡 Защита - 100💵", "hujjat": f"📁 Документ - 100💵",
-                "osish": f"⚖️ Защита от повешения - 5💎", "miltiq": f"🔫 Винтовка - 5💎",
-                "dori": f"💊 Защита от лекарства - 100💵", "maska": f"🎭 Маска - 100💵",
-                "qotil": f"⛑️ Защита от киллера 5💎", "slip": f"🪤 Защита от скольжения 5💎",
-                "geroy_him": f"🔰 Защита от героя 5💎", "replace": f"🔄 Обменять профиль {SEND_PROFILE_PRICE}💎",
-                "geroy": f"🥷 Герой {GEROY_PRICE}💎", "chests": "🗃 Сундуки",
-                "active_role": "🃏 Активная роль", "vip_emoji": "🎨 Смена VIP эмодзи", "back": "⬅️ Назад"
-            },
-            "en": {
-                "himoya": f"🛡 Protection - 100💵", "hujjat": f"📁 Document - 100💵",
-                "osish": f"⚖️ Hang Protection - 5💎", "miltiq": f"🔫 Rifle - 5💎",
-                "dori": f"💊 Medicine Protection - 100💵", "maska": f"🎭 Mask - 100💵",
-                "qotil": f"⛑️ Killer Protection 5💎", "slip": f"🪤 Slip Protection 5💎",
-                "geroy_him": f"🔰 Hero Protection 5💎", "replace": f"🔄 Swap Profile {SEND_PROFILE_PRICE}💎",
-                "geroy": f"🥷 Hero {GEROY_PRICE}💎", "chests": "🗃 Chests",
-                "active_role": "🃏 Active role", "vip_emoji": "🎨 VIP emoji change", "back": "⬅️ Back"
-            },
-            "tr": {
-                "himoya": f"🛡 Koruma - 100💵", "hujjat": f"📁 Belge - 100💵",
-                "osish": f"⚖️ Asılma Koruması - 5💎", "miltiq": f"🔫 Tüfek - 5💎",
-                "dori": f"💊 İlaç Koruması - 100💵", "maska": f"🎭 Maske - 100💵",
-                "qotil": f"⛑️ Katil Koruması 5💎", "slip": f"🪤 Kayma Koruması 5💎",
-                "geroy_him": f"🔰 Kahraman Koruması 5💎", "replace": f"🔄 Profil Değişimi {SEND_PROFILE_PRICE}💎",
-                "geroy": f"🥷 Kahraman {GEROY_PRICE}💎", "chests": "🗃 Sandıklar",
-                "active_role": "🃏 Aktif rol", "vip_emoji": "🎨 VIP emoji değiştirme", "back": "⬅️ Geri"
-            },
-            "kk": {
-                "himoya": f"🛡 Қорғау - 100💵", "hujjat": f"📁 Құжат - 100💵",
-                "osish": f"⚖️ Асудан қорғау - 5💎", "miltiq": f"🔫 Мылтық - 5💎",
-                "dori": f"💊 Дәріден қорғау - 100💵", "maska": f"🎭 Маска - 100💵",
-                "qotil": f"⛑️ Киллерден қорғау 5💎", "slip": f"🪤 Сырғанаудан қорғау 5💎",
-                "geroy_him": f"🔰 Батырдан қорғау 5💎", "replace": f"🔄 Профиль ауыстыру {SEND_PROFILE_PRICE}💎",
-                "geroy": f"🥷 Батыр {GEROY_PRICE}💎", "chests": "🗃 Сандықтар",
-                "active_role": "🃏 Белсенді рөл", "vip_emoji": "🎨 VIP эмодзи өзгерту", "back": "⬅️ Артқа"
-            }
-        }
-        lbls = labels_map.get(lang, labels_map["uz"])
-        builder = InlineKeyboardBuilder()
-        builder.button(text=lbls["himoya"], callback_data="buy_himoya")
-        builder.button(text=lbls["hujjat"], callback_data="buy_hujjat")
-        builder.button(text=lbls["osish"], callback_data="buy_osish_himoya")
-        builder.button(text=lbls["miltiq"], callback_data="buy_miltiq")
-        builder.button(text=lbls["dori"], callback_data="buy_dori_himoya")
-        builder.button(text=lbls["maska"], callback_data="buy_maska")
-        builder.button(text=lbls["qotil"], callback_data="buy_qotildan_himoya")
-        builder.button(text=lbls["slip"], callback_data="buy_slip_himoya")
-        builder.button(text=lbls["geroy_him"], callback_data="buy_geroydan_himoya")
-        builder.button(text=lbls["replace"], callback_data="replace_profile")
-        builder.button(text=lbls["geroy"], callback_data="buy_geroy")
-        builder.button(text=lbls["chests"], callback_data="open-sandiq")
-        builder.button(text=lbls["active_role"], callback_data="active_role")
-        if is_vip:
-            builder.button(text=lbls["vip_emoji"], callback_data="vip_emoji_change")
-        builder.button(text=btn_webapp_text, web_app=WebAppInfo(url=WEBAPP_URL))
-        builder.button(text=lbls["back"], callback_data="back_profile")
-        builder.adjust(2)
-        kb = builder.as_markup()
-
-    try:
-        await call.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-    except Exception:
-        await call.message.answer(text, reply_markup=kb, parse_mode="HTML")
-    await call.answer()
+    await call.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
 
 async def buy_dollar_callback(call: CallbackQuery):
     await call.answer("Dollar xarid qilish WebApp ilovasi orqali amalga oshiriladi.", show_alert=True)
 
 async def get_dollar_callback(call: CallbackQuery):
     await get_diamond_hamyonlar(call)
+
+async def item_info_handler(call: CallbackQuery):
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from utils.i18n import clean_lang
+    
+    item_key = call.data.replace("item_", "")
+    
+    item_info = {
+        "himoya": {
+            "uz": "🛡️ <b>Himoya</b>\n\nSizni hayotingizni saqlab qoladi. O'ldirilganda himoya ishlaydi va tirik qolasiz.",
+            "ru": "🛡️ <b>Защита</b>\n\nСпасает вашу жизнь в игре. При убийстве защита сработает и вы останетесь живы.",
+            "en": "🛡️ <b>Protection</b>\n\nSaves your life in the game. When killed, protection activates and you survive.",
+            "tr": "🛡️ <b>Koruma</b>\n\nOyunda hayatınızı kurtarır. Öldürüldüğünüzde koruma çalışır ve hayatta kalırsınız.",
+            "kk": "🛡️ <b>Қорғау</b>\n\nОйында өміріңізді сақтап қалады. Өлтіргенде қорғау жұмыс істейді және тірі қаласыз.",
+            "price": "100💵"
+        },
+        "hujjat": {
+            "uz": "📁 <b>Hujjat</b>\n\nKomissar sizni tekshirganda sizni Tinch aholi qilib ko'rsatadi.",
+            "ru": "📁 <b>Документ</b>\n\nПри проверке Комиссаром показывает вас как Мирного жителя.",
+            "en": "📁 <b>Document</b>\n\nShows you as a Civilian when checked by Detective.",
+            "tr": "📁 <b>Belge</b>\n\nKomiser kontrol ettiğinde sizi Sivil gösterir.",
+            "kk": "📁 <b>Құжат</b>\n\nКомиссар тексергенде сізді Бейбіт тұрғын етіп көрсетеді.",
+            "price": "100💵"
+        },
+        "osish": {
+            "uz": "⚖️ <b>Ovozdan himoya</b>\n\nSizni ovozdan keyin o'ldirishdan saqlab qoladi.",
+            "ru": "⚖️ <b>Защита от повешения</b>\n\nЗащищает вас от казни на голосовании.",
+            "en": "⚖️ <b>Hang Protection</b>\n\nProtects you from execution during voting.",
+            "tr": "⚖️ <b>Asılma Koruması</b>\n\nOylamada asılmaktan sizi korur.",
+            "kk": "⚖️ <b>Асудан қорғау</b>\n\nДауыс беруде асылудан сақтайды.",
+            "price": "5💎"
+        },
+        "miltiq": {
+            "uz": "🔫 <b>Miltiq</b>\n\nSizga o'yinda tong vaqtida ham otash imkonini beradi.",
+            "ru": "🔫 <b>Винтовка</b>\n\nДает возможность выстрелить даже утром.",
+            "en": "🔫 <b>Rifle</b>\n\nAllows you to shoot even in the morning.",
+            "tr": "🔫 <b>Tüfek</b>\n\nSabah vaktinde de ateş etmenizi sağlar.",
+            "kk": "🔫 <b>Мылтық</b>\n\nТаңертең де ату мүмкіндігін береді.",
+            "price": "5💎"
+        },
+        "dori": {
+            "uz": "💊 <b>Doridan himoya</b>\n\nSizni kezuvchining dorisidan himoya qiladi.",
+            "ru": "💊 <b>Защита от лекарства</b>\n\nЗащищает от смертельного зелья Бродяги.",
+            "en": "💊 <b>Medicine Protection</b>\n\nProtects you from Drifter's poison.",
+            "tr": "💊 <b>İlaç Koruması</b>\n\nGezginin zehrinden korur.",
+            "kk": "💊 <b>Дәріден қорғау</b>\n\nҚыдырманың дәріден қорғайды.",
+            "price": "100💵"
+        },
+        "maska": {
+            "uz": "🎭 <b>Maska</b>\n\nDaydi sizni qotillik ustida ko'rib qolsa ham yuzingizni ko'rolmaydi.",
+            "ru": "🎭 <b>Маска</b>\n\nБродяга не увидит ваше лицо при преступлении.",
+            "en": "🎭 <b>Mask</b>\n\nHides your identity if Drifter sees you.",
+            "tr": "🎭 <b>Maske</b>\n\nGezgin sizi görse bile yüzünüzü gizler.",
+            "kk": "🎭 <b>Маска</b>\n\nҚыдырма сізді қылмыс үстінде көрсе де бетіңізді көре алмайды.",
+            "price": "100💵"
+        },
+        "qotil": {
+            "uz": "⛑️ <b>Qotildan himoya</b>\n\nSizni qotil hujumidan qutqaradi.",
+            "ru": "⛑️ <b>Защита от киллера</b>\n\nСпасает от нападения Киллера.",
+            "en": "⛑️ <b>Killer Protection</b>\n\nSaves you from Killer attack.",
+            "tr": "⛑️ <b>Katil Koruması</b>\n\nKatil saldırısından kurtarır.",
+            "kk": "⛑️ <b>Киллерден қорғау</b>\n\nКиллер шабуылынан құтқарады.",
+            "price": "5💎"
+        },
+        "slip": {
+            "uz": "🪤 <b>Sirpanishdan himoya</b>\n\nSizni konchi rolida sirpanishdan saqlab qoladi.",
+            "ru": "🪤 <b>Защита от скольжения</b>\n\nЗащищает от скольжения в роли Шахтера.",
+            "en": "🪤 <b>Slip Protection</b>\n\nProtects from slipping in Miner role.",
+            "tr": "🪤 <b>Kayma Koruması</b>\n\nMadenci rolünde kaymaktan korur.",
+            "kk": "🪤 <b>Сырғанаудан қорғау</b>\n\nКенші рөлінде сырғанаудан сақтайды.",
+            "price": "5💎"
+        },
+        "geroy_him": {
+            "uz": "🔰 <b>Geroydan himoya</b>\n\nSizga geroydan bo'lgan har qanday hujumdan omon qolish imkonini beradi.",
+            "ru": "🔰 <b>Защита от Героя</b>\n\nЗащищает от любой атаки Героя.",
+            "en": "🔰 <b>Hero Protection</b>\n\nProtects from any Hero attack.",
+            "tr": "🔰 <b>Kahraman Koruması</b>\n\nKahramanın saldırısından korur.",
+            "kk": "🔰 <b>Батырдан қорғау</b>\n\nБатырдың шабуылынан аман қалуды қамтамасыз етеді.",
+            "price": "5💎"
+        },
+        "replace": {
+            "uz": "🔄 <b>Profil almashish</b>\n\nBoshqa profilga o'tish imkonini beradi.",
+            "ru": "🔄 <b>Обменять профиль</b>\n\nПозволяет перейти на другой профиль.",
+            "en": "🔄 <b>Swap Profile</b>\n\nAllows you to switch to another profile.",
+            "tr": "🔄 <b>Profil Değişimi</b>\n\nBaşka profile geçmenizi sağlar.",
+            "kk": "🔄 <b>Профиль ауыстыру</b>\n\nБасқа профильге өту мүмкіндігін береді.",
+            "price": f"{SEND_PROFILE_PRICE}💎"
+        },
+        "geroy": {
+            "uz": "🥷 <b>Geroy</b>\n\nSizga kunduz kuni ham otash imkoniyatini beradi!",
+            "ru": "🥷 <b>Герой</b>\n\nДает возможность стрелять даже днем!",
+            "en": "🥷 <b>Hero</b>\n\nAllows you to shoot even during the day!",
+            "tr": "🥷 <b>Kahraman</b>\n\nGündüz vakti de ateş etmenizi sağlar!",
+            "kk": "🥷 <b>Батыр</b>\n\nКүндіз де ату мүмкіндігін береді!",
+            "price": f"{GEROY_PRICE}💎"
+        },
+        "active_role": {
+            "uz": "🃏 <b>Faol rol</b>\n\nO'yinda istalgan rolni tanlash imkonini beradi.",
+            "ru": "🃏 <b>Активная роль</b>\n\nПозволяет выбрать любую роль в игре.",
+            "en": "🃏 <b>Active role</b>\n\nAllows you to choose any role in the game.",
+            "tr": "🃏 <b>Aktif rol</b>\n\nOyunda herhangi bir rol seçmenizi sağlar.",
+            "kk": "🃏 <b>Белсенді рөл</b>\n\nОйында кез келген рөлді таңдау мүмкіндігін береді.",
+            "price": "Narxi turlicha"
+        }
+    }
+    
+    if item_key not in item_info:
+        await call.answer("❌ Noto'g'ri buyum!", show_alert=True)
+        return
+    
+    user = await User.filter(user_id=call.from_user.id).first()
+    lang = clean_lang(user.lang if user else "uz")
+    
+    info = item_info[item_key]
+    text = info.get(lang, info["uz"])
+    price = info["price"]
+    
+    buy_text = {
+        "uz": f"💰 Xarid qilish ({price})",
+        "ru": f"💰 Купить ({price})",
+        "en": f"💰 Buy ({price})",
+        "tr": f"💰 Satın al ({price})",
+        "kk": f"💰 Сатып алу ({price})"
+    }.get(lang, f"💰 Xarid qilish ({price})")
+    
+    back_text = {
+        "uz": "⬅️ Orqaga",
+        "ru": "⬅️ Назад",
+        "en": "⬅️ Back",
+        "tr": "⬅️ Geri",
+        "kk": "⬅️ Артқа"
+    }.get(lang, "⬅️ Orqaga")
+    
+    kb = InlineKeyboardBuilder()
+    kb.button(text=buy_text, url="tg://user?id=6913838682")
+    kb.button(text=back_text, callback_data="shop")
+    kb.adjust(1)
+    
+    await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
 
 async def buy_handler(call: CallbackQuery):
     from models.user import User, Profile
@@ -2351,11 +2409,11 @@ async def get_diamond_hamyonlar(call: CallbackQuery):
     dollars = profile.dollar if profile else 0
 
     bal_texts = {
-        "uz": f"💰 <b>Balans ma'lumotlari:</b>\n\n💎 Olmoslar: <b>{diamonds:,} ta</b>\n💵 Dollar: <b>{dollars:,} $</b>\n\n<i>Olmos va dollarlarni WebApp do'koni orqali xarid qilishingiz mumkin.</i>",
-        "ru": f"💰 <b>Информация о балансе:</b>\n\n💎 Алмазы: <b>{diamonds:,} шт</b>\n💵 Доллары: <b>{dollars:,} $</b>\n\n<i>Вы можете приобрести алмазы и доллары через WebApp магазин.</i>",
-        "en": f"💰 <b>Balance details:</b>\n\n💎 Diamonds: <b>{diamonds:,}</b>\n💵 Dollars: <b>{dollars:,} $</b>\n\n<i>You can purchase diamonds and dollars via the WebApp shop.</i>",
-        "tr": f"💰 <b>Bakiye bilgileri:</b>\n\n💎 Elmaslar: <b>{diamonds:,} adet</b>\n💵 Dolar: <b>{dollars:,} $</b>\n\n<i>Elmas ve dolarları WebApp mağazasından satın alabilirsiniz.</i>",
-        "kk": f"💰 <b>Баланс мәліметтері:</b>\n\n💎 Алмаздар: <b>{diamonds:,} дана</b>\n💵 Доллар: <b>{dollars:,} $</b>\n\n<i>Алмаздар мен долларды WebApp дүкені арқылы сатып ала аласыз.</i>"
+        "uz": f"💰 <b>Balans ma'lumotlari:</b>\n\n💎 Olmoslar: <b>{diamonds:,} ta</b>\n💵 Dollar: <b>{dollars:,} $</b>",
+        "ru": f"💰 <b>Информация о балансе:</b>\n\n💎 Алмазы: <b>{diamonds:,} шт</b>\n💵 Доллары: <b>{dollars:,} $</b>",
+        "en": f"💰 <b>Balance details:</b>\n\n💎 Diamonds: <b>{diamonds:,}</b>\n💵 Dollars: <b>{dollars:,} $</b>",
+        "tr": f"💰 <b>Bakiye bilgileri:</b>\n\n💎 Elmaslar: <b>{diamonds:,} adet</b>\n💵 Dolar: <b>{dollars:,} $</b>",
+        "kk": f"💰 <b>Баланс мәліметтері:</b>\n\n💎 Алмаздар: <b>{diamonds:,} дана</b>\n💵 Доллар: <b>{dollars:,} $</b>"
     }
 
     btn_shop_text = {

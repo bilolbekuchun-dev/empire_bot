@@ -151,6 +151,10 @@ async def f(message: Message, bot: Bot):
 @router.callback_query(F.data.startswith("buy_"))
 async def f(call: CallbackQuery, bot: Bot):
     await others.buy_handler(call)
+
+@router.callback_query(F.data.startswith("item_"))
+async def f(call: CallbackQuery, bot: Bot):
+    await others.item_info_handler(call)
     
 @router.callback_query(F.data.startswith("get_dollar"))
 async def f(call: CallbackQuery, bot: Bot):

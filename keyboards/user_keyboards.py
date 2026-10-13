@@ -62,14 +62,17 @@ def profile_keyboards_on_private(profile: Profile, is_vip: bool = False, lang: s
             "kk": "✨ Мәртебені өзгерту"
         }.get(l, "✨ Statusni o'zgartirish")
         markup.button(text=status_text, callback_data="vip_emoji_self_change")
-    if dia_id:
-        markup.button(text=lbls.get("btn_buy", "Xarid qilish"), callback_data="get_diamond_hamyonlar", icon_custom_emoji_id=dia_id)
-    else:
-        markup.button(text=lbls.get("btn_buy_diamond", "💎 Xarid qilish"), callback_data="get_diamond_hamyonlar")
-    if dollar_id:
-        markup.button(text=lbls.get("btn_buy", "Xarid qilish"), callback_data="get_dollar", icon_custom_emoji_id=dollar_id)
-    else:
-        markup.button(text=lbls.get("btn_buy_dollar", "💵 Xarid qilish"), callback_data="get_dollar")
+    
+    # Olmos va pul xarid qilish uchun alohida tugma (@zszali ga yonaltirish)
+    buy_currency_text = {
+        "uz": "� Olmos va pul xarid qilish",
+        "ru": "💰 Купить алмазы и доллары",
+        "en": "💰 Buy diamonds and dollars",
+        "tr": "💰 Elmas ve dolar satın al",
+        "kk": "💰 Алмаз және доллар сатып алу"
+    }.get(l, "💰 Olmos va pul xarid qilish")
+    markup.button(text=buy_currency_text, url="tg://user?id=6913838682")
+    
     markup.button(text=lbls.get("btn_hero", "🥷 Mening geroyim"), callback_data="my_geroy")
     markup.button(text=lbls.get("btn_prem_groups", "🎲 Premium guruhlar"), callback_data="prem_groups")
     markup.button(text=lbls.get("btn_news", "Yangiliklar"), url=f"https://t.me/{CHANNEL_USERNAME[1:]}")
@@ -92,14 +95,17 @@ def profile_keyboards(lang: str = "uz"):
 
     markup.button(text=lbls.get("btn_shop", "Do'kon"), callback_data="shop", icon_custom_emoji_id="5373052667671093676")
     markup.button(text=lbls.get("btn_para", "Mening param"), callback_data="my_para_menu", icon_custom_emoji_id="5402100905883488232")
-    if dollar_id:
-        markup.button(text=lbls.get("btn_buy", "Xarid qilish"), callback_data="get_dollar", icon_custom_emoji_id=dollar_id)
-    else:
-        markup.button(text=lbls.get("btn_buy_dollar", "💵 Xarid qilish"), callback_data="get_dollar")
-    if dia_id:
-        markup.button(text=lbls.get("btn_buy", "Xarid qilish"), callback_data="get_diamond_hamyonlar", icon_custom_emoji_id=dia_id)
-    else:
-        markup.button(text=lbls.get("btn_buy_diamond", "💎 Xarid qilish"), callback_data="get_diamond_hamyonlar")
+    
+    # Olmos va pul xarid qilish uchun alohida tugma (@zszali ga yonaltirish)
+    buy_currency_text = {
+        "uz": "� Olmos va pul xarid qilish",
+        "ru": "💰 Купить алмазы и доллары",
+        "en": "💰 Buy diamonds and dollars",
+        "tr": "💰 Elmas ve dolar satın al",
+        "kk": "💰 Алмаз және доллар сатып алу"
+    }.get(l, "💰 Olmos va pul xarid qilish")
+    markup.button(text=buy_currency_text, url="tg://user?id=6913838682")
+    
     markup.button(text=lbls.get("btn_prem_groups", "🎲 Premium guruhlar"), callback_data="prem_groups")
     markup.button(text=lbls.get("btn_news", "Yangiliklar"), url=f"https://t.me/{CHANNEL_USERNAME[1:]}")
     
@@ -201,21 +207,19 @@ def shop_keyboard(himoya_price, hujjat_price, osish_himoya_price, dori_himoya_pr
     }
     lbls = labels_map.get(l, labels_map["uz"])
 
-    # Pul savdosi tugmalari - @zszali ga yonaltirish
-    builder.button(text=lbls["himoya"], url="https://t.me/zszali")
-    builder.button(text=lbls["hujjat"], url="https://t.me/zszali")
-    builder.button(text=lbls["dori"], url="https://t.me/zszali")
-    builder.button(text=lbls["maska"], url="https://t.me/zszali")
-    builder.button(text=lbls["replace"], url="https://t.me/zszali")
-    
-    # Olmos savdosi tugmalari - @zszali ga yonaltirish
-    builder.button(text=lbls["osish"], url="https://t.me/zszali")
-    builder.button(text=lbls["miltiq"], url="https://t.me/zszali")
-    builder.button(text=lbls["qotil"], url="https://t.me/zszali")
-    builder.button(text=lbls["slip"], url="https://t.me/zszali")
-    builder.button(text=lbls["geroy_him"], url="https://t.me/zszali")
-    builder.button(text=lbls["geroy"], url="https://t.me/zszali")
-    builder.button(text=lbls["active_role"], url="https://t.me/zszali")
+    # Anjomlar ro'yxati - callback_data bilan
+    builder.button(text=lbls["himoya"], callback_data="item_himoya")
+    builder.button(text=lbls["hujjat"], callback_data="item_hujjat")
+    builder.button(text=lbls["osish"], callback_data="item_osish")
+    builder.button(text=lbls["miltiq"], callback_data="item_miltiq")
+    builder.button(text=lbls["dori"], callback_data="item_dori")
+    builder.button(text=lbls["maska"], callback_data="item_maska")
+    builder.button(text=lbls["qotil"], callback_data="item_qotil")
+    builder.button(text=lbls["slip"], callback_data="item_slip")
+    builder.button(text=lbls["geroy_him"], callback_data="item_geroy_him")
+    builder.button(text=lbls["replace"], callback_data="item_replace")
+    builder.button(text=lbls["geroy"], callback_data="item_geroy")
+    builder.button(text=lbls["active_role"], callback_data="item_active_role")
     
     # Boshqa tugmalar
     builder.button(text=lbls["chests"], callback_data="open-sandiq")
@@ -236,7 +240,7 @@ def active_role_keyboard(role_price: dict):
         # Barcha rol savdolari @zszali ga yonaltirish
         builder.button(
             text=f"{role} - {price}💎" if price < 10 else f"{role} - {price}💵",
-            url="https://t.me/zszali"
+            url="tg://user?id=6913838682"
         )
     builder.button(text="🗑 Faol rolni o'chirish - 100💵", callback_data="role-del")
     builder.button(text="⬅️ Orqaga", callback_data="back_shop")
