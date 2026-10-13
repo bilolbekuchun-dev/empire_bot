@@ -46,13 +46,16 @@ class ActionService:
         await game_repo.save_action(action, ttl_sec=86400)
         
         # Bir xil turdagi eski action kalitini tozalash (masalan qayta bosganda)
+        # Zanjir/Sehrgar 2 ta nishon saqlashi kerak -> ularni o'chirmaymiz
+        # (qayta tanlash tozalashi clear_player_actions orqali oldindan qilinadi)
         existing_keys = await r.smembers(f"game:{game_id}:phase:{phase_id}:action_keys")
         for ek in existing_keys:
             key_str = ek.decode() if isinstance(ek, bytes) else ek
             parts = key_str.split(":")
             if len(parts) == 3 and int(parts[0]) == actor_id:
-                if action_type not in ("zanjir", "sehrgar") or parts[2] == action_type:
-                    await r.srem(f"game:{game_id}:phase:{phase_id}:action_keys", ek)
+                if action_type in ("zanjir", "sehrgar"):
+                    continue
+                await r.srem(f"game:{game_id}:phase:{phase_id}:action_keys", ek)
 
         # Action'ni set ga qo'shish (phase bo'yicha)
         action_key = f"{actor_id}:{target_id}:{action_type}"
