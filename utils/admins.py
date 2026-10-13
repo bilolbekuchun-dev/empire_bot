@@ -452,15 +452,15 @@ async def check_user_full_info(message: Message):
         info_text += f"\n🥷 Geroy: {geroy.name} ({geroy.level}-daraja)\n"
 
     info_text += "\n📊 Statistika:\n"
-    info_text += f"🎯 G'alabalar: {wins}\n"
-    info_text += f"🎲 Jami o'yinlar: {total_games}\n"
+    info_text += f'<tg-emoji emoji-id="5364235172826885791">⭐️</tg-emoji> G\'alabalar: {wins}\n'
+    info_text += f'<tg-emoji emoji-id="5361612652911048505">⭐️</tg-emoji> Jami o\'yinlar: {total_games}\n'
 
     from models.user import ActiveRole, Paralar, Transfers
     if profile:
         active_roles = await ActiveRole.filter(profile=profile, is_active=True)
         if active_roles:
             roles_str = ", ".join([ar.role for ar in active_roles])
-            info_text += f"\n🃏 Faol rollar: {roles_str}\n"
+            info_text += f'\n<tg-emoji emoji-id="5364172633808087023">⭐️</tg-emoji> Faol rollar: {roles_str}\n'
         else:
             info_text += "\n🃏 Faol rollar: Yo'q\n"
     else:
@@ -471,7 +471,7 @@ async def check_user_full_info(message: Message):
         partner_id = para.user1_id if para.user2_id == user.id else para.user2_id
         partner = await User.get_or_none(id=partner_id)
         if partner:
-            info_text += f"💖 Jufti: {partner.full_name}\n"
+            info_text += f'<tg-emoji emoji-id="5287705169214066018">🤩</tg-emoji> Jufti: {partner.full_name}\n'
         else:
             info_text += "💔 Jufti: Noma'lum\n"
     else:

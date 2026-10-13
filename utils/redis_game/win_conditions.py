@@ -642,7 +642,7 @@ async def _send_player_end_game_profile_dm(bot: Bot, uid: int, is_winner: bool, 
 
         card_text = (
             f"{headers.get(p_lang, headers['uz'])}\n\n"
-            f"👤 <b>{user_name}</b>{vip_text}\n\n"
+            f'<tg-emoji emoji-id="5361893895959524356">⭐️</tg-emoji> <b>{user_name}</b>{vip_text}\n\n'
             f"{m_disp} Dollar: <b>{profile.dollar:,}</b>\n"
             f"{d_disp} Olmos: <b>{profile.diamond:,}</b>\n\n"
             f"{get_item_display('himoya')} Himoya: <b>{profile.himoya}</b>\n"
@@ -654,10 +654,10 @@ async def _send_player_end_game_profile_dm(bot: Bot, uid: int, is_winner: bool, 
             f"{get_item_display('maska')} Maska: <b>{profile.maska}</b>\n"
             f"{get_item_display('slip_himoya')} Sirpanishdan himoya: <b>{profile.slip_himoya}</b>\n"
             f"{get_item_display('geroy_himoya')} Geroydan himoya: <b>{profile.geroy_himoya}</b>\n\n"
-            f"🎯 G'alaba: <b>{profile.wins}</b>\n"
-            f"📜 Barcha o'yinlar: <b>{profile.games_count}</b>\n\n"
-            f"Sizning parangiz: {para_str}\n\n"
-            f"🏙 Faol rollar: {active_roles_str}"
+            f'<tg-emoji emoji-id="5364235172826885791">⭐️</tg-emoji> G\'alaba: <b>{profile.wins}</b>\n'
+            f'<tg-emoji emoji-id="5361612652911048505">⭐️</tg-emoji> Barcha o\'yinlar: <b>{profile.games_count}</b>\n\n'
+            f'<tg-emoji emoji-id="5287705169214066018">🤩</tg-emoji> Sizning parangiz: {para_str}\n\n'
+            f'<tg-emoji emoji-id="5364172633808087023">⭐️</tg-emoji> Faol rollar: {active_roles_str}'
         )
 
         try:
