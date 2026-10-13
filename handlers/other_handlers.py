@@ -152,11 +152,11 @@ async def f(message: Message, bot: Bot):
 async def f(call: CallbackQuery, bot: Bot):
     await others.buy_handler(call)
 
-@router.callback_query(F.data.startswith("buy_diamond_menu"))
+@router.callback_query(F.data == "buy_diamond_menu")
 async def f(call: CallbackQuery, bot: Bot):
     await others.buy_diamond_menu_handler(call)
 
-@router.callback_query(F.data.startswith("diamond_stars_payment"))
+@router.callback_query(F.data == "diamond_stars_payment")
 async def f(call: CallbackQuery, bot: Bot):
     await others.diamond_stars_payment_handler(call, bot)
 
@@ -164,7 +164,7 @@ async def f(call: CallbackQuery, bot: Bot):
 async def f(call: CallbackQuery, bot: Bot):
     await others.buy_stars_invoice_handler(call, bot)
 
-@router.callback_query(F.data.startswith("buy_money_menu"))
+@router.callback_query(F.data == "buy_money_menu")
 async def f(call: CallbackQuery, bot: Bot):
     await others.buy_money_menu_handler(call)
 
