@@ -15,9 +15,13 @@ Callback formati (<=64 bayt):
 """
 import asyncio
 import html
+import json
+import logging
 import random
 from datetime import datetime, timezone
-from typing import List, Optional, Dict, Union, Any
+from typing import List, Optional, Dict, Union, Any, Tuple
+
+logger = logging.getLogger(__name__)
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramRetryAfter
@@ -56,6 +60,7 @@ ROLE_CODE: Dict[str, str] = {
     RoleNames.KONCHI: "kn",
     RoleNames.QAROQCHI: "qa",
     RoleNames.JIN: "ji",
+    RoleNames.BORI: "bw",
 }
 
 # Tungi harakati bor rollar (tugma oladi)
@@ -68,6 +73,7 @@ ROLE_ACTION_TYPE: Dict[str, str] = {
     RoleNames.DON: "kill",
     RoleNames.MAFIA: "kill",
     RoleNames.QOTIL: "kill",
+    RoleNames.BORI: "kill",
     RoleNames.OVCHI: "kill",
     RoleNames.DAYDI: "investigate",
     RoleNames.KEZUVCHI: "sleep",
@@ -455,6 +461,14 @@ async def send_night_actions(
         if role == RoleNames.QAROQCHI:
             await _send_private(bot, uid, f"⚔️ {role_display(role)}",
                                 _target_kb("qa", game_id, night_num, mk_targets, skip_label=skip_label))
+            await asyncio.sleep(0.03)
+            continue
+
+        # --- Bo'ri: nishon tanlash ---
+        if role == RoleNames.BORI:
+            await _send_private(bot, uid, f"🐺 {role_display(role)} — nishonni tanlang:",
+                                _target_kb("bw", game_id, night_num, mk_targets, skip_label=skip_label))
+            await asyncio.sleep(0.03)
             continue
 
         # --- Jin: nishon tanlash (kimning huzuriga borish) ---
@@ -616,6 +630,101 @@ async def _user_lang_map(uids: List[int], chat_id: int = 0) -> Dict[int, str]:
         return {}
 
 
+def _zanjir_pairs_key(game_id: int) -> str:
+    return f"game:{int(game_id)}:zanjir_pairs"
+
+
+def _normalize_zanjir_targets(tgts) -> List[int]:
+    uniq: List[int] = []
+    for t in tgts or []:
+        if t is None:
+            continue
+        try:
+            ti = int(t)
+        except (TypeError, ValueError):
+            continue
+        if ti and ti not in uniq:
+            uniq.append(ti)
+    return uniq
+
+
+async def persist_zanjir_pairs(game_id: int, pairs) -> None:
+    """Kunduzgi osish uchun zanjir juftligini saqlash. Bo'sh ro'yxat eski juftlikni o'chirmaydi."""
+    clean = []
+    for item in pairs or []:
+        if not item or len(item) < 2:
+            continue
+        a, b = int(item[0]), int(item[1])
+        if a and b and a != b:
+            clean.append([a, b])
+    if not clean:
+        return
+    try:
+        await r.set(_zanjir_pairs_key(game_id), json.dumps(clean), ex=86400)
+    except Exception as e:
+        logger.warning(f"Error persisting zanjir pairs: {e}")
+
+
+async def load_zanjir_pairs(game_id: int, phase_id: Optional[int] = None) -> List[Tuple[int, int]]:
+    """Saqlangan juftlik, yo'q bo'lsa oxirgi tun action'laridan."""
+    gid = int(game_id)
+    try:
+        raw = await r.get(_zanjir_pairs_key(gid))
+        if raw:
+            data = json.loads(raw.decode() if isinstance(raw, bytes) else raw)
+            pairs: List[Tuple[int, int]] = []
+            for item in data or []:
+                if isinstance(item, (list, tuple)) and len(item) >= 2:
+                    a, b = int(item[0]), int(item[1])
+                    if a and b and a != b:
+                        pairs.append((a, b))
+            if pairs:
+                return pairs
+    except Exception as e:
+        logger.warning(f"Error loading persisted zanjir pairs: {e}")
+
+    phases: List[int] = []
+    if phase_id is not None:
+        phases.append(int(phase_id))
+        if int(phase_id) > 1:
+            phases.append(int(phase_id) - 1)
+    else:
+        # Faqat phase_id berilmagan bo'lsa, night_num ni qo'shamiz
+        try:
+            nraw = await r.get(f"game:{gid}:night_num")
+            if nraw is not None:
+                phases.append(int(nraw))
+        except Exception:
+            pass
+
+    seen = set()
+    for ph in phases:
+        if ph in seen or ph < 0:
+            continue
+        seen.add(ph)
+        try:
+            acts = await ActionService.get_actions_by_type(gid, ph, "zanjir")
+        except Exception:
+            acts = []
+        by_actor: Dict = {}
+        for a in acts or []:
+            t = a.get("target_id")
+            if not t:
+                continue
+            lst = by_actor.setdefault(a.get("actor_id"), [])
+            ti = int(t)
+            if ti not in lst:
+                lst.append(ti)
+        pairs = []
+        for tgts in by_actor.values():
+            uniq = _normalize_zanjir_targets(tgts)
+            if len(uniq) >= 2:
+                pairs.append((uniq[0], uniq[1]))
+        if pairs:
+            return pairs
+    return []
+
+
 async def process_night_results(game_id: int, night_num: int, players: List, bot: Bot, chat: Chat) -> None:
     """Tungi harakatlarni qo'llash: o'ldirish, davolash, himoya, tekshiruv va h.k."""
     all_uids = [p.user_id for p in players]
@@ -658,6 +767,8 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
     ovchi_actor_id = None
     komissar_target = None
     komissar_actor_id = None
+    bori_target = None
+    bori_actor_id = None
     healed, protected = set(), set()
     zanjir: Dict[int, list] = {}
     swaps: Dict[int, list] = {}
@@ -699,6 +810,9 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
             elif role == RoleNames.KOMISSAR:
                 komissar_target = tgt
                 komissar_actor_id = actor.user_id
+            elif role == RoleNames.BORI:
+                bori_target = tgt
+                bori_actor_id = actor.user_id
         elif atype == "investigate" and tgt:
             investigates.append((actor.user_id, tgt))
         elif atype == "heal" and tgt:
@@ -719,8 +833,10 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
             jin_pul.append(tgt)
         elif atype == "jin_qotil" and tgt:
             jin_kill.append((tgt, actor.user_id))
-        elif atype == "qaroqchi":
-            qaroqchi.append((actor.user_id, tgt))
+        elif atype == "qaroqchi" or atype == "qaroqchi_pul":
+            qaroqchi.append((actor.user_id, tgt, "pul"))
+        elif atype == "qaroqchi_jon":
+            qaroqchi.append((actor.user_id, tgt, "jon"))
         elif atype == "konchi":
             konchi.append((actor.user_id, tgt))
 
@@ -1105,8 +1221,52 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
                 logger.error(f"Error saving konchi diamonds for {actor_uid}: {e}")
             await _send_private(bot, actor_uid, get_msg(actor_uid, "konchi_win", no=(kon_no or 1), count=mined_diamonds))
 
+    # --- Bo'ri ---
+    if bori_target and bori_actor_id:
+        bori_actor = by_uid.get(bori_actor_id)
+        bori_tgt = by_uid.get(bori_target)
+        if bori_actor and bori_tgt and bori_actor.is_alive and bori_tgt.is_alive:
+            target_name = html.escape(names.get(bori_target) or str(bori_target))
+            target_role = bori_tgt.role
+
+            # Bo'ri o'ldirishni amalga oshiradi
+            await _kill(game_id, bori_target, by_uid, bot, chat, names, reason=f"🐺 Bo'ri tomonidan o'ldirildi")
+
+            # Bo'ri rol o'zgarishi logikasi
+            tinch_roles = (
+                RoleNames.KOMISSAR, RoleNames.SERJANT, RoleNames.FUQARO,
+                RoleNames.DOKTOR, RoleNames.HAMSHIRA, RoleNames.DAYDI,
+                RoleNames.KEZUVCHI, RoleNames.OMADLI, RoleNames.JANOB,
+                RoleNames.SOTQIN, RoleNames.XOYIN, RoleNames.QORIQCHI, RoleNames.ZANJIR
+            )
+            mafia_roles = (RoleNames.DON, RoleNames.MAFIA, RoleNames.ADVOKAT, RoleNames.OVCHI, RoleNames.JURNALIST, RoleNames.AYGOQCHI)
+            yakka_roles = (
+                RoleNames.QOTIL, RoleNames.AFERIST, RoleNames.GAZABDOR,
+                RoleNames.SEHRGAR, RoleNames.SUIDSID, RoleNames.QASOSKOR,
+                RoleNames.QAROQCHI, RoleNames.AKTYOR, RoleNames.JIN, RoleNames.KONCHI,
+                RoleNames.TAQLIDCHI, RoleNames.REVERSER
+            )
+
+            if target_role in tinch_roles:
+                # Tinch o'ldirsa -> Serjantga aylanadi
+                bori_actor.role = RoleNames.SERJANT
+                await player_repo.save_player(bori_actor)
+                await _send_private(bot, bori_actor_id, f"🐺 <b>Bo'ri</b>: Siz tinch aholi ({target_name}) o'ldirganimiz uchun <b>Serjant</b>ga aylandingiz!")
+            elif target_role in mafia_roles:
+                # Mafia o'ldirsa -> Mafiaga aylanadi
+                bori_actor.role = RoleNames.MAFIA
+                await player_repo.save_player(bori_actor)
+                await _send_private(bot, bori_actor_id, f"🐺 <b>Bo'ri</b>: Siz mafiyani ({target_name}) o'ldirganimiz uchun <b>Mafiya</b>ga aylandingiz!")
+            elif target_role in yakka_roles:
+                # Yakka rolni o'ldirsa -> o'ladi
+                bori_actor.is_alive = False
+                bori_actor.deaded_at = datetime.now(timezone.utc)
+                await player_repo.save_player(bori_actor)
+                await _send_private(bot, bori_actor_id, f"🐺 <b>Bo'ri</b>: Siz yakka rolni ({target_name}) o'ldirganimiz uchun o'ldingiz!")
+                await bot.send_message(chat.chat_id, f"💀 {html.escape(names.get(bori_actor_id) or str(bori_actor_id))} Bo'ri sifatida yakka rolni o'ldirgani uchun vafot etdi!", parse_mode="HTML")
+
     # --- Qaroqchi ---
-    for actor_uid, tgt in qaroqchi:
+    for actor_uid, tgt, choice in qaroqchi:
         actor = by_uid.get(actor_uid)
         if not actor or not actor.is_alive or not tgt:
             continue
@@ -1119,24 +1279,59 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
                 t_prof = await Profile.filter(user=t_user).first()
                 a_prof = await Profile.filter(user=a_user).first()
                 if t_prof and a_prof:
-                    if t_prof.money >= 10:
-                        stolen = min(t_prof.money, random.randint(10, 50))
-                        t_prof.money -= stolen
-                        a_prof.money += stolen
-                        await t_prof.save()
-                        await a_prof.save()
-                        await _send_private(bot, actor_uid, f"⚔️ <b>Qaroqchi</b>: Siz {target_name}dan 💵 {stolen}$ o'g'irladingiz!")
-                        await _send_private(bot, tgt, f"⚔️ <b>Qaroqchi</b> tunda sizdan 💵 {stolen}$ o'g'irlab ketdi!")
-                    elif t_prof.diamond > 0:
-                        t_prof.diamond -= 1
-                        a_prof.diamond += 1
-                        await t_prof.save()
-                        await a_prof.save()
-                        await _send_private(bot, actor_uid, f"⚔️ <b>Qaroqchi</b>: Siz {target_name}dan 💎 1 olmos o'g'irladingiz!")
-                        await _send_private(bot, tgt, f"⚔️ <b>Qaroqchi</b> tunda sizdan 💎 1 olmos o'g'irlab ketdi!")
-                    else:
-                        await _send_private(bot, actor_uid, f"⚔️ <b>Qaroqchi</b>: {target_name}da pul topilmadi, uni do'pposlab qaytdingiz!")
-                        await _send_private(bot, tgt, "⚔️ <b>Qaroqchi</b> tunda kelib sizda pul topolmay, do'pposlab ketdi!")
+                    if choice == "pul":
+                        # Pul olish
+                        if t_prof.money >= 10:
+                            stolen = min(t_prof.money, random.randint(10, 50))
+                            t_prof.money -= stolen
+                            a_prof.money += stolen
+                            await t_prof.save()
+                            await a_prof.save()
+                            await _send_private(bot, actor_uid, f"⚔️ <b>Qaroqchi</b>: Siz {target_name}dan 💵 {stolen}$ o'g'irladingiz!")
+                            await _send_private(bot, tgt, f"⚔️ <b>Qaroqchi</b> tunda sizdan 💵 {stolen}$ o'g'irlab ketdi!")
+                            await bot.send_message(chat.chat_id, f"⚔️ Qaroqchi {target_name}dan 💵 {stolen}$ o'g'irlab ketdi!", parse_mode="HTML")
+                        elif t_prof.diamond > 0:
+                            t_prof.diamond -= 1
+                            a_prof.diamond += 1
+                            await t_prof.save()
+                            await a_prof.save()
+                            await _send_private(bot, actor_uid, f"⚔️ <b>Qaroqchi</b>: Siz {target_name}dan 💎 1 olmos o'g'irladingiz!")
+                            await _send_private(bot, tgt, f"⚔️ <b>Qaroqchi</b> tunda sizdan 💎 1 olmos o'g'irlab ketdi!")
+                            await bot.send_message(chat.chat_id, f"⚔️ Qaroqchi {target_name}dan 💎 1 olmos o'g'irlab ketdi!", parse_mode="HTML")
+                        else:
+                            # Pul yo'q - do'pposlash
+                            target_player = by_uid.get(tgt)
+                            if target_player and target_player.is_alive:
+                                damage = 50
+                                target_player.life = max(0, target_player.life - damage)
+                                await player_repo.save_player(target_player)
+                                await _send_private(bot, actor_uid, f"⚔️ <b>Qaroqchi</b>: {target_name}da pul topilmadi, uni do'pposlab qaytdingiz!")
+                                await _send_private(bot, tgt, f"⚔️ <b>Qaroqchi</b> tunda kelib sizda pul topolmay, do'pposlab ketdi! (Qolgan jon: {target_player.life})")
+                                if target_player.life <= 0:
+                                    target_player.is_alive = False
+                                    target_player.deaded_at = datetime.now(timezone.utc)
+                                    await player_repo.save_player(target_player)
+                                    await _send_private(bot, tgt, "💀 Siz vafot etdingiz!")
+                                    await bot.send_message(chat.chat_id, f"💀 {target_name} Qaroqchi tomonidan o'ldirildi!", parse_mode="HTML")
+                                else:
+                                    await bot.send_message(chat.chat_id, f"⚔️ Kecha tunda {target_name} do'pposlab ketishibdi! Hozir uning {target_player.life}% joni qolgan.", parse_mode="HTML")
+                    elif choice == "jon":
+                        # 50% jon olish
+                        target_player = by_uid.get(tgt)
+                        if target_player and target_player.is_alive:
+                            damage = 50
+                            target_player.life = max(0, target_player.life - damage)
+                            await player_repo.save_player(target_player)
+                            await _send_private(bot, actor_uid, f"⚔️ <b>Qaroqchi</b>: Siz {target_name}ga 💔 50% zarar yetkazdingiz!")
+                            await _send_private(bot, tgt, f"⚔️ <b>Qaroqchi</b> tunda kelib sizga 💔 50% zarar yetkazdi! (Qolgan jon: {target_player.life})")
+                            if target_player.life <= 0:
+                                target_player.is_alive = False
+                                target_player.deaded_at = datetime.now(timezone.utc)
+                                await player_repo.save_player(target_player)
+                                await _send_private(bot, tgt, "💀 Siz vafot etdingiz!")
+                                await bot.send_message(chat.chat_id, f"💀 {target_name} Qaroqchi tomonidan o'ldirildi!", parse_mode="HTML")
+                            else:
+                                await bot.send_message(chat.chat_id, f"⚔️ Kecha tunda {target_name} do'pposlab ketishibdi! Hozir uning {target_player.life}% joni qolgan.", parse_mode="HTML")
         except Exception:
             pass
 
@@ -1419,6 +1614,11 @@ async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot,
     victim.osildi = True
     victim.deaded_at = datetime.now(timezone.utc)
     await player_repo.save_player(victim)
+
+    # Bo'ri kunduz osilsa - o'ladi
+    if victim.role == RoleNames.BORI:
+        await _send_private(bot, victim.user_id, f"🐺 <b>Bo'ri</b>: Siz kunduz osilganimiz uchun o'ldingiz!")
+        await bot.send_message(chat.chat_id, f"💀 {mention} Bo'ri sifatida kunduz osilgani uchun vafot etdi!", parse_mode="HTML")
 
     v_role_str = role_display(victim.role, lang=c_lang)
     lynch_res_text = {

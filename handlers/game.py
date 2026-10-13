@@ -91,9 +91,8 @@ async def f(message: Message, bot: Bot, state: FSMContext):
 async def f(message: Message, state: FSMContext):
     await day_actions.say_last_word_handler(message, state)
 
-@router.callback_query(F.data.startswith(RoleNames.QAROQCHI))
-async def f(call: CallbackQuery, bot: Bot, state: FSMContext):
-    await night_actions.qaroqchi_handler(call, bot, state)
+# Qaroqchi handler - Redis-oqimda night_callbacks.py da ishlaydi
+# Eski handler o'chirildi, chunki Redis-oqimda callback formati boshqacha
 
 @router.callback_query(F.data.startswith(RoleNames.KOMISSAR))
 async def f(call: CallbackQuery, bot:Bot, state: FSMContext):

@@ -931,7 +931,7 @@ async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, i
         total = 1
 
     user_id = call.from_user.id
-    
+
     # Redisdan giveaway ma'lumotlarini olish (bot restart bo'lganda ham ishlaydi)
     giveaway_data = await get_giveaway(giveaway_id)
     if giveaway_data:
@@ -939,12 +939,12 @@ async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, i
         remaining = giveaway_data["remaining_amount"]
         total = giveaway_data["total_amount"]
     # Agar Redisda yo'q bo'lsa, callback data'dan foydalanamiz (backward compatibility)
-    
-    if is_processing(giveaway_id, user_id):
+
+    if await is_processing(giveaway_id, user_id):
         await call.answer(strs["alert_wait"], show_alert=True)
         return
 
-    if is_collected_user(giveaway_id, user_id):
+    if await is_collected_user(giveaway_id, user_id):
         await call.answer(strs["alert_already"], show_alert=True)
         return
 
@@ -1005,8 +1005,8 @@ async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, i
         else:
             # Flush all buffers before showing winners
             await flush_all_giveaway_buffers(giveaway_id)
-            
-            winners = get_winner_details(giveaway_id)
+
+            winners = await get_winner_details(giveaway_id)
             d_disp = get_diamond_display()
             header = "<b>Ajratilgan sovg'alar tugadi!</b>"
             await send_split_winners_list(call, header, winners, d_disp, chunk_size=25)
@@ -1032,6 +1032,232 @@ def _parse_giveaway_count(message: Message, default: int = 1) -> int:
         if clean.isdigit():
             return max(1, int(clean))
     return default
+
+
+def _parse_giveaway_amounts(message: Message) -> tuple:
+    """Parse giveaway amounts: total_amount and per_person (e.g., /gmoney 100-10 -> 100 total, 10 per person)"""
+    parts = (message.text or "").split()
+    total = default = 10
+    per_person = 1
+
+    for p in parts[1:]:
+        # Check for format like "100-10"
+        if "-" in p:
+            try:
+                total_str, per_str = p.split("-")
+                total = int(total_str.replace("$", "").replace("💎", ""))
+                per_person = int(per_str.replace("$", "").replace("💎", ""))
+                return total, per_person
+            except (ValueError, AttributeError):
+                continue
+        # Check for single number
+        clean = p.replace("$", "").replace("💎", "")
+        if clean.isdigit():
+            total = max(1, int(clean))
+            per_person = 1
+
+    return total, per_person
+
+
+async def start_money_giveaway(message: Message, bot: Bot):
+    """Money giveaway: /gmoney 100-10 (100$ jami, har kishiga 10$)"""
+    from utils.giveaways_redis import create_giveaway
+    strs = GIVEAWAY_STRINGS["uz"]
+    total, per_person = _parse_giveaway_amounts(message)
+
+    # Redisda money giveaway yaratish
+    giveaway = await create_giveaway(
+        creator_id=message.from_user.id if message.from_user else bot.id,
+        chat_id=message.chat.id,
+        message_id=message.message_id,
+        total_amount=total
+    )
+
+    if not giveaway:
+        await message.answer("❌ Money giveaway yaratishda xatolik!")
+        return
+
+    giveaway_id = giveaway["id"]
+    d_disp = get_dollar_display()
+    kb = InlineKeyboardBuilder()
+    kb.button(text=strs["btn_enter"].format(remaining=total), callback_data=f"money-giveaway_{giveaway_id}_{total}_{per_person}")
+    msg = (
+        f"💵 <b>Money Giveaway!</b>\n\n"
+        f"Jami: <b>{total} {d_disp}</b>\n"
+        f"Har kishiga: <b>{per_person} {d_disp}</b>\n\n"
+        f"<i>Qatnashish uchun tugmani bosing!</i>"
+    )
+    try:
+        await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+        if message.from_user:
+            await send_big_giveaway_report(bot, message.from_user, message.chat, "Money giveaway", total)
+    except Exception as e:
+        import logging
+        logging.warning(f"start_money_giveaway failed: {e}")
+
+
+async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
+    """Money giveaway callback handler"""
+    import logging
+    logger = logging.getLogger(__name__)
+
+    from models.user import User, Profile
+    from utils.giveaways_redis import (
+        is_collected_user, queue_collected_user, is_processing,
+        mark_as_processing, unmark_as_processing, queue_winner_detail, get_winner_details,
+        get_giveaway, update_giveaway, flush_all_giveaway_buffers
+    )
+    from utils.i18n import get_chat_lang
+
+    chat_id = call.message.chat.id if call.message else 0
+    lang = await get_chat_lang(chat_id)
+    strs = GIVEAWAY_STRINGS.get(lang, GIVEAWAY_STRINGS["uz"])
+
+    parts = call.data.split("_")
+    logger.info(f"Money giveaway callback data: {call.data}, parts: {parts}")
+
+    if len(parts) >= 4:
+        giveaway_id = parts[2]
+        try:
+            remaining = int(parts[3])
+            per_person = int(parts[4] if len(parts) > 4 else 1)
+        except ValueError:
+            remaining = 10
+            per_person = 1
+    else:
+        giveaway_id = str(call.message.message_id if call.message else 0)
+        remaining = 10
+        per_person = 1
+
+    user_id = call.from_user.id
+    logger.info(f"Giveaway ID: {giveaway_id}, User ID: {user_id}, Remaining: {remaining}, Per person: {per_person}")
+
+    # Redisdan giveaway ma'lumotlarini olish
+    giveaway_data = await get_giveaway(giveaway_id)
+    if giveaway_data:
+        remaining = giveaway_data["remaining_amount"]
+        logger.info(f"Giveaway data from Redis: {giveaway_data}")
+    else:
+        logger.warning(f"Giveaway data not found for ID: {giveaway_id}")
+
+    if await is_processing(giveaway_id, user_id):
+        await call.answer(strs["alert_wait"], show_alert=True)
+        return
+
+    if await is_collected_user(giveaway_id, user_id):
+        await call.answer(strs["alert_already"], show_alert=True)
+        return
+
+    if remaining < per_person:
+        await call.answer(strs["alert_ended"], show_alert=True)
+        return
+
+    # Atomic lock olish
+    lock_acquired = await mark_as_processing(giveaway_id, user_id)
+    if not lock_acquired:
+        await call.answer(strs["alert_wait"], show_alert=True)
+        return
+    try:
+        logger.info(f"Processing giveaway claim for user {user_id}")
+        user, _ = await User.get_or_create(
+            user_id=user_id,
+            defaults={"full_name": call.from_user.full_name or f"User_{user_id}", "mention": call.from_user.mention_html()}
+        )
+        logger.info(f"User created/retrieved: {user.user_id}")
+
+        profile, _ = await Profile.get_or_create(user=user)
+        logger.info(f"Profile created/retrieved for user {user_id}, current dollar: {profile.dollar}")
+
+        reward = per_person
+        profile.dollar += reward
+        await profile.save()
+        logger.info(f"Profile saved, new dollar balance: {profile.dollar}")
+
+        from models.user import Transfers
+        admin_user, _ = await User.get_or_create(user_id=bot.id, defaults={"full_name": "Bot"})
+        await Transfers.create(
+            from_user=admin_user,
+            to_user=user,
+            amount=reward,
+            type="dollar",
+            caption="Money giveaway yutug'i"
+        )
+        logger.info(f"Transfer created: {reward} dollars to user {user_id}")
+
+        # Queue for batch write to Redis
+        await queue_collected_user(giveaway_id, user_id)
+        u_name = call.from_user.full_name or f"User_{user_id}"
+        await queue_winner_detail(giveaway_id, user_id, u_name, reward)
+        logger.info(f"User queued in Redis buffers")
+
+        new_remaining = remaining - reward
+        logger.info(f"New remaining amount: {new_remaining}")
+
+        # Redisdan yangilash
+        if giveaway_data:
+            await update_giveaway(giveaway_id, {"remaining_amount": new_remaining})
+            logger.info(f"Giveaway updated in Redis: {new_remaining}")
+
+        if new_remaining >= per_person:
+            kb = InlineKeyboardBuilder()
+            kb.button(text=strs["btn_enter"].format(remaining=new_remaining), callback_data=f"money-giveaway_{giveaway_id}_{new_remaining}_{per_person}")
+            if call.message:
+                try:
+                    await call.message.edit_reply_markup(reply_markup=kb.as_markup())
+                    logger.info("Keyboard updated successfully")
+                except Exception as e:
+                    logger.error(f"Error updating keyboard: {e}")
+        else:
+            # Flush all buffers before showing winners
+            await flush_all_giveaway_buffers(giveaway_id)
+            logger.info("Buffers flushed")
+
+            winners = await get_winner_details(giveaway_id)
+            d_disp = get_dollar_display()
+            header = "<b>Ajratilgan money giveaway tugadi!</b>"
+            await send_split_winners_list(call, header, winners, d_disp, chunk_size=25)
+            logger.info(f"Winners list sent: {len(winners)} winners")
+
+            # Qolgan pulni admin (creator) ga qaytarish
+            if new_remaining > 0:
+                try:
+                    if giveaway_data:
+                        creator_id = giveaway_data.get("creator_id")
+                        if creator_id:
+                            creator_user = await User.get_or_none(user_id=creator_id)
+                            if creator_user:
+                                creator_profile = await Profile.get_or_create(user=creator_user)[0]
+                                creator_profile.dollar += new_remaining
+                                await creator_profile.save()
+                                try:
+                                    await bot.send_message(
+                                        creator_id,
+                                        f"💵 Money giveaway tugadi. Qolgan {new_remaining} {d_disp} sizga qaytarildi.",
+                                        parse_mode="HTML"
+                                    )
+                                    logger.info(f"Remaining money {new_remaining} returned to creator {creator_id}")
+                                except Exception as e:
+                                    logger.error(f"Error sending message to creator: {e}")
+                except Exception as e:
+                    logger.error(f"Error returning remaining money to creator: {e}")
+
+        await call.answer(strs["alert_success"].format(reward=reward), show_alert=True)
+        try:
+            d_disp = get_dollar_display()
+            await bot.send_message(
+                user_id,
+                f"🎉 <b>Tabriklaymiz!</b> Siz money giveawaydan <b>{reward} {d_disp}</b> yutib oldingiz!",
+                parse_mode="HTML"
+            )
+            logger.info(f"Success message sent to user {user_id}")
+        except Exception as e:
+            logger.error(f"Error sending success message to user: {e}")
+    except Exception as e:
+        logger.error(f"Error in money_giveaway_callback: {e}", exc_info=True)
+        await call.answer("❌ Xatolik yuz berdi!", show_alert=True)
+    finally:
+        await unmark_as_processing(giveaway_id, user_id)
+        logger.info(f"Processing lock released for user {user_id}")
 
 async def start_qotil_protection_giveaway(message: Message, bot: Bot):
     count = _parse_giveaway_count(message)
