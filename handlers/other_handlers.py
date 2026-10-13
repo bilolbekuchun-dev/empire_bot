@@ -192,8 +192,9 @@ async def f(call: CallbackQuery, bot: Bot):
 async def f(call: CallbackQuery, bot: Bot):
     await others.show_shop(call)
 
-@router.callback_query(F.data.startswith("back_profile"))
+@router.callback_query(F.data == "back_profile")
 async def f(call: CallbackQuery, bot: Bot, state: FSMContext):
+    print(f"[DEBUG] back_profile callback: user={call.from_user.id}, data={call.data}")
     await others.back_profile(call, state)
 
 @router.callback_query(F.data == "open_protections")
