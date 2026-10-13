@@ -464,6 +464,13 @@ async def send_night_actions(
             await asyncio.sleep(0.03)
             continue
 
+        # --- Qoriqchi: nishon tanlash ---
+        if role == RoleNames.QORIQCHI:
+            await _send_private(bot, uid, f"🛡 {role_display(role)} — qo'riqlash uchun nishonni tanlang:",
+                                _target_kb("qr", game_id, night_num, mk_targets, skip_label=skip_label))
+            await asyncio.sleep(0.03)
+            continue
+
         # --- Bo'ri: nishon tanlash ---
         if role == RoleNames.BORI:
             await _send_private(bot, uid, f"🐺 {role_display(role)} — nishonni tanlang:",

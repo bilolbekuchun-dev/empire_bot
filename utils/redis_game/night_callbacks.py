@@ -17,7 +17,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from utils.premium_emojis import role_display
 from utils.role_names import RoleNames
 from utils.redis_game.night_engine import (
-    ROLE_CODE, ROLE_ACTION_TYPE, _name_map, lynch_confirm_kb
+    ROLE_CODE, ROLE_ACTION_TYPE, _name_map, lynch_confirm_kb, persist_zanjir_pairs
 )
 from utils.redis_game.services.action_service import ActionService
 from utils.redis_game.services.vote_service import VoteService
@@ -406,7 +406,7 @@ async def night_action_cb(call: CallbackQuery, bot=None):
     if code in ("zj", "se") and kind == "t":
         await ActionService.clear_player_actions(gid, ph, uid)
         await r.set(f"game:{gid}:tmp:{uid}:first", str(target), ex=3600)
-        _p, tg = await _alive_targets(gid)
+        _p, tg = await _alive_targets(gid, exclude_uid=int(target))
         skip_btn = {"uz": "🚷 O'tkazib yuborish", "ru": "🚷 Пропустить", "en": "🚷 Skip", "tr": "🚷 Pas geç", "kk": "🚷 Өткізіп жіберу"}.get(chat_lang, "🚷 O'tkazib yuborish")
         kb = InlineKeyboardBuilder()
         for tuid, label in tg:
@@ -516,6 +516,17 @@ async def night_action_cb(call: CallbackQuery, bot=None):
 
         await _announce_night_action(call, gid, ph, uid, role)
         await _confirm_choice(call, role, f"{target_name} ➔ {choice}", lang=chat_lang, gid=gid)
+        await _mark_action_completed(gid, ph, uid)
+        return
+
+    # Qoriqchi: nishon tanlash
+    if code == "qr" and kind == "t":
+        atype = ROLE_ACTION_TYPE.get(role, "protect")
+        await ActionService.save_action(gid, ph, uid, int(target), atype)
+        await _set_last_visited(gid, uid, int(target))
+        choice = await _player_name(int(target))
+        await _announce_night_action(call, gid, ph, uid, role)
+        await _confirm_choice(call, role, f"Qo'riqlash ➔ {choice}", lang=chat_lang, gid=gid)
         await _mark_action_completed(gid, ph, uid)
         return
 

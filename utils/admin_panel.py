@@ -105,7 +105,7 @@ async def get_user_manage_info(user_id: int):
     block_str = "🚫 Bloklangan" if is_blocked else "✅ Toza (Faol)"
 
     text = (
-        f"👤 <b>Foydalanuvchi ma'lumotlari:</b>\n"
+        f'<tg-emoji emoji-id="5361893895959524356">⭐️</tg-emoji> <b>Foydalanuvchi ma\'lumotlari:</b>\n'
         f"━━━━━━━━━━━━━━━━━━━━━━\n"
         f"• <b>Ism:</b> {user.full_name}\n"
         f"• <b>ID:</b> <code>{user.user_id}</code>\n"
@@ -124,8 +124,8 @@ async def get_user_manage_info(user_id: int):
         f"• 📜 Hujjat: <code>{profile.hujjat}</code> ta\n"
         f"• 🔒 Osishdan himoya: <code>{profile.osishdan_himoya}</code> ta\n\n"
         f"🎮 <b>O'yin statistikasi:</b>\n"
-        f"• 🕹 O'yinlar: <code>{total_games}</code> ta\n"
-        f"• 🏆 G'alabalar: <code>{wins}</code> ta\n"
+        f'<tg-emoji emoji-id="5361612652911048505">⭐️</tg-emoji> O\'yinlar: <code>{total_games}</code> ta\n'
+        f'<tg-emoji emoji-id="5364235172826885791">⭐️</tg-emoji> G\'alabalar: <code>{wins}</code> ta\n'
         f"━━━━━━━━━━━━━━━━━━━━━━"
     )
     kb = admin_user_manage_kb(user_id=user_id, is_blocked=is_blocked, is_vip=is_vip)
