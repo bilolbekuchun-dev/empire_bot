@@ -472,6 +472,53 @@ async def night_action_cb(call: CallbackQuery, bot=None):
         await _send_private(call.bot, target_uid, wish_prompts.get(t_lang, wish_prompts["uz"]), kb.as_markup())
         return
 
+    # Qaroqchi: nishon tanlanganda tanlov menyusi (pul/jon)
+    if code == "qa" and kind == "t":
+        await r.set(f"game:{gid}:tmp:{uid}:target", str(target), ex=3600)
+        target_name = await _player_name(int(target))
+
+        pul_btn = {"uz": "💰 Pul olish", "ru": "💰 Взять деньги", "en": "💰 Take money", "tr": "💰 Para al", "kk": "💰 Ақша алу"}.get(chat_lang, "💰 Pul olish")
+        jon_btn = {"uz": "💔 Jon olish (50% zarar)", "ru": "💔 Нанести урон (50%)", "en": "💔 Inflict damage (50%)", "tr": "💔 Zarar ver (50%)", "kk": "💔 Зақым келтіру (50%)"}.get(chat_lang, "💔 Jon olish (50% zarar)")
+
+        kb = InlineKeyboardBuilder()
+        kb.button(text=pul_btn, callback_data=f"na|qa|{gid}|{ph}|pul|{target}")
+        kb.button(text=jon_btn, callback_data=f"na|qa|{gid}|{ph}|jon|{target}")
+        kb.adjust(1)
+
+        prompt = {
+            "uz": f"⚔️ <b>Qaroqchi</b>\n\n{target_name}ni tanladingiz.\nNima qilasiz?",
+            "ru": f"⚔️ <b>Грабитель</b>\n\nВы выбрали {target_name}.\nЧто делаем?",
+            "en": f"⚔️ <b>Robber</b>\n\nYou selected {target_name}.\nWhat do you do?",
+            "tr": f"⚔️ <b>Soyguncu</b>\n\n{target_name} seçtiniz.\nNe yapacaksınız?",
+            "kk": f"⚔️ <b>Қарақшы</b>\n\n{target_name} таңдадыңыз.\nНе істейсіз?"
+        }.get(chat_lang, f"⚔️ <b>Qaroqchi</b>\n\n{target_name}ni tanladingiz.\nNima qilasiz?")
+
+        try:
+            await call.message.edit_text(prompt, parse_mode="HTML", reply_markup=kb.as_markup())
+        except Exception:
+            pass
+        await call.answer()
+        return
+
+    # Qaroqchi: tanlov (pul/jon)
+    if code == "qa" and kind in ("pul", "jon"):
+        target_raw = await r.get(f"game:{gid}:tmp:{uid}:target")
+        if not target_raw:
+            await call.answer("Xatolik yuz berdi. Qaytadan urinib ko'ring.", show_alert=True)
+            return
+        target = int(target_raw)
+        atype = f"qaroqchi_{kind}"
+        await ActionService.save_action(gid, ph, uid, target, atype)
+        await _set_last_visited(gid, uid, target)
+
+        target_name = await _player_name(target)
+        choice = f"💰 Pul" if kind == "pul" else f"💔 Jon (50%)"
+
+        await _announce_night_action(call, gid, ph, uid, role)
+        await _confirm_choice(call, role, f"{target_name} ➔ {choice}", lang=chat_lang, gid=gid)
+        await _mark_action_completed(gid, ph, uid)
+        return
+
     # Oddiy nishonli harakat
     if kind == "t":
         atype = ROLE_ACTION_TYPE.get(role, "action")

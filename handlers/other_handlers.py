@@ -119,6 +119,18 @@ async def f(call: CallbackQuery, bot: Bot):
 @router.callback_query(F.data.startswith("channel-giveaway_"))
 async def f(call: CallbackQuery, bot: Bot):
     await others.giveaway_callback_channel(call, bot)
+
+@router.message(Command("gmoney"))
+@router.message(F.text.startswith("/gmoney "))
+async def f(message: Message, bot: Bot):
+    if message.from_user and message.from_user.id in PRIMARY_ADMIN_IDS:
+        await others.start_money_giveaway(message, bot)
+    else:
+        await message.answer("⚠️ Bu komandadan faqat adminlar foydalanishi mumkin!")
+
+@router.callback_query(F.data.startswith("money-giveaway_"))
+async def f(call: CallbackQuery, bot: Bot):
+    await others.money_giveaway_callback(call, bot)
     
 @router.callback_query(F.data.startswith("buy_dollar"))
 async def f(call: CallbackQuery, bot: Bot):
