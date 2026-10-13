@@ -2632,8 +2632,8 @@ async def back_profile(call: CallbackQuery, state):
     dia_id = get_custom_emoji_id("currency", "diamond")
     dollar_id = get_custom_emoji_id("currency", "dollar")
     
-    d_disp = get_diamond_display(profile.diamond)
-    dollar_disp = get_dollar_display(profile.dollar)
+    d_disp = get_diamond_display()
+    dollar_disp = get_dollar_display()
     
     # Default labels
     lbl_diamond = lbls.get("lbl_diamond", "Olmos")
@@ -2648,8 +2648,8 @@ async def back_profile(call: CallbackQuery, state):
     
     # Build profile text
     text = (
-        f'<tg-emoji emoji-id="{dia_id}">💎</tg-emoji> {lbl_diamond}: <b>{d_disp}</b>\n'
-        f'<tg-emoji emoji-id="{dollar_id}">💵</tg-emoji> {lbl_dollar}: <b>{dollar_disp}</b>\n\n'
+        f'<tg-emoji emoji-id="{dia_id}">💎</tg-emoji> {lbl_diamond}: <b>{profile.diamond} {d_disp}</b>\n'
+        f'<tg-emoji emoji-id="{dollar_id}">💵</tg-emoji> {lbl_dollar}: <b>{profile.dollar} {dollar_disp}</b>\n\n'
         f'<tg-emoji emoji-id="5364235172826885791">⭐️</tg-emoji> {lbl_wins}: <b>{profile.wins}</b>\n'
         f'<tg-emoji emoji-id="5361612652911048505">⭐️</tg-emoji> {lbl_games}: <b>{profile.games_count}</b>\n\n'
         f'<tg-emoji emoji-id="5287705169214066018">🤩</tg-emoji> {lbl_partner}: {partner_text}\n\n'
