@@ -144,14 +144,14 @@ async def get_profile(bot: Bot, message: Message):
         if message.chat.type == "private":
             await message.answer(text, reply_markup=profile_keyboards_on_private(profile, is_vip=is_vip, lang=lang), parse_mode="HTML")
         else:
-            await message.answer(text, reply_markup=profile_keyboards(lang=lang), parse_mode="HTML")
+            await message.answer(text, reply_markup=profile_keyboards(lang=lang, is_vip=is_vip), parse_mode="HTML")
     except Exception as e:
         # Fallback to plain text if HTML fails
         plain_text = text.replace("<b>", "").replace("</b>", "")
         if message.chat.type == "private":
             await message.answer(plain_text, reply_markup=profile_keyboards_on_private(profile, is_vip=is_vip, lang=lang))
         else:
-            await message.answer(plain_text, reply_markup=profile_keyboards(lang=lang))
+            await message.answer(plain_text, reply_markup=profile_keyboards(lang=lang, is_vip=is_vip))
 
 async def transfer_funds_handler(message: Message, bot: Bot = None):
     """
@@ -2279,8 +2279,12 @@ async def buy_diamond_menu_handler(call: CallbackQuery):
     kb.adjust(1, 1)
     
     print(f"[DEBUG] Sending diamond menu message")
-    await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
-    print(f"[DEBUG] Diamond menu message sent successfully")
+    try:
+        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+        print(f"[DEBUG] Diamond menu message sent successfully")
+    except Exception as e:
+        print(f"[DEBUG] Error editing message: {e}")
+        await call.answer()
 
 async def diamond_stars_payment_handler(call: CallbackQuery, bot: Bot):
     from aiogram.types import LabeledPrice
@@ -2298,12 +2302,12 @@ async def diamond_stars_payment_handler(call: CallbackQuery, bot: Bot):
     }.get(lang, "⭐ <b>Stars orqali tolov</b>\n\nQuyidagi paketlardan birini tanlang:")
     
     kb = InlineKeyboardBuilder()
-    kb.button(text="💎 10 olmos - 100⭐", callback_data="buy_stars_10")
-    kb.button(text="💎 50 olmos - 500⭐", callback_data="buy_stars_50")
-    kb.button(text="💎 100 olmos - 1000⭐", callback_data="buy_stars_100")
-    kb.button(text="💎 500 olmos - 5000⭐", callback_data="buy_stars_500")
-    kb.button(text="💎 1000 olmos - 10000⭐", callback_data="buy_stars_1000")
-    kb.button(text="⬅️ Orqaga", callback_data="buy_diamond_menu")
+    kb.button(text="💎 10 olmos - 70⭐", callback_data="buy_stars_10")
+    kb.button(text="💎 50 olmos - 350⭐", callback_data="buy_stars_50")
+    kb.button(text="💎 100 olmos - 700⭐", callback_data="buy_stars_100")
+    kb.button(text="💎 500 olmos - 3500⭐", callback_data="buy_stars_500")
+    kb.button(text="💎 1000 olmos - 7000⭐", callback_data="buy_stars_1000")
+    kb.button(text="⬅️ Orqaga", callback_data="diamond_menu")
     kb.adjust(2, 1)
     
     await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
@@ -2313,11 +2317,11 @@ async def buy_stars_invoice_handler(call: CallbackQuery, bot: Bot):
     from utils.i18n import clean_lang
     
     diamond_map = {
-        "buy_stars_10": (10, 100),
-        "buy_stars_50": (50, 500),
-        "buy_stars_100": (100, 1000),
-        "buy_stars_500": (500, 5000),
-        "buy_stars_1000": (1000, 10000)
+        "buy_stars_10": (10, 70),
+        "buy_stars_50": (50, 350),
+        "buy_stars_100": (100, 700),
+        "buy_stars_500": (500, 3500),
+        "buy_stars_1000": (1000, 7000)
     }
     
     if call.data not in diamond_map:
@@ -2406,8 +2410,12 @@ async def buy_money_menu_handler(call: CallbackQuery):
     kb.adjust(2, 1)
     
     print(f"[DEBUG] Sending money menu message")
-    await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
-    print(f"[DEBUG] Money menu message sent successfully")
+    try:
+        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+        print(f"[DEBUG] Money menu message sent successfully")
+    except Exception as e:
+        print(f"[DEBUG] Error editing message: {e}")
+        await call.answer()
 
 async def exchange_diamond_handler(call: CallbackQuery):
     from models.user import User, Profile
@@ -2602,7 +2610,24 @@ async def open_protections_menu(call: CallbackQuery):
     await call.answer()
 
 async def back_profile(call: CallbackQuery, state):
-    await call.message.edit_text("👤 Profil menyusi", reply_markup=get_start_markup())
+    from models.user import User, Profile
+    from keyboards.user_keyboards import profile_keyboards_on_private
+    from utils.i18n import clean_lang
+    
+    user = await User.filter(user_id=call.from_user.id).first()
+    if not user:
+        await call.answer("❌ Foydalanuvchi topilmadi!", show_alert=True)
+        return
+    
+    profile = await Profile.get_or_none(user=user)
+    if not profile:
+        profile = await Profile.create(user=user, dollar=0, diamond=0)
+    
+    is_vip = user.is_vip if hasattr(user, 'is_vip') else False
+    lang = clean_lang(user.lang if user else "uz")
+    
+    kb = profile_keyboards_on_private(profile, is_vip=is_vip, lang=lang)
+    await call.message.edit_text("👤 Profil menyusi", reply_markup=kb, parse_mode="HTML")
 
 async def get_diamond_hamyonlar(call: CallbackQuery):
     from aiogram.utils.keyboard import InlineKeyboardBuilder
