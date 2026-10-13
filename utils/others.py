@@ -2253,6 +2253,206 @@ async def item_info_handler(call: CallbackQuery):
     
     await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
 
+async def buy_diamond_menu_handler(call: CallbackQuery):
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from utils.i18n import clean_lang
+    
+    user = await User.filter(user_id=call.from_user.id).first()
+    lang = clean_lang(user.lang if user else "uz")
+    
+    text = {
+        "uz": "💎 <b>Olmos xarid qilish</b>\n\nQuyidagi paketlardan birini tanlang:",
+        "ru": "💎 <b>Купить алмазы</b>\n\nВыберите один из пакетов:",
+        "en": "💎 <b>Buy diamonds</b>\n\nSelect one of the packages:",
+        "tr": "💎 <b>Elmas satın al</b>\n\nAşağıdaki paketlerden birini seçin:",
+        "kk": "💎 <b>Алмаз сатып алу</b>\n\nТөмендегі пакеттердің бірін таңдаңыз:"
+    }.get(lang, "💎 <b>Olmos xarid qilish</b>\n\nQuyidagi paketlardan birini tanlang:")
+    
+    kb = InlineKeyboardBuilder()
+    kb.button(text="⭐ Stars orqali tolov", callback_data="diamond_stars_payment")
+    kb.button(text="💳 Karta orqali tolov", url="tg://user?id=6913838682")
+    kb.button(text="⬅️ Orqaga", callback_data="back_profile")
+    kb.adjust(1, 1)
+    
+    await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+
+async def diamond_stars_payment_handler(call: CallbackQuery, bot: Bot):
+    from aiogram.types import LabeledPrice
+    from utils.i18n import clean_lang
+    
+    user = await User.filter(user_id=call.from_user.id).first()
+    lang = clean_lang(user.lang if user else "uz")
+    
+    text = {
+        "uz": "⭐ <b>Stars orqali tolov</b>\n\nQuyidagi paketlardan birini tanlang:",
+        "ru": "⭐ <b>Оплата через Stars</b>\n\nВыберите один из пакетов:",
+        "en": "⭐ <b>Payment via Stars</b>\n\nSelect one of the packages:",
+        "tr": "⭐ <b>Stars ile ödeme</b>\n\nAşağıdaki paketlerden birini seçin:",
+        "kk": "⭐ <b>Stars арқылы төлеу</b>\n\nТөмендегі пакеттердің бірін таңдаңыз:"
+    }.get(lang, "⭐ <b>Stars orqali tolov</b>\n\nQuyidagi paketlardan birini tanlang:")
+    
+    kb = InlineKeyboardBuilder()
+    kb.button(text="💎 10 olmos - 100⭐", callback_data="buy_stars_10")
+    kb.button(text="💎 50 olmos - 500⭐", callback_data="buy_stars_50")
+    kb.button(text="💎 100 olmos - 1000⭐", callback_data="buy_stars_100")
+    kb.button(text="💎 500 olmos - 5000⭐", callback_data="buy_stars_500")
+    kb.button(text="💎 1000 olmos - 10000⭐", callback_data="buy_stars_1000")
+    kb.button(text="⬅️ Orqaga", callback_data="buy_diamond_menu")
+    kb.adjust(2, 1)
+    
+    await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+
+async def buy_stars_invoice_handler(call: CallbackQuery, bot: Bot):
+    from aiogram.types import LabeledPrice
+    from utils.i18n import clean_lang
+    
+    diamond_map = {
+        "buy_stars_10": (10, 100),
+        "buy_stars_50": (50, 500),
+        "buy_stars_100": (100, 1000),
+        "buy_stars_500": (500, 5000),
+        "buy_stars_1000": (1000, 10000)
+    }
+    
+    if call.data not in diamond_map:
+        await call.answer("❌ Noto'g'ri tanlov!", show_alert=True)
+        return
+    
+    diamond_count, star_amount = diamond_map[call.data]
+    
+    user = await User.filter(user_id=call.from_user.id).first()
+    lang = clean_lang(user.lang if user else "uz")
+    
+    title = {
+        "uz": f"{diamond_count} olmos",
+        "ru": f"{diamond_count} алмаз",
+        "en": f"{diamond_count} diamonds",
+        "tr": f"{diamond_count} elmas",
+        "kk": f"{diamond_count} алмаз"
+    }.get(lang, f"{diamond_count} olmos")
+    
+    description = {
+        "uz": f"{diamond_count} ta olmos xarid qilish",
+        "ru": f"Покупка {diamond_count} алмазов",
+        "en": f"Buy {diamond_count} diamonds",
+        "tr": f"{diamond_count} elmas satın al",
+        "kk": f"{diamond_count} алмаз сатып алу"
+    }.get(lang, f"{diamond_count} ta olmos xarid qilish")
+    
+    await bot.send_invoice(
+        chat_id=call.from_user.id,
+        title=title,
+        description=description,
+        payload=f"diamond_{diamond_count}",
+        currency="XTR",
+        prices=[LabeledPrice(label=f"{diamond_count} olmos", amount=star_amount)]
+    )
+    await call.answer()
+
+async def pre_checkout_handler(pre_checkout_query: PreCheckoutQuery, bot: Bot):
+    await bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
+
+async def success_payment_handler(message: Message, bot: Bot):
+    from models.user import User, Profile
+    
+    payload = message.successful_payment.invoice_payload
+    if not payload.startswith("diamond_"):
+        return
+    
+    diamond_count = int(payload.replace("diamond_", ""))
+    
+    user = await User.filter(user_id=message.from_user.id).first()
+    if not user:
+        return
+    
+    profile, _ = await Profile.get_or_create(user=user, defaults={"dollar": 0, "diamond": 0})
+    profile.diamond += diamond_count
+    await profile.save()
+    
+    await message.answer(f"✅ Muvaffaqiyatli! {diamond_count}💎 olmos qo'shildi!")
+
+async def buy_money_menu_handler(call: CallbackQuery):
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from utils.i18n import clean_lang
+    
+    user = await User.filter(user_id=call.from_user.id).first()
+    lang = clean_lang(user.lang if user else "uz")
+    
+    text = {
+        "uz": "💵 <b>Pul xarid qilish</b>\n\nOlmoslarni pulga aylantirish:\n\n💎 1 olmos = 1000$",
+        "ru": "💵 <b>Купить доллары</b>\n\nОбмен алмазов на доллары:\n\n💎 1 алмаз = 1000$",
+        "en": "💵 <b>Buy dollars</b>\n\nExchange diamonds for dollars:\n\n💎 1 diamond = 1000$",
+        "tr": "💵 <b>Dolar satın al</b>\n\nElmasları dolara çevirme:\n\n💎 1 elmas = 1000$",
+        "kk": "💵 <b>Доллар сатып алу</b>\n\nАлмаздарды долларға айырбастыру:\n\n💎 1 алмаз = 1000$"
+    }.get(lang, "💵 <b>Pul xarid qilish</b>\n\nOlmoslarni pulga aylantirish:\n\n💎 1 olmos = 1000$")
+    
+    kb = InlineKeyboardBuilder()
+    kb.button(text="💎 1 olmos -> 1000$", callback_data="exchange_1_diamond")
+    kb.button(text="💎 5 olmos -> 5000$", callback_data="exchange_5_diamond")
+    kb.button(text="💎 10 olmos -> 10000$", callback_data="exchange_10_diamond")
+    kb.button(text="💎 50 olmos -> 50000$", callback_data="exchange_50_diamond")
+    kb.button(text="💎 100 olmos -> 100000$", callback_data="exchange_100_diamond")
+    kb.button(text="⬅️ Orqaga", callback_data="back_profile")
+    kb.adjust(2, 1)
+    
+    await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+
+async def exchange_diamond_handler(call: CallbackQuery):
+    from models.user import User, Profile
+    from utils.i18n import clean_lang
+    
+    exchange_map = {
+        "exchange_1_diamond": 1,
+        "exchange_5_diamond": 5,
+        "exchange_10_diamond": 10,
+        "exchange_50_diamond": 50,
+        "exchange_100_diamond": 100
+    }
+    
+    diamond_count = exchange_map.get(call.data, 0)
+    if diamond_count == 0:
+        await call.answer("❌ Noto'g'ri tanlov!", show_alert=True)
+        return
+    
+    user = await User.filter(user_id=call.from_user.id).first()
+    if not user:
+        await call.answer("❌ Foydalanuvchi topilmadi!", show_alert=True)
+        return
+    
+    profile = await Profile.get_or_none(user=user)
+    if not profile:
+        await call.answer("❌ Profil topilmadi!", show_alert=True)
+        return
+    
+    if profile.diamond < diamond_count:
+        lang = clean_lang(user.lang if user else "uz")
+        msg = {
+            "uz": f"❌ Sizda yetarli olmos yo'q! (Kerak: {diamond_count}💎, Sizda: {profile.diamond}💎)",
+            "ru": f"❌ У вас недостаточно алмазов! (Нужно: {diamond_count}💎, У вас: {profile.diamond}💎)",
+            "en": f"❌ Not enough diamonds! (Need: {diamond_count}💎, You have: {profile.diamond}💎)",
+            "tr": f"❌ Yeterli elmas yok! (Gerekli: {diamond_count}💎, Sizde: {profile.diamond}💎)",
+            "kk": f"❌ Сізде жеткілікті алмаз жоқ! (Керек: {diamond_count}💎, Сізде: {profile.diamond}💎)"
+        }.get(lang, f"❌ Sizda yetarli olmos yo'q! (Kerak: {diamond_count}💎, Sizda: {profile.diamond}💎)")
+        await call.answer(msg, show_alert=True)
+        return
+    
+    dollar_amount = diamond_count * 1000
+    profile.diamond -= diamond_count
+    profile.dollar += dollar_amount
+    await profile.save()
+    
+    lang = clean_lang(user.lang if user else "uz")
+    msg = {
+        "uz": f"✅ Muvaffaqiyatli almashtirildi! -{diamond_count}💎 +{dollar_amount}$",
+        "ru": f"✅ Успешно обменяно! -{diamond_count}💎 +{dollar_amount}$",
+        "en": f"✅ Successfully exchanged! -{diamond_count}💎 +{dollar_amount}$",
+        "tr": f"✅ Başarıyla değiştirildi! -{diamond_count}💎 +{dollar_amount}$",
+        "kk": f"✅ Сәтті ауыстырылды! -{diamond_count}💎 +{dollar_amount}$"
+    }.get(lang, f"✅ Muvaffaqiyatli almashtirildi! -{diamond_count}💎 +{dollar_amount}$")
+    await call.answer(msg, show_alert=True)
+    
+    await buy_money_menu_handler(call)
+
 async def buy_handler(call: CallbackQuery):
     from models.user import User, Profile
     from models.game_data import Geroys
