@@ -154,18 +154,22 @@ async def f(call: CallbackQuery, bot: Bot):
 
 @router.callback_query(F.data == "buy_diamond_menu")
 async def f(call: CallbackQuery, bot: Bot):
+    print(f"[DEBUG] buy_diamond_menu callback: user={call.from_user.id}, data={call.data}")
     await others.buy_diamond_menu_handler(call)
 
 @router.callback_query(F.data == "diamond_stars_payment")
 async def f(call: CallbackQuery, bot: Bot):
+    print(f"[DEBUG] diamond_stars_payment callback: user={call.from_user.id}, data={call.data}")
     await others.diamond_stars_payment_handler(call, bot)
 
 @router.callback_query(F.data.startswith("buy_stars_"))
 async def f(call: CallbackQuery, bot: Bot):
+    print(f"[DEBUG] buy_stars callback: user={call.from_user.id}, data={call.data}")
     await others.buy_stars_invoice_handler(call, bot)
 
 @router.callback_query(F.data == "buy_money_menu")
 async def f(call: CallbackQuery, bot: Bot):
+    print(f"[DEBUG] buy_money_menu callback: user={call.from_user.id}, data={call.data}")
     await others.buy_money_menu_handler(call)
 
 @router.callback_query(F.data.startswith("exchange_"))

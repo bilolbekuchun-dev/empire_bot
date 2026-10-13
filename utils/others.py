@@ -2257,8 +2257,12 @@ async def buy_diamond_menu_handler(call: CallbackQuery):
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     from utils.i18n import clean_lang
     
+    print(f"[DEBUG] buy_diamond_menu_handler called: user={call.from_user.id}")
+    
     user = await User.filter(user_id=call.from_user.id).first()
     lang = clean_lang(user.lang if user else "uz")
+    
+    print(f"[DEBUG] User lang: {lang}")
     
     text = {
         "uz": "💎 <b>Olmos xarid qilish</b>\n\nQuyidagi paketlardan birini tanlang:",
@@ -2274,7 +2278,9 @@ async def buy_diamond_menu_handler(call: CallbackQuery):
     kb.button(text="⬅️ Orqaga", callback_data="back_profile")
     kb.adjust(1, 1)
     
+    print(f"[DEBUG] Sending diamond menu message")
     await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    print(f"[DEBUG] Diamond menu message sent successfully")
 
 async def diamond_stars_payment_handler(call: CallbackQuery, bot: Bot):
     from aiogram.types import LabeledPrice
@@ -2375,8 +2381,12 @@ async def buy_money_menu_handler(call: CallbackQuery):
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     from utils.i18n import clean_lang
     
+    print(f"[DEBUG] buy_money_menu_handler called: user={call.from_user.id}")
+    
     user = await User.filter(user_id=call.from_user.id).first()
     lang = clean_lang(user.lang if user else "uz")
+    
+    print(f"[DEBUG] User lang: {lang}")
     
     text = {
         "uz": "💵 <b>Pul xarid qilish</b>\n\nOlmoslarni pulga aylantirish:\n\n💎 1 olmos = 1000$",
@@ -2395,7 +2405,9 @@ async def buy_money_menu_handler(call: CallbackQuery):
     kb.button(text="⬅️ Orqaga", callback_data="back_profile")
     kb.adjust(2, 1)
     
+    print(f"[DEBUG] Sending money menu message")
     await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    print(f"[DEBUG] Money menu message sent successfully")
 
 async def exchange_diamond_handler(call: CallbackQuery):
     from models.user import User, Profile
