@@ -52,7 +52,8 @@ def profile_keyboards_on_private(profile: Profile, is_vip: bool = False, lang: s
 
     markup.button(text=lbls.get("btn_protections", "🛡 Himoyalar"), callback_data="open_protections")
     markup.button(text=lbls.get("btn_shop", "Do'kon"), callback_data="shop", icon_custom_emoji_id="5373052667671093676")
-    markup.button(text=lbls.get("btn_para", "Mening param"), callback_data="my_para_menu", icon_custom_emoji_id="5402100905883488232")
+    
+    markup.button(text=lbls.get("btn_profile", "👤 Mening param"), callback_data="profile")
     if is_vip:
         status_text = {
             "uz": "✨ Statusni o'zgartirish",
@@ -84,7 +85,7 @@ def profile_keyboards_on_private(profile: Profile, is_vip: bool = False, lang: s
     markup.button(text=lbls.get("btn_hero", "🥷 Mening geroyim"), callback_data="my_geroy")
     markup.button(text=lbls.get("btn_prem_groups", "🎲 Premium guruhlar"), callback_data="prem_groups")
     markup.button(text=lbls.get("btn_news", "Yangiliklar"), url=f"https://t.me/{CHANNEL_USERNAME[1:]}")
-    markup.adjust(1, 2, (3 if is_vip else 2), 2, 1, 2)
+    markup.adjust(2, 2, 2, 2, 1)
     return markup.as_markup()
 
 def blocking_users(user1_id, user2_id):
