@@ -2635,14 +2635,25 @@ async def back_profile(call: CallbackQuery, state):
     d_disp = get_diamond_display(profile.diamond)
     dollar_disp = get_dollar_display(profile.dollar)
     
+    # Default labels
+    lbl_diamond = lbls.get("lbl_diamond", "Olmos")
+    lbl_dollar = lbls.get("lbl_dollar", "Dollar")
+    lbl_wins = lbls.get("lbl_wins", "G'alabalar")
+    lbl_games = lbls.get("lbl_games", "O'yinlar")
+    lbl_partner = lbls.get("lbl_partner", "Jufti")
+    lbl_roles = lbls.get("lbl_roles", "Faol rollar")
+    
+    partner_text = user.partner if user.partner else "Yo'q"
+    roles_text = user.active_roles if user.active_roles else "Yo'q"
+    
     # Build profile text
     text = (
-        f'<tg-emoji emoji-id="{dia_id}">💎</tg-emoji> {lbls.get("lbl_diamond", "Olmos")}: <b>{d_disp}</b>\n'
-        f'<tg-emoji emoji-id="{dollar_id}">💵</tg-emoji> {lbls.get("lbl_dollar", "Dollar")}: <b>{dollar_disp}</b>\n\n'
-        f'<tg-emoji emoji-id="5364235172826885791">⭐️</tg-emoji> {lbls.get("lbl_wins", "G'alabalar")}: <b>{profile.wins}</b>\n'
-        f'<tg-emoji emoji-id="5361612652911048505">⭐️</tg-emoji> {lbls.get("lbl_games", "O'yinlar")}: <b>{profile.games_count}</b>\n\n'
-        f'<tg-emoji emoji-id="5287705169214066018">🤩</tg-emoji> {lbls.get("lbl_partner", "Jufti")}: {user.partner if user.partner else "Yo\'q"}\n\n'
-        f'<tg-emoji emoji-id="5364172633808087023">⭐️</tg-emoji> {lbls.get("lbl_roles", "Faol rollar")}: {user.active_roles if user.active_roles else "Yo\'q"}'
+        f'<tg-emoji emoji-id="{dia_id}">💎</tg-emoji> {lbl_diamond}: <b>{d_disp}</b>\n'
+        f'<tg-emoji emoji-id="{dollar_id}">💵</tg-emoji> {lbl_dollar}: <b>{dollar_disp}</b>\n\n'
+        f'<tg-emoji emoji-id="5364235172826885791">⭐️</tg-emoji> {lbl_wins}: <b>{profile.wins}</b>\n'
+        f'<tg-emoji emoji-id="5361612652911048505">⭐️</tg-emoji> {lbl_games}: <b>{profile.games_count}</b>\n\n'
+        f'<tg-emoji emoji-id="5287705169214066018">🤩</tg-emoji> {lbl_partner}: {partner_text}\n\n'
+        f'<tg-emoji emoji-id="5364172633808087023">⭐️</tg-emoji> {lbl_roles}: {roles_text}'
     )
     
     kb = profile_keyboards_on_private(profile, is_vip=is_vip, lang=lang)
