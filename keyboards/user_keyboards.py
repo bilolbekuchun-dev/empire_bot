@@ -63,15 +63,23 @@ def profile_keyboards_on_private(profile: Profile, is_vip: bool = False, lang: s
         }.get(l, "✨ Statusni o'zgartirish")
         markup.button(text=status_text, callback_data="vip_emoji_self_change")
     
-    # Olmos va pul xarid qilish uchun alohida tugma (@zszali ga yonaltirish)
-    buy_currency_text = {
-        "uz": "� Olmos va pul xarid qilish",
-        "ru": "💰 Купить алмазы и доллары",
-        "en": "💰 Buy diamonds and dollars",
-        "tr": "💰 Elmas ve dolar satın al",
-        "kk": "💰 Алмаз және доллар сатып алу"
-    }.get(l, "💰 Olmos va pul xarid qilish")
-    markup.button(text=buy_currency_text, url="tg://user?id=6913838682")
+    # Olmos va pul xarid qilish uchun alohida tugmalar
+    buy_diamond_text = {
+        "uz": "💎 Olmos xarid qilish",
+        "ru": "💎 Купить алмазы",
+        "en": "💎 Buy diamonds",
+        "tr": "💎 Elmas satın al",
+        "kk": "💎 Алмаз сатып алу"
+    }.get(l, "💎 Olmos xarid qilish")
+    buy_money_text = {
+        "uz": "💵 Pul xarid qilish",
+        "ru": "💵 Купить доллары",
+        "en": "💵 Buy dollars",
+        "tr": "💵 Dolar satın al",
+        "kk": "💵 Доллар сатып алу"
+    }.get(l, "💵 Pul xarid qilish")
+    markup.button(text=buy_diamond_text, callback_data="buy_diamond_menu")
+    markup.button(text=buy_money_text, callback_data="buy_money_menu")
     
     markup.button(text=lbls.get("btn_hero", "🥷 Mening geroyim"), callback_data="my_geroy")
     markup.button(text=lbls.get("btn_prem_groups", "🎲 Premium guruhlar"), callback_data="prem_groups")
@@ -96,15 +104,23 @@ def profile_keyboards(lang: str = "uz"):
     markup.button(text=lbls.get("btn_shop", "Do'kon"), callback_data="shop", icon_custom_emoji_id="5373052667671093676")
     markup.button(text=lbls.get("btn_para", "Mening param"), callback_data="my_para_menu", icon_custom_emoji_id="5402100905883488232")
     
-    # Olmos va pul xarid qilish uchun alohida tugma (@zszali ga yonaltirish)
-    buy_currency_text = {
-        "uz": "� Olmos va pul xarid qilish",
-        "ru": "💰 Купить алмазы и доллары",
-        "en": "💰 Buy diamonds and dollars",
-        "tr": "💰 Elmas ve dolar satın al",
-        "kk": "💰 Алмаз және доллар сатып алу"
-    }.get(l, "💰 Olmos va pul xarid qilish")
-    markup.button(text=buy_currency_text, url="tg://user?id=6913838682")
+    # Olmos va pul xarid qilish uchun alohida tugmalar
+    buy_diamond_text = {
+        "uz": "💎 Olmos xarid qilish",
+        "ru": "💎 Купить алмазы",
+        "en": "💎 Buy diamonds",
+        "tr": "💎 Elmas satın al",
+        "kk": "💎 Алмаз сатып алу"
+    }.get(l, "💎 Olmos xarid qilish")
+    buy_money_text = {
+        "uz": "💵 Pul xarid qilish",
+        "ru": "💵 Купить доллары",
+        "en": "💵 Buy dollars",
+        "tr": "💵 Dolar satın al",
+        "kk": "💵 Доллар сатып алу"
+    }.get(l, "💵 Pul xarid qilish")
+    markup.button(text=buy_diamond_text, callback_data="buy_diamond_menu")
+    markup.button(text=buy_money_text, callback_data="buy_money_menu")
     
     markup.button(text=lbls.get("btn_prem_groups", "🎲 Premium guruhlar"), callback_data="prem_groups")
     markup.button(text=lbls.get("btn_news", "Yangiliklar"), url=f"https://t.me/{CHANNEL_USERNAME[1:]}")
