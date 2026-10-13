@@ -78,8 +78,8 @@ def profile_keyboards_on_private(profile: Profile, is_vip: bool = False, lang: s
         "tr": "💵 Dolar satın al",
         "kk": "💵 Доллар сатып алу"
     }.get(l, "💵 Pul xarid qilish")
-    markup.button(text=buy_diamond_text, callback_data="buy_diamond_menu")
-    markup.button(text=buy_money_text, callback_data="buy_money_menu")
+    markup.button(text=buy_diamond_text, callback_data="diamond_menu")
+    markup.button(text=buy_money_text, callback_data="money_menu")
     
     markup.button(text=lbls.get("btn_hero", "🥷 Mening geroyim"), callback_data="my_geroy")
     markup.button(text=lbls.get("btn_prem_groups", "🎲 Premium guruhlar"), callback_data="prem_groups")
@@ -119,8 +119,8 @@ def profile_keyboards(lang: str = "uz"):
         "tr": "💵 Dolar satın al",
         "kk": "💵 Доллар сатып алу"
     }.get(l, "💵 Pul xarid qilish")
-    markup.button(text=buy_diamond_text, callback_data="buy_diamond_menu")
-    markup.button(text=buy_money_text, callback_data="buy_money_menu")
+    markup.button(text=buy_diamond_text, callback_data="diamond_menu")
+    markup.button(text=buy_money_text, callback_data="money_menu")
     
     markup.button(text=lbls.get("btn_prem_groups", "🎲 Premium guruhlar"), callback_data="prem_groups")
     markup.button(text=lbls.get("btn_news", "Yangiliklar"), url=f"https://t.me/{CHANNEL_USERNAME[1:]}")
