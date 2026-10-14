@@ -175,16 +175,14 @@ async def add_winner_detail(giveaway_id: int, user_id: int, full_name: str, rewa
 
 
 async def batch_add_winner_details(giveaway_id: int, winners: list):
-    """Add multiple winner details in one Redis Pipeline."""
+    """Add multiple winner details to Redis."""
     if not winners:
         return
     try:
-        async with redis_client.pipeline() as pipe:
-            for user_id, full_name, reward in winners:
-                winner_data = json.dumps({"user_id": user_id, "full_name": full_name, "reward": reward})
-                pipe.rpush(_winner_list_key(giveaway_id), winner_data)
-            pipe.expire(_winner_list_key(giveaway_id), _GIVEAWAY_TTL)
-            await pipe.execute()
+        for user_id, full_name, reward in winners:
+            winner_data = json.dumps({"user_id": user_id, "full_name": full_name, "reward": reward})
+            await redis_client.rpush(_winner_list_key(giveaway_id), winner_data)
+        await redis_client.expire(_winner_list_key(giveaway_id), _GIVEAWAY_TTL)
     except Exception:
         pass
 
