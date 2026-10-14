@@ -1010,6 +1010,9 @@ async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, i
                 kb.button(text="🎁 Qatnashish", callback_data=f"{cb_prefix}_{giveaway_id}_{new_remaining}_{total}")
             if call.message:
                 try:
+                    # Bufferlarni flush qilish - ma'lumotlar Redisga yozilishi uchun
+                    await flush_all_giveaway_buffers(giveaway_id)
+                    
                     # Xabarni ham yangilash - olganlar ro'yxati bilan
                     d_disp = get_diamond_display()
                     winners = await get_winner_details(giveaway_id)
@@ -1238,6 +1241,9 @@ async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
             kb.button(text="🎁 Qatnashish", callback_data=f"money-giveaway_{giveaway_id}_{new_remaining}_{per_person}")
             if call.message:
                 try:
+                    # Bufferlarni flush qilish - ma'lumotlar Redisga yozilishi uchun
+                    await flush_all_giveaway_buffers(giveaway_id)
+                    
                     # Xabarni ham yangilash - olganlar ro'yxati bilan
                     winners = await get_winner_details(giveaway_id)
                     winner_lines = [f"{i+1}) {_winner_mention_html(w[0], w[1])} {w[2]}{d_disp}" for i, w in enumerate(winners[-10:])]  # Oxirgi 10 ta
