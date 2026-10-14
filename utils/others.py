@@ -1356,9 +1356,24 @@ async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
         logger.info(f"Processing lock released for user {user_id}")
 
 async def start_qotil_protection_giveaway(message: Message, bot: Bot):
+    from utils.giveaways_redis import create_giveaway
     count = _parse_giveaway_count(message)
+    
+    # Redisda giveaway yaratish
+    giveaway = await create_giveaway(
+        creator_id=message.from_user.id if message.from_user else bot.id,
+        chat_id=message.chat.id,
+        message_id=message.message_id,
+        total_amount=count
+    )
+    
+    if not giveaway:
+        await message.answer("❌ Giveaway yaratishda xatolik!")
+        return
+    
+    giveaway_id = giveaway["id"]
     kb = InlineKeyboardBuilder()
-    kb.button(text="🎁 Qatnashish", callback_data=f"qotil-giveaway_{count}")
+    kb.button(text="🎁 Qatnashish", callback_data=f"qotil-giveaway_{giveaway_id}_{count}_{count}")
     msg = (
         f"🎁 <b>{EMOJI_QOTIL_HIMOYA} sovg'asi!</b>\n\n"
         f"🔢 Soni: <b>{count} ta</b>\n"
@@ -1377,47 +1392,35 @@ async def qotil_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
     from utils.giveaways_redis import (
         is_collected_user, queue_collected_user, is_processing,
         mark_as_processing, unmark_as_processing, queue_winner_detail, get_winner_details,
-        get_giveaway, update_giveaway, flush_all_giveaway_buffers, create_giveaway
+        get_giveaway, update_giveaway, flush_all_giveaway_buffers
     )
     
     parts = call.data.split("_")
-    if len(parts) < 3:
+    if len(parts) < 4:
         await call.answer("❌ Noto'g'ri callback!", show_alert=True)
         return
     
+    giveaway_id = parts[2]
     try:
-        count = int(parts[2])
+        remaining = int(parts[3])
     except ValueError:
-        count = 10
+        remaining = 1
     
     item_key = "qotildan_himoya"
     item_info = ITEM_GIVEAWAY_MAPPING[item_key]
     field = item_info["field"]
     user_id = call.from_user.id
     
-    giveaway_key = f"qotil_{call.message.message_id}"
-    giveaway_data = await get_giveaway(giveaway_key)
-    
-    if not giveaway_data:
-        giveaway = await create_giveaway(
-            creator_id=call.from_user.id,
-            chat_id=call.message.chat.id,
-            message_id=call.message.message_id,
-            total_amount=count
-        )
-        if not giveaway:
-            await call.answer("❌ Xatolik!", show_alert=True)
-            return
-        giveaway_data = giveaway
-        remaining = count
-    else:
+    # Redisdan giveaway ma'lumotlarini olish
+    giveaway_data = await get_giveaway(giveaway_id)
+    if giveaway_data:
         remaining = giveaway_data["remaining_amount"]
     
-    if await is_processing(giveaway_key, user_id):
+    if await is_processing(giveaway_id, user_id):
         await call.answer("⏳ Iltimos, kuting...", show_alert=True)
         return
     
-    if await is_collected_user(giveaway_key, user_id):
+    if await is_collected_user(giveaway_id, user_id):
         await call.answer("❌ Siz allaqachon olgansiz!", show_alert=True)
         return
     
@@ -1425,7 +1428,7 @@ async def qotil_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
         await call.answer("🏁 Barcha anjomlar tugadi!", show_alert=True)
         return
     
-    lock_acquired = await mark_as_processing(giveaway_key, user_id)
+    lock_acquired = await mark_as_processing(giveaway_id, user_id)
     if not lock_acquired:
         await call.answer("⏳ Iltimos, kuting...", show_alert=True)
         return
@@ -1442,19 +1445,20 @@ async def qotil_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
         setattr(profile, field, current_count + 1)
         await profile.save()
         
-        await queue_collected_user(giveaway_key, user_id)
+        await queue_collected_user(giveaway_id, user_id)
         u_name = call.from_user.full_name or f"User_{user_id}"
-        await queue_winner_detail(giveaway_key, user_id, u_name, 1)
+        await queue_winner_detail(giveaway_id, user_id, u_name, 1)
         
         new_remaining = remaining - 1
-        await update_giveaway(giveaway_key, {"remaining_amount": new_remaining})
-        await flush_all_giveaway_buffers(giveaway_key)
+        if giveaway_data:
+            await update_giveaway(giveaway_id, {"remaining_amount": new_remaining})
+        await flush_all_giveaway_buffers(giveaway_id)
         
         if new_remaining > 0:
             kb = InlineKeyboardBuilder()
-            kb.button(text="🎁 Qatnashish", callback_data=f"qotil-giveaway_{new_remaining}")
+            kb.button(text="🎁 Qatnashish", callback_data=f"qotil-giveaway_{giveaway_id}_{new_remaining}")
             
-            winners = await get_winner_details(giveaway_key)
+            winners = await get_winner_details(giveaway_id)
             winner_lines = [f"{i+1}) {_winner_mention_html(w[0], w[1])} {item_info['emoji']}" for i, w in enumerate(winners)]
             
             header = (
@@ -1485,8 +1489,8 @@ async def qotil_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
                 except Exception:
                     pass
         else:
-            await flush_all_giveaway_buffers(giveaway_key)
-            winners = await get_winner_details(giveaway_key)
+            await flush_all_giveaway_buffers(giveaway_id)
+            winners = await get_winner_details(giveaway_id)
             header = f"<b>Ajratilgan {item_info['name']} giveaway tugadi!</b>"
             await send_split_winners_list(call, header, winners, item_info['emoji'], chunk_size=25, total_amount=giveaway_data['total_amount'], remaining=0)
         
@@ -1501,12 +1505,27 @@ async def qotil_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
         except Exception:
             pass
     finally:
-        await unmark_as_processing(giveaway_key, user_id)
+        await unmark_as_processing(giveaway_id, user_id)
 
 async def start_ovozdan_protection_giveaway(message: Message, bot: Bot):
+    from utils.giveaways_redis import create_giveaway
     count = _parse_giveaway_count(message)
+    
+    # Redisda giveaway yaratish
+    giveaway = await create_giveaway(
+        creator_id=message.from_user.id if message.from_user else bot.id,
+        chat_id=message.chat.id,
+        message_id=message.message_id,
+        total_amount=count
+    )
+    
+    if not giveaway:
+        await message.answer("❌ Giveaway yaratishda xatolik!")
+        return
+    
+    giveaway_id = giveaway["id"]
     kb = InlineKeyboardBuilder()
-    kb.button(text="🎁 Qatnashish", callback_data=f"ovoz-giveaway_{count}")
+    kb.button(text="🎁 Qatnashish", callback_data=f"ovoz-giveaway_{giveaway_id}_{count}_{count}")
     msg = (
         f"🎁 <b>Ovozdan himoya sovg'asi!</b>\n\n"
         f"🔢 Soni: <b>{count} ta</b>\n"
@@ -1525,47 +1544,35 @@ async def ovoz_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
     from utils.giveaways_redis import (
         is_collected_user, queue_collected_user, is_processing,
         mark_as_processing, unmark_as_processing, queue_winner_detail, get_winner_details,
-        get_giveaway, update_giveaway, flush_all_giveaway_buffers, create_giveaway
+        get_giveaway, update_giveaway, flush_all_giveaway_buffers
     )
     
     parts = call.data.split("_")
-    if len(parts) < 3:
+    if len(parts) < 4:
         await call.answer("❌ Noto'g'ri callback!", show_alert=True)
         return
     
+    giveaway_id = parts[2]
     try:
-        count = int(parts[2])
+        remaining = int(parts[3])
     except ValueError:
-        count = 10
+        remaining = 1
     
     item_key = "osish_himoya"
     item_info = ITEM_GIVEAWAY_MAPPING[item_key]
     field = item_info["field"]
     user_id = call.from_user.id
     
-    giveaway_key = f"ovoz_{call.message.message_id}"
-    giveaway_data = await get_giveaway(giveaway_key)
-    
-    if not giveaway_data:
-        giveaway = await create_giveaway(
-            creator_id=call.from_user.id,
-            chat_id=call.message.chat.id,
-            message_id=call.message.message_id,
-            total_amount=count
-        )
-        if not giveaway:
-            await call.answer("❌ Xatolik!", show_alert=True)
-            return
-        giveaway_data = giveaway
-        remaining = count
-    else:
+    # Redisdan giveaway ma'lumotlarini olish
+    giveaway_data = await get_giveaway(giveaway_id)
+    if giveaway_data:
         remaining = giveaway_data["remaining_amount"]
     
-    if await is_processing(giveaway_key, user_id):
+    if await is_processing(giveaway_id, user_id):
         await call.answer("⏳ Iltimos, kuting...", show_alert=True)
         return
     
-    if await is_collected_user(giveaway_key, user_id):
+    if await is_collected_user(giveaway_id, user_id):
         await call.answer("❌ Siz allaqachon olgansiz!", show_alert=True)
         return
     
@@ -1573,7 +1580,7 @@ async def ovoz_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
         await call.answer("🏁 Barcha anjomlar tugadi!", show_alert=True)
         return
     
-    lock_acquired = await mark_as_processing(giveaway_key, user_id)
+    lock_acquired = await mark_as_processing(giveaway_id, user_id)
     if not lock_acquired:
         await call.answer("⏳ Iltimos, kuting...", show_alert=True)
         return
@@ -1590,22 +1597,22 @@ async def ovoz_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
         setattr(profile, field, current_count + 1)
         await profile.save()
         
-        await queue_collected_user(giveaway_key, user_id)
+        await queue_collected_user(giveaway_id, user_id)
         u_name = call.from_user.full_name or f"User_{user_id}"
-        await queue_winner_detail(giveaway_key, user_id, u_name, 1)
+        await queue_winner_detail(giveaway_id, user_id, u_name, 1)
         
         new_remaining = remaining - 1
-        await update_giveaway(giveaway_key, {"remaining_amount": new_remaining})
-        await flush_all_giveaway_buffers(giveaway_key)
+        if giveaway_data:
+            await update_giveaway(giveaway_id, {"remaining_amount": new_remaining})
+        await flush_all_giveaway_buffers(giveaway_id)
         
         if new_remaining > 0:
             kb = InlineKeyboardBuilder()
-            kb.button(text="🎁 Qatnashish", callback_data=f"ovoz-giveaway_{new_remaining}")
+            kb.button(text="🎁 Qatnashish", callback_data=f"ovoz-giveaway_{giveaway_id}_{new_remaining}")
             
-            winners = await get_winner_details(giveaway_key)
+            winners = await get_winner_details(giveaway_id)
             winner_lines = [f"{i+1}) {_winner_mention_html(w[0], w[1])} {item_info['emoji']}" for i, w in enumerate(winners)]
             
-            # Xabarni bo'lish uchun header
             header = (
                 f"{item_info['emoji']} <b>{item_info['name']} Giveaway!</b>\n\n"
                 f"Jami: <b>{giveaway_data['total_amount']} ta</b>\n"
@@ -1613,32 +1620,29 @@ async def ovoz_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
                 f"<b>Olganlar:</b>\n"
             )
             
-            # Har bir qatorni qo'shib tekshirish
             full_msg = header
             messages_to_send = [full_msg]
             
             for line in winner_lines:
                 test_msg = messages_to_send[-1] + "\n" + line
-                if len(test_msg) > 4000:  # Telegram limitidan pastroq
+                if len(test_msg) > 4000:
                     messages_to_send.append(line)
                 else:
                     messages_to_send[-1] = test_msg
             
-            # Birinchi xabarni tugma bilan yangilash
             try:
                 await call.message.edit_text(messages_to_send[0], reply_markup=kb.as_markup(), parse_mode="HTML")
             except Exception:
                 pass
             
-            # Qolgan xabarlarni yuborish (agar bo'lsa)
             for i in range(1, len(messages_to_send)):
                 try:
                     await call.message.reply_text(messages_to_send[i], parse_mode="HTML")
                 except Exception:
                     pass
         else:
-            await flush_all_giveaway_buffers(giveaway_key)
-            winners = await get_winner_details(giveaway_key)
+            await flush_all_giveaway_buffers(giveaway_id)
+            winners = await get_winner_details(giveaway_id)
             header = f"<b>Ajratilgan {item_info['name']} giveaway tugadi!</b>"
             await send_split_winners_list(call, header, winners, item_info['emoji'], chunk_size=25, total_amount=giveaway_data['total_amount'], remaining=0)
         
@@ -1653,12 +1657,27 @@ async def ovoz_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
         except Exception:
             pass
     finally:
-        await unmark_as_processing(giveaway_key, user_id)
+        await unmark_as_processing(giveaway_id, user_id)
 
 async def start_doridan_protection_giveaway(message: Message, bot: Bot):
+    from utils.giveaways_redis import create_giveaway
     count = _parse_giveaway_count(message)
+    
+    # Redisda giveaway yaratish
+    giveaway = await create_giveaway(
+        creator_id=message.from_user.id if message.from_user else bot.id,
+        chat_id=message.chat.id,
+        message_id=message.message_id,
+        total_amount=count
+    )
+    
+    if not giveaway:
+        await message.answer("❌ Giveaway yaratishda xatolik!")
+        return
+    
+    giveaway_id = giveaway["id"]
     kb = InlineKeyboardBuilder()
-    kb.button(text="🎁 Qatnashish", callback_data=f"dori-giveaway_{count}")
+    kb.button(text="🎁 Qatnashish", callback_data=f"dori-giveaway_{giveaway_id}_{count}_{count}")
     msg = (
         f"🎁 <b>Doridan himoya sovg'asi!</b>\n\n"
         f"🔢 Soni: <b>{count} ta</b>\n"
@@ -1677,47 +1696,35 @@ async def doridan_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
     from utils.giveaways_redis import (
         is_collected_user, queue_collected_user, is_processing,
         mark_as_processing, unmark_as_processing, queue_winner_detail, get_winner_details,
-        get_giveaway, update_giveaway, flush_all_giveaway_buffers, create_giveaway
+        get_giveaway, update_giveaway, flush_all_giveaway_buffers
     )
     
     parts = call.data.split("_")
-    if len(parts) < 3:
+    if len(parts) < 4:
         await call.answer("❌ Noto'g'ri callback!", show_alert=True)
         return
     
+    giveaway_id = parts[2]
     try:
-        count = int(parts[2])
+        remaining = int(parts[3])
     except ValueError:
-        count = 10
+        remaining = 1
     
     item_key = "dori_himoya"
     item_info = ITEM_GIVEAWAY_MAPPING[item_key]
     field = item_info["field"]
     user_id = call.from_user.id
     
-    giveaway_key = f"dori_{call.message.message_id}"
-    giveaway_data = await get_giveaway(giveaway_key)
-    
-    if not giveaway_data:
-        giveaway = await create_giveaway(
-            creator_id=call.from_user.id,
-            chat_id=call.message.chat.id,
-            message_id=call.message.message_id,
-            total_amount=count
-        )
-        if not giveaway:
-            await call.answer("❌ Xatolik!", show_alert=True)
-            return
-        giveaway_data = giveaway
-        remaining = count
-    else:
+    # Redisdan giveaway ma'lumotlarini olish
+    giveaway_data = await get_giveaway(giveaway_id)
+    if giveaway_data:
         remaining = giveaway_data["remaining_amount"]
     
-    if await is_processing(giveaway_key, user_id):
+    if await is_processing(giveaway_id, user_id):
         await call.answer("⏳ Iltimos, kuting...", show_alert=True)
         return
     
-    if await is_collected_user(giveaway_key, user_id):
+    if await is_collected_user(giveaway_id, user_id):
         await call.answer("❌ Siz allaqachon olgansiz!", show_alert=True)
         return
     
@@ -1725,7 +1732,7 @@ async def doridan_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
         await call.answer("🏁 Barcha anjomlar tugadi!", show_alert=True)
         return
     
-    lock_acquired = await mark_as_processing(giveaway_key, user_id)
+    lock_acquired = await mark_as_processing(giveaway_id, user_id)
     if not lock_acquired:
         await call.answer("⏳ Iltimos, kuting...", show_alert=True)
         return
@@ -1742,19 +1749,20 @@ async def doridan_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
         setattr(profile, field, current_count + 1)
         await profile.save()
         
-        await queue_collected_user(giveaway_key, user_id)
+        await queue_collected_user(giveaway_id, user_id)
         u_name = call.from_user.full_name or f"User_{user_id}"
-        await queue_winner_detail(giveaway_key, user_id, u_name, 1)
+        await queue_winner_detail(giveaway_id, user_id, u_name, 1)
         
         new_remaining = remaining - 1
-        await update_giveaway(giveaway_key, {"remaining_amount": new_remaining})
-        await flush_all_giveaway_buffers(giveaway_key)
+        if giveaway_data:
+            await update_giveaway(giveaway_id, {"remaining_amount": new_remaining})
+        await flush_all_giveaway_buffers(giveaway_id)
         
         if new_remaining > 0:
             kb = InlineKeyboardBuilder()
-            kb.button(text="🎁 Qatnashish", callback_data=f"dori-giveaway_{new_remaining}")
+            kb.button(text="🎁 Qatnashish", callback_data=f"dori-giveaway_{giveaway_id}_{new_remaining}")
             
-            winners = await get_winner_details(giveaway_key)
+            winners = await get_winner_details(giveaway_id)
             winner_lines = [f"{i+1}) {_winner_mention_html(w[0], w[1])} {item_info['emoji']}" for i, w in enumerate(winners)]
             
             header = (
@@ -1785,8 +1793,8 @@ async def doridan_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
                 except Exception:
                     pass
         else:
-            await flush_all_giveaway_buffers(giveaway_key)
-            winners = await get_winner_details(giveaway_key)
+            await flush_all_giveaway_buffers(giveaway_id)
+            winners = await get_winner_details(giveaway_id)
             header = f"<b>Ajratilgan {item_info['name']} giveaway tugadi!</b>"
             await send_split_winners_list(call, header, winners, item_info['emoji'], chunk_size=25, total_amount=giveaway_data['total_amount'], remaining=0)
         
@@ -1801,12 +1809,27 @@ async def doridan_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
         except Exception:
             pass
     finally:
-        await unmark_as_processing(giveaway_key, user_id)
+        await unmark_as_processing(giveaway_id, user_id)
 
 async def start_miltiq_giveaway(message: Message, bot: Bot):
+    from utils.giveaways_redis import create_giveaway
     count = _parse_giveaway_count(message)
+    
+    # Redisda giveaway yaratish
+    giveaway = await create_giveaway(
+        creator_id=message.from_user.id if message.from_user else bot.id,
+        chat_id=message.chat.id,
+        message_id=message.message_id,
+        total_amount=count
+    )
+    
+    if not giveaway:
+        await message.answer("❌ Giveaway yaratishda xatolik!")
+        return
+    
+    giveaway_id = giveaway["id"]
     kb = InlineKeyboardBuilder()
-    kb.button(text="🎁 Qatnashish", callback_data=f"miltiq-giveaway_{count}")
+    kb.button(text="🎁 Qatnashish", callback_data=f"miltiq-giveaway_{giveaway_id}_{count}_{count}")
     msg = (
         f"🎁 <b>Miltiq sovg'asi!</b>\n\n"
         f"🔢 Soni: <b>{count} ta</b>\n"
@@ -1825,47 +1848,35 @@ async def miltiq_giveaway_callback(call: CallbackQuery, bot: Bot):
     from utils.giveaways_redis import (
         is_collected_user, queue_collected_user, is_processing,
         mark_as_processing, unmark_as_processing, queue_winner_detail, get_winner_details,
-        get_giveaway, update_giveaway, flush_all_giveaway_buffers, create_giveaway
+        get_giveaway, update_giveaway, flush_all_giveaway_buffers
     )
     
     parts = call.data.split("_")
-    if len(parts) < 3:
+    if len(parts) < 4:
         await call.answer("❌ Noto'g'ri callback!", show_alert=True)
         return
     
+    giveaway_id = parts[2]
     try:
-        count = int(parts[2])
+        remaining = int(parts[3])
     except ValueError:
-        count = 10
+        remaining = 1
     
     item_key = "miltiq"
     item_info = ITEM_GIVEAWAY_MAPPING[item_key]
     field = item_info["field"]
     user_id = call.from_user.id
     
-    giveaway_key = f"miltiq_{call.message.message_id}"
-    giveaway_data = await get_giveaway(giveaway_key)
-    
-    if not giveaway_data:
-        giveaway = await create_giveaway(
-            creator_id=call.from_user.id,
-            chat_id=call.message.chat.id,
-            message_id=call.message.message_id,
-            total_amount=count
-        )
-        if not giveaway:
-            await call.answer("❌ Xatolik!", show_alert=True)
-            return
-        giveaway_data = giveaway
-        remaining = count
-    else:
+    # Redisdan giveaway ma'lumotlarini olish
+    giveaway_data = await get_giveaway(giveaway_id)
+    if giveaway_data:
         remaining = giveaway_data["remaining_amount"]
     
-    if await is_processing(giveaway_key, user_id):
+    if await is_processing(giveaway_id, user_id):
         await call.answer("⏳ Iltimos, kuting...", show_alert=True)
         return
     
-    if await is_collected_user(giveaway_key, user_id):
+    if await is_collected_user(giveaway_id, user_id):
         await call.answer("❌ Siz allaqachon olgansiz!", show_alert=True)
         return
     
@@ -1873,7 +1884,7 @@ async def miltiq_giveaway_callback(call: CallbackQuery, bot: Bot):
         await call.answer("🏁 Barcha anjomlar tugadi!", show_alert=True)
         return
     
-    lock_acquired = await mark_as_processing(giveaway_key, user_id)
+    lock_acquired = await mark_as_processing(giveaway_id, user_id)
     if not lock_acquired:
         await call.answer("⏳ Iltimos, kuting...", show_alert=True)
         return
@@ -1890,19 +1901,20 @@ async def miltiq_giveaway_callback(call: CallbackQuery, bot: Bot):
         setattr(profile, field, current_count + 1)
         await profile.save()
         
-        await queue_collected_user(giveaway_key, user_id)
+        await queue_collected_user(giveaway_id, user_id)
         u_name = call.from_user.full_name or f"User_{user_id}"
-        await queue_winner_detail(giveaway_key, user_id, u_name, 1)
+        await queue_winner_detail(giveaway_id, user_id, u_name, 1)
         
         new_remaining = remaining - 1
-        await update_giveaway(giveaway_key, {"remaining_amount": new_remaining})
-        await flush_all_giveaway_buffers(giveaway_key)
+        if giveaway_data:
+            await update_giveaway(giveaway_id, {"remaining_amount": new_remaining})
+        await flush_all_giveaway_buffers(giveaway_id)
         
         if new_remaining > 0:
             kb = InlineKeyboardBuilder()
-            kb.button(text="🎁 Qatnashish", callback_data=f"miltiq-giveaway_{new_remaining}")
+            kb.button(text="🎁 Qatnashish", callback_data=f"miltiq-giveaway_{giveaway_id}_{new_remaining}")
             
-            winners = await get_winner_details(giveaway_key)
+            winners = await get_winner_details(giveaway_id)
             winner_lines = [f"{i+1}) {_winner_mention_html(w[0], w[1])} {item_info['emoji']}" for i, w in enumerate(winners)]
             
             header = (
@@ -1933,8 +1945,8 @@ async def miltiq_giveaway_callback(call: CallbackQuery, bot: Bot):
                 except Exception:
                     pass
         else:
-            await flush_all_giveaway_buffers(giveaway_key)
-            winners = await get_winner_details(giveaway_key)
+            await flush_all_giveaway_buffers(giveaway_id)
+            winners = await get_winner_details(giveaway_id)
             header = f"<b>Ajratilgan {item_info['name']} giveaway tugadi!</b>"
             await send_split_winners_list(call, header, winners, item_info['emoji'], chunk_size=25, total_amount=giveaway_data['total_amount'], remaining=0)
         
@@ -1949,12 +1961,27 @@ async def miltiq_giveaway_callback(call: CallbackQuery, bot: Bot):
         except Exception:
             pass
     finally:
-        await unmark_as_processing(giveaway_key, user_id)
+        await unmark_as_processing(giveaway_id, user_id)
 
 async def start_slip_protection_giveaway(message: Message, bot: Bot):
+    from utils.giveaways_redis import create_giveaway
     count = _parse_giveaway_count(message)
+    
+    # Redisda giveaway yaratish
+    giveaway = await create_giveaway(
+        creator_id=message.from_user.id if message.from_user else bot.id,
+        chat_id=message.chat.id,
+        message_id=message.message_id,
+        total_amount=count
+    )
+    
+    if not giveaway:
+        await message.answer("❌ Giveaway yaratishda xatolik!")
+        return
+    
+    giveaway_id = giveaway["id"]
     kb = InlineKeyboardBuilder()
-    kb.button(text="🎁 Qatnashish", callback_data=f"sirpanish-giveaway_{count}")
+    kb.button(text="🎁 Qatnashish", callback_data=f"sirpanish-giveaway_{giveaway_id}_{count}_{count}")
     msg = (
         f"🎁 <b>{EMOJI_SLIP_HIMOYA} sovg'asi!</b>\n\n"
         f"🔢 Soni: <b>{count} ta</b>\n"
@@ -1973,47 +2000,35 @@ async def slip_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
     from utils.giveaways_redis import (
         is_collected_user, queue_collected_user, is_processing,
         mark_as_processing, unmark_as_processing, queue_winner_detail, get_winner_details,
-        get_giveaway, update_giveaway, flush_all_giveaway_buffers, create_giveaway
+        get_giveaway, update_giveaway, flush_all_giveaway_buffers
     )
     
     parts = call.data.split("_")
-    if len(parts) < 3:
+    if len(parts) < 4:
         await call.answer("❌ Noto'g'ri callback!", show_alert=True)
         return
     
+    giveaway_id = parts[2]
     try:
-        count = int(parts[2])
+        remaining = int(parts[3])
     except ValueError:
-        count = 10
+        remaining = 1
     
     item_key = "slip_himoya"
     item_info = ITEM_GIVEAWAY_MAPPING[item_key]
     field = item_info["field"]
     user_id = call.from_user.id
     
-    giveaway_key = f"sirpanish_{call.message.message_id}"
-    giveaway_data = await get_giveaway(giveaway_key)
-    
-    if not giveaway_data:
-        giveaway = await create_giveaway(
-            creator_id=call.from_user.id,
-            chat_id=call.message.chat.id,
-            message_id=call.message.message_id,
-            total_amount=count
-        )
-        if not giveaway:
-            await call.answer("❌ Xatolik!", show_alert=True)
-            return
-        giveaway_data = giveaway
-        remaining = count
-    else:
+    # Redisdan giveaway ma'lumotlarini olish
+    giveaway_data = await get_giveaway(giveaway_id)
+    if giveaway_data:
         remaining = giveaway_data["remaining_amount"]
     
-    if await is_processing(giveaway_key, user_id):
+    if await is_processing(giveaway_id, user_id):
         await call.answer("⏳ Iltimos, kuting...", show_alert=True)
         return
     
-    if await is_collected_user(giveaway_key, user_id):
+    if await is_collected_user(giveaway_id, user_id):
         await call.answer("❌ Siz allaqachon olgansiz!", show_alert=True)
         return
     
@@ -2021,7 +2036,7 @@ async def slip_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
         await call.answer("🏁 Barcha anjomlar tugadi!", show_alert=True)
         return
     
-    lock_acquired = await mark_as_processing(giveaway_key, user_id)
+    lock_acquired = await mark_as_processing(giveaway_id, user_id)
     if not lock_acquired:
         await call.answer("⏳ Iltimos, kuting...", show_alert=True)
         return
@@ -2038,19 +2053,20 @@ async def slip_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
         setattr(profile, field, current_count + 1)
         await profile.save()
         
-        await queue_collected_user(giveaway_key, user_id)
+        await queue_collected_user(giveaway_id, user_id)
         u_name = call.from_user.full_name or f"User_{user_id}"
-        await queue_winner_detail(giveaway_key, user_id, u_name, 1)
+        await queue_winner_detail(giveaway_id, user_id, u_name, 1)
         
         new_remaining = remaining - 1
-        await update_giveaway(giveaway_key, {"remaining_amount": new_remaining})
-        await flush_all_giveaway_buffers(giveaway_key)
+        if giveaway_data:
+            await update_giveaway(giveaway_id, {"remaining_amount": new_remaining})
+        await flush_all_giveaway_buffers(giveaway_id)
         
         if new_remaining > 0:
             kb = InlineKeyboardBuilder()
-            kb.button(text="🎁 Qatnashish", callback_data=f"sirpanish-giveaway_{new_remaining}")
+            kb.button(text="🎁 Qatnashish", callback_data=f"sirpanish-giveaway_{giveaway_id}_{new_remaining}")
             
-            winners = await get_winner_details(giveaway_key)
+            winners = await get_winner_details(giveaway_id)
             winner_lines = [f"{i+1}) {_winner_mention_html(w[0], w[1])} {item_info['emoji']}" for i, w in enumerate(winners)]
             
             header = (
@@ -2081,8 +2097,8 @@ async def slip_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
                 except Exception:
                     pass
         else:
-            await flush_all_giveaway_buffers(giveaway_key)
-            winners = await get_winner_details(giveaway_key)
+            await flush_all_giveaway_buffers(giveaway_id)
+            winners = await get_winner_details(giveaway_id)
             header = f"<b>Ajratilgan {item_info['name']} giveaway tugadi!</b>"
             await send_split_winners_list(call, header, winners, item_info['emoji'], chunk_size=25, total_amount=giveaway_data['total_amount'], remaining=0)
         
@@ -2097,12 +2113,27 @@ async def slip_protection_giveaway_callback(call: CallbackQuery, bot: Bot):
         except Exception:
             pass
     finally:
-        await unmark_as_processing(giveaway_key, user_id)
+        await unmark_as_processing(giveaway_id, user_id)
 
 async def start_geroy_himoya_giveaway(message: Message, bot: Bot):
+    from utils.giveaways_redis import create_giveaway
     count = _parse_giveaway_count(message)
+    
+    # Redisda giveaway yaratish
+    giveaway = await create_giveaway(
+        creator_id=message.from_user.id if message.from_user else bot.id,
+        chat_id=message.chat.id,
+        message_id=message.message_id,
+        total_amount=count
+    )
+    
+    if not giveaway:
+        await message.answer("❌ Giveaway yaratishda xatolik!")
+        return
+    
+    giveaway_id = giveaway["id"]
     kb = InlineKeyboardBuilder()
-    kb.button(text="🎁 Qatnashish", callback_data=f"geroy-giveaway_{count}")
+    kb.button(text="🎁 Qatnashish", callback_data=f"geroy-giveaway_{giveaway_id}_{count}_{count}")
     msg = (
         f"🎁 <b>{EMOJI_GEROY_HIMOYA} sovg'asi!</b>\n\n"
         f"🔢 Soni: <b>{count} ta</b>\n"
@@ -2121,47 +2152,35 @@ async def geroy_himoya_giveaway_callback(call: CallbackQuery, bot: Bot):
     from utils.giveaways_redis import (
         is_collected_user, queue_collected_user, is_processing,
         mark_as_processing, unmark_as_processing, queue_winner_detail, get_winner_details,
-        get_giveaway, update_giveaway, flush_all_giveaway_buffers, create_giveaway
+        get_giveaway, update_giveaway, flush_all_giveaway_buffers
     )
     
     parts = call.data.split("_")
-    if len(parts) < 3:
+    if len(parts) < 4:
         await call.answer("❌ Noto'g'ri callback!", show_alert=True)
         return
     
+    giveaway_id = parts[2]
     try:
-        count = int(parts[2])
+        remaining = int(parts[3])
     except ValueError:
-        count = 10
+        remaining = 1
     
     item_key = "geroydan_himoya"
     item_info = ITEM_GIVEAWAY_MAPPING[item_key]
     field = item_info["field"]
     user_id = call.from_user.id
     
-    giveaway_key = f"geroy_{call.message.message_id}"
-    giveaway_data = await get_giveaway(giveaway_key)
-    
-    if not giveaway_data:
-        giveaway = await create_giveaway(
-            creator_id=call.from_user.id,
-            chat_id=call.message.chat.id,
-            message_id=call.message.message_id,
-            total_amount=count
-        )
-        if not giveaway:
-            await call.answer("❌ Xatolik!", show_alert=True)
-            return
-        giveaway_data = giveaway
-        remaining = count
-    else:
+    # Redisdan giveaway ma'lumotlarini olish
+    giveaway_data = await get_giveaway(giveaway_id)
+    if giveaway_data:
         remaining = giveaway_data["remaining_amount"]
     
-    if await is_processing(giveaway_key, user_id):
+    if await is_processing(giveaway_id, user_id):
         await call.answer("⏳ Iltimos, kuting...", show_alert=True)
         return
     
-    if await is_collected_user(giveaway_key, user_id):
+    if await is_collected_user(giveaway_id, user_id):
         await call.answer("❌ Siz allaqachon olgansiz!", show_alert=True)
         return
     
@@ -2169,7 +2188,7 @@ async def geroy_himoya_giveaway_callback(call: CallbackQuery, bot: Bot):
         await call.answer("🏁 Barcha anjomlar tugadi!", show_alert=True)
         return
     
-    lock_acquired = await mark_as_processing(giveaway_key, user_id)
+    lock_acquired = await mark_as_processing(giveaway_id, user_id)
     if not lock_acquired:
         await call.answer("⏳ Iltimos, kuting...", show_alert=True)
         return
@@ -2186,19 +2205,20 @@ async def geroy_himoya_giveaway_callback(call: CallbackQuery, bot: Bot):
         setattr(profile, field, current_count + 1)
         await profile.save()
         
-        await queue_collected_user(giveaway_key, user_id)
+        await queue_collected_user(giveaway_id, user_id)
         u_name = call.from_user.full_name or f"User_{user_id}"
-        await queue_winner_detail(giveaway_key, user_id, u_name, 1)
+        await queue_winner_detail(giveaway_id, user_id, u_name, 1)
         
         new_remaining = remaining - 1
-        await update_giveaway(giveaway_key, {"remaining_amount": new_remaining})
-        await flush_all_giveaway_buffers(giveaway_key)
+        if giveaway_data:
+            await update_giveaway(giveaway_id, {"remaining_amount": new_remaining})
+        await flush_all_giveaway_buffers(giveaway_id)
         
         if new_remaining > 0:
             kb = InlineKeyboardBuilder()
-            kb.button(text="🎁 Qatnashish", callback_data=f"geroy-giveaway_{new_remaining}")
+            kb.button(text="🎁 Qatnashish", callback_data=f"geroy-giveaway_{giveaway_id}_{new_remaining}")
             
-            winners = await get_winner_details(giveaway_key)
+            winners = await get_winner_details(giveaway_id)
             winner_lines = [f"{i+1}) {_winner_mention_html(w[0], w[1])} {item_info['emoji']}" for i, w in enumerate(winners)]
             
             header = (
@@ -2229,8 +2249,8 @@ async def geroy_himoya_giveaway_callback(call: CallbackQuery, bot: Bot):
                 except Exception:
                     pass
         else:
-            await flush_all_giveaway_buffers(giveaway_key)
-            winners = await get_winner_details(giveaway_key)
+            await flush_all_giveaway_buffers(giveaway_id)
+            winners = await get_winner_details(giveaway_id)
             header = f"<b>Ajratilgan {item_info['name']} giveaway tugadi!</b>"
             await send_split_winners_list(call, header, winners, item_info['emoji'], chunk_size=25, total_amount=giveaway_data['total_amount'], remaining=0)
         
@@ -2245,12 +2265,27 @@ async def geroy_himoya_giveaway_callback(call: CallbackQuery, bot: Bot):
         except Exception:
             pass
     finally:
-        await unmark_as_processing(giveaway_key, user_id)
+        await unmark_as_processing(giveaway_id, user_id)
 
 async def start_protection_giveaway(message: Message, bot: Bot):
+    from utils.giveaways_redis import create_giveaway
     count = _parse_giveaway_count(message)
+    
+    # Redisda giveaway yaratish
+    giveaway = await create_giveaway(
+        creator_id=message.from_user.id if message.from_user else bot.id,
+        chat_id=message.chat.id,
+        message_id=message.message_id,
+        total_amount=count
+    )
+    
+    if not giveaway:
+        await message.answer("❌ Giveaway yaratishda xatolik!")
+        return
+    
+    giveaway_id = giveaway["id"]
     kb = InlineKeyboardBuilder()
-    kb.button(text="🎁 Qatnashish", callback_data=f"protection-giveaway_{count}")
+    kb.button(text="🎁 Qatnashish", callback_data=f"protection-giveaway_{giveaway_id}_{count}_{count}")
     msg = (
         f"🎁 <b>{EMOJI_HIMOYA} sovg'asi!</b>\n\n"
         f"🔢 Soni: <b>{count} ta</b>\n"
@@ -2273,44 +2308,31 @@ async def protection_giveaway_callback(call: CallbackQuery, bot: Bot):
     )
     
     parts = call.data.split("_")
-    if len(parts) < 3:
+    if len(parts) < 4:
         await call.answer("❌ Noto'g'ri callback!", show_alert=True)
         return
     
+    giveaway_id = parts[2]
     try:
-        count = int(parts[2])
+        remaining = int(parts[3])
     except ValueError:
-        count = 10
+        remaining = 1
     
     item_key = "himoya"
     item_info = ITEM_GIVEAWAY_MAPPING[item_key]
     field = item_info["field"]
     user_id = call.from_user.id
     
-    # Redisda giveaway yaratish (agar mavjud bo'lmasa)
-    giveaway_key = f"protection_{call.message.message_id}"
-    giveaway_data = await get_giveaway(giveaway_key)
-    
-    if not giveaway_data:
-        giveaway = await create_giveaway(
-            creator_id=call.from_user.id,
-            chat_id=call.message.chat.id,
-            message_id=call.message.message_id,
-            total_amount=count
-        )
-        if not giveaway:
-            await call.answer("❌ Xatolik!", show_alert=True)
-            return
-        giveaway_data = giveaway
-        remaining = count
-    else:
+    # Redisdan giveaway ma'lumotlarini olish
+    giveaway_data = await get_giveaway(giveaway_id)
+    if giveaway_data:
         remaining = giveaway_data["remaining_amount"]
     
-    if await is_processing(giveaway_key, user_id):
+    if await is_processing(giveaway_id, user_id):
         await call.answer("⏳ Iltimos, kuting...", show_alert=True)
         return
     
-    if await is_collected_user(giveaway_key, user_id):
+    if await is_collected_user(giveaway_id, user_id):
         await call.answer("❌ Siz allaqachon olgansiz!", show_alert=True)
         return
     
@@ -2318,7 +2340,7 @@ async def protection_giveaway_callback(call: CallbackQuery, bot: Bot):
         await call.answer("🏁 Barcha anjomlar tugadi!", show_alert=True)
         return
     
-    lock_acquired = await mark_as_processing(giveaway_key, user_id)
+    lock_acquired = await mark_as_processing(giveaway_id, user_id)
     if not lock_acquired:
         await call.answer("⏳ Iltimos, kuting...", show_alert=True)
         return
@@ -2337,23 +2359,24 @@ async def protection_giveaway_callback(call: CallbackQuery, bot: Bot):
         await profile.save()
         
         # Queue for batch write to Redis
-        await queue_collected_user(giveaway_key, user_id)
+        await queue_collected_user(giveaway_id, user_id)
         u_name = call.from_user.full_name or f"User_{user_id}"
-        await queue_winner_detail(giveaway_key, user_id, u_name, 1)
+        await queue_winner_detail(giveaway_id, user_id, u_name, 1)
         
         new_remaining = remaining - 1
         
         # Redisdan yangilash
-        await update_giveaway(giveaway_key, {"remaining_amount": new_remaining})
+        if giveaway_data:
+            await update_giveaway(giveaway_id, {"remaining_amount": new_remaining})
         
         # Bufferlarni flush qilish
-        await flush_all_giveaway_buffers(giveaway_key)
+        await flush_all_giveaway_buffers(giveaway_id)
         
         if new_remaining > 0:
             kb = InlineKeyboardBuilder()
-            kb.button(text="🎁 Qatnashish", callback_data=f"protection-giveaway_{new_remaining}")
+            kb.button(text="🎁 Qatnashish", callback_data=f"protection-giveaway_{giveaway_id}_{new_remaining}")
             
-            winners = await get_winner_details(giveaway_key)
+            winners = await get_winner_details(giveaway_id)
             winner_lines = [f"{i+1}) {_winner_mention_html(w[0], w[1])} {item_info['emoji']}" for i, w in enumerate(winners)]
             
             header = (
@@ -2384,10 +2407,8 @@ async def protection_giveaway_callback(call: CallbackQuery, bot: Bot):
                 except Exception:
                     pass
         else:
-            # Flush all buffers before showing winners
-            await flush_all_giveaway_buffers(giveaway_key)
-            
-            winners = await get_winner_details(giveaway_key)
+            await flush_all_giveaway_buffers(giveaway_id)
+            winners = await get_winner_details(giveaway_id)
             header = f"<b>Ajratilgan {item_info['name']} giveaway tugadi!</b>"
             await send_split_winners_list(call, header, winners, item_info['emoji'], chunk_size=25, total_amount=giveaway_data['total_amount'], remaining=0)
         
@@ -2402,10 +2423,7 @@ async def protection_giveaway_callback(call: CallbackQuery, bot: Bot):
         except Exception:
             pass
     finally:
-        await unmark_as_processing(giveaway_key, user_id)
-
-_change_games: dict = {}
-_money_giveaways: dict = {}
+        await unmark_as_processing(giveaway_id, user_id)
 
 async def start_change_giveaway(message: Message, bot: Bot):
     count = _parse_giveaway_count(message, default=5)
