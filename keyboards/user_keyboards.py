@@ -93,7 +93,7 @@ def blocking_users(user1_id, user2_id):
     m.button(text="Ikkalasini ham bloklash", callback_data=f"block_{user1_id}_{user2_id}")
     return m.as_markup()
 
-def profile_keyboards(lang: str = "uz"):
+def profile_keyboards(lang: str = "uz", is_vip: bool = False):
     markup = InlineKeyboardBuilder()
     dia_id = get_custom_emoji_id("currency", "diamond")
     dollar_id = get_custom_emoji_id("currency", "dollar")
