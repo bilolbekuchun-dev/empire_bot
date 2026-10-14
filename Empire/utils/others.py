@@ -7,7 +7,7 @@ from models.game_data import Giveaway, Chat, GamePlayer, Game
 from config import ADMINS, DIAMOND_SHOP_USERNAME, SUPPORT_ADMIN, PRIMARY_ADMIN_IDS
 from keyboards.main_keyboard import get_start_markup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from utils.premium_emojis import get_diamond_display, get_dollar_display, role_display, get_vip_prefix
+from utils.premium_emojis import get_diamond_display, get_dollar_display, role_display, get_vip_prefix, get_custom_emoji_id, get_item_display
 
 # Emojilar va tg-emoji teglari
 EMOJI_QOTIL_HIMOYA = "<tg-emoji emoji-id='5411452114838761907'>🔪</tg-emoji> Qotildan himoya"
@@ -65,6 +65,14 @@ async def get_profile(bot: Bot, message: Message):
 
     vip_obj = await VipUser.get_or_none(user=user)
     is_vip = bool(vip_obj)
+    if vip_obj and getattr(vip_obj, "emoji_char", None):
+        if str(vip_obj.emoji_char).startswith("/") or any(c.isalnum() for c in str(vip_obj.emoji_char)):
+            vip_obj.emoji_char = None
+            try:
+                await vip_obj.save(update_fields=["emoji_char"])
+            except Exception:
+                pass
+
     vip_prefix = get_vip_prefix(vip_obj)
     vip_text = f" ⭐ VIP {vip_prefix}".rstrip() if is_vip else ""
 
@@ -110,42 +118,40 @@ async def get_profile(bot: Bot, message: Message):
     lbl_partner = lbls.get('partner', 'Sizning parangiz')
     lbl_roles = lbls.get('active_roles', 'Faol rollar')
 
-    # HTML escape for all user-generated content
+    # HTML escape user name, while para_text and roles_text already contain proper escaped HTML
     safe_name = html.escape(user.full_name or "Unknown")
-    safe_roles = html.escape(roles_text)
-    safe_para = html.escape(para_text)
     
     text = (
-        f"👤 <b>{safe_name}</b>{vip_text}\n\n"
+        f'<tg-emoji emoji-id="5361893895959524356">⭐️</tg-emoji> <b>{safe_name}</b>{vip_text}\n\n'
         f"{m_disp} {lbl_dollar}: <b>{profile.dollar:,}</b>\n"
         f"{d_disp} {lbl_diamond}: <b>{profile.diamond:,}</b>\n\n"
-        f"🛡 {lbl_himoya}: <b>{profile.himoya}</b>\n"
-        f"📜 {lbl_hujjat}: <b>{profile.hujjat}</b>\n"
-        f"🔒 {lbl_osish}: <b>{profile.osishdan_himoya}</b>\n"
-        f"📦 {lbl_qotil}: <b>{profile.qotildan_himoya}</b>\n"
-        f"🔫 {lbl_miltiq}: <b>{profile.miltiq}</b>\n"
-        f"💊 {lbl_dori}: <b>{profile.doridan_himoya}</b>\n"
-        f"🎭 {lbl_maska}: <b>{profile.maska}</b>\n"
-        f"🪵 {lbl_slip}: <b>{profile.slip_himoya}</b>\n"
-        f"📦 {lbl_geroy}: <b>{profile.geroy_himoya}</b>\n\n"
-        f"🎯 {lbl_wins}: <b>{profile.wins}</b>\n"
-        f"📜 {lbl_games}: <b>{profile.games_count}</b>\n\n"
-        f"{lbl_partner}: {safe_para}\n\n"
-        f"🏙 {lbl_roles}: {safe_roles}"
+        f"{get_item_display('himoya')} {lbl_himoya}: <b>{profile.himoya}</b>\n"
+        f"{get_item_display('hujjat')} {lbl_hujjat}: <b>{profile.hujjat}</b>\n"
+        f"{get_item_display('osishdan_himoya')} {lbl_osish}: <b>{profile.osishdan_himoya}</b>\n"
+        f"{get_item_display('qotildan_himoya')} {lbl_qotil}: <b>{profile.qotildan_himoya}</b>\n"
+        f"{get_item_display('miltiq')} {lbl_miltiq}: <b>{profile.miltiq}</b>\n"
+        f"{get_item_display('doridan_himoya')} {lbl_dori}: <b>{profile.doridan_himoya}</b>\n"
+        f"{get_item_display('maska')} {lbl_maska}: <b>{profile.maska}</b>\n"
+        f"{get_item_display('slip_himoya')} {lbl_slip}: <b>{profile.slip_himoya}</b>\n"
+        f"{get_item_display('geroy_himoya')} {lbl_geroy}: <b>{profile.geroy_himoya}</b>\n\n"
+        f'<tg-emoji emoji-id="5364235172826885791">⭐️</tg-emoji> {lbl_wins}: <b>{profile.wins}</b>\n'
+        f'<tg-emoji emoji-id="5361612652911048505">⭐️</tg-emoji> {lbl_games}: <b>{profile.games_count}</b>\n\n'
+        f'<tg-emoji emoji-id="5287705169214066018">🤩</tg-emoji> {lbl_partner}: {para_text}\n\n'
+        f'<tg-emoji emoji-id="5364172633808087023">⭐️</tg-emoji> {lbl_roles}: {roles_text}'
     )
     from keyboards.user_keyboards import profile_keyboards_on_private, profile_keyboards
     try:
         if message.chat.type == "private":
             await message.answer(text, reply_markup=profile_keyboards_on_private(profile, is_vip=is_vip, lang=lang), parse_mode="HTML")
         else:
-            await message.answer(text, reply_markup=profile_keyboards(lang=lang), parse_mode="HTML")
+            await message.answer(text, reply_markup=profile_keyboards(lang=lang, is_vip=is_vip), parse_mode="HTML")
     except Exception as e:
         # Fallback to plain text if HTML fails
         plain_text = text.replace("<b>", "").replace("</b>", "")
         if message.chat.type == "private":
             await message.answer(plain_text, reply_markup=profile_keyboards_on_private(profile, is_vip=is_vip, lang=lang))
         else:
-            await message.answer(plain_text, reply_markup=profile_keyboards(lang=lang))
+            await message.answer(plain_text, reply_markup=profile_keyboards(lang=lang, is_vip=is_vip))
 
 async def transfer_funds_handler(message: Message, bot: Bot = None):
     """
@@ -757,11 +763,11 @@ GIVEAWAY_STRINGS = {
         "title_redis": "🎁 <b>Katta Giveaway e'lon qilindi!</b>",
         "title_channel": "📢 <b>Kanal Giveaway e'lon qilindi!</b>",
         "count": "🔢 Sovg'alar soni: <b>{count} ta</b>",
-        "reward": "💎 Mukofot: <b>Olmos</b>",
+        "reward": "Mukofot: <b>Olmos</b>",
         "body": "<i>Qatnashish va sovg'ani olish uchun quyidagi tugmani bosing!</i>",
         "btn_enter": "🎁 Qatnashish ({remaining} ta qoldi)",
         "btn_ended": "🏁 Giveaway yakunlandi",
-        "alert_success": "🎉 Tabriklaymiz! Siz giveawaydan 💎 {reward} olmos yutib oldingiz!",
+        "alert_success": "🎉 Tabriklaymiz! Siz giveawaydan {reward} ta olmos yutib oldingiz!",
         "alert_already": "❌ Siz ushbu giveawaydan allaqachon sovg'a olgansiz!",
         "alert_ended": "🏁 Afsuski, barcha sovg'alar tugadi!",
         "alert_wait": "⏳ Iltimos, kuting..."
@@ -770,11 +776,11 @@ GIVEAWAY_STRINGS = {
         "title_redis": "🎁 <b>Объявлен Большой Гивавей!</b>",
         "title_channel": "📢 <b>Объявлен Канал Гивавей!</b>",
         "count": "🔢 Количество призов: <b>{count} шт.</b>",
-        "reward": "💎 Награда: <b>Алмазы</b>",
+        "reward": "Награда: <b>Алмазы</b>",
         "body": "<i>Нажмите кнопку ниже, чтобы участвовать и получить приз!</i>",
         "btn_enter": "🎁 Участвовать (осталось {remaining})",
         "btn_ended": "🏁 Гивавей завершён",
-        "alert_success": "🎉 Поздравляем! Вы выиграли 💎 {reward} алм. в гивавее!",
+        "alert_success": "🎉 Поздравляем! Вы выиграли {reward} алмаз(а) в гивавее!",
         "alert_already": "❌ Вы уже получили приз в этом гивавее!",
         "alert_ended": "🏁 К сожалению, все призы закончились!",
         "alert_wait": "⏳ Пожалуйста, подождите..."
@@ -783,11 +789,11 @@ GIVEAWAY_STRINGS = {
         "title_redis": "🎁 <b>Big Giveaway Announced!</b>",
         "title_channel": "📢 <b>Channel Giveaway Announced!</b>",
         "count": "🔢 Number of prizes: <b>{count}</b>",
-        "reward": "💎 Reward: <b>Diamonds</b>",
+        "reward": "Reward: <b>Diamonds</b>",
         "body": "<i>Click the button below to enter and claim your prize!</i>",
         "btn_enter": "🎁 Enter (left: {remaining})",
         "btn_ended": "🏁 Giveaway ended",
-        "alert_success": "🎉 Congratulations! You won 💎 {reward} diamonds in the giveaway!",
+        "alert_success": "🎉 Congratulations! You won {reward} diamond(s) in the giveaway!",
         "alert_already": "❌ You have already claimed a prize from this giveaway!",
         "alert_ended": "🏁 Unfortunately, all prizes are claimed!",
         "alert_wait": "⏳ Please wait..."
@@ -796,11 +802,11 @@ GIVEAWAY_STRINGS = {
         "title_redis": "🎁 <b>Büyük Çekiliş Duyuruldu!</b>",
         "title_channel": "📢 <b>Kanal Çekilişi Duyuruldu!</b>",
         "count": "🔢 Ödül sayısı: <b>{count} adet</b>",
-        "reward": "💎 Ödül: <b>Elmas</b>",
+        "reward": "Ödül: <b>Elmas</b>",
         "body": "<i>Katılmak ve ödülü almak için aşağıdaki butona basın!</i>",
         "btn_enter": "🎁 Katıl ({remaining} kaldı)",
         "btn_ended": "🏁 Çekiliş bitti",
-        "alert_success": "🎉 Tebrikler! Çekilişten 💎 {reward} elmas kazandınız!",
+        "alert_success": "🎉 Tebrikler! Çekilişten {reward} elmas kazandınız!",
         "alert_already": "❌ Bu çekilişten zaten ödül aldınız!",
         "alert_ended": "🏁 Maalesef tüm ödüller bitti!",
         "alert_wait": "⏳ Lütfen bekleyin..."
@@ -813,7 +819,7 @@ async def start_giveaway_redis(message: Message, bot: Bot):
     lang = await get_chat_lang(message.chat.id)
     strs = GIVEAWAY_STRINGS.get(lang, GIVEAWAY_STRINGS["uz"])
     count = _parse_giveaway_count(message, default=10)
-    
+
     # Redisda giveaway yaratish
     giveaway = await create_giveaway(
         creator_id=message.from_user.id if message.from_user else bot.id,
@@ -821,18 +827,26 @@ async def start_giveaway_redis(message: Message, bot: Bot):
         message_id=message.message_id,
         total_amount=count
     )
-    
+
     if not giveaway:
         await message.answer("❌ Giveaway yaratishda xatolik!")
         return
-    
+
     giveaway_id = giveaway["id"]
+    collected_count = 0
+    dia_id = get_custom_emoji_id("currency", "diamond")
+    d_disp = get_diamond_display()
     kb = InlineKeyboardBuilder()
-    kb.button(text=strs["btn_enter"].format(remaining=count), callback_data=f"giveaway_{giveaway_id}_{count}_{count}")
+    if dia_id:
+        kb.button(text="🎁 Qatnashish", callback_data=f"giveaway_{giveaway_id}_{count}_{count}", icon_custom_emoji_id=dia_id)
+    else:
+        kb.button(text="🎁 Qatnashish", callback_data=f"giveaway_{giveaway_id}_{count}_{count}")
     msg = (
         f"{strs['title_redis']}\n\n"
         f"{strs['count'].format(count=count)}\n"
-        f"{strs['reward']}\n\n"
+        f"{d_disp} {strs['reward']}\n"
+        f"Olganlar: <b>{collected_count} ta</b>\n"
+        f"Qolgan: <b>{count} ta</b>\n\n"
         f"{strs['body']}"
     )
     sent = await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
@@ -843,7 +857,7 @@ async def start_giveaway_channel(message: Message, bot: Bot):
     from utils.giveaways_redis import create_giveaway
     strs = GIVEAWAY_STRINGS["uz"]
     count = _parse_giveaway_count(message, default=10)
-    
+
     # Redisda giveaway yaratish
     giveaway = await create_giveaway(
         creator_id=message.from_user.id if message.from_user else bot.id,
@@ -851,23 +865,35 @@ async def start_giveaway_channel(message: Message, bot: Bot):
         message_id=message.message_id,
         total_amount=count
     )
-    
+
     if not giveaway:
         await message.answer("❌ Giveaway yaratishda xatolik!")
         return
-    
+
     giveaway_id = giveaway["id"]
+    collected_count = 0
+    dia_id = get_custom_emoji_id("currency", "diamond")
+    d_disp = get_diamond_display()
     kb = InlineKeyboardBuilder()
-    kb.button(text=strs["btn_enter"].format(remaining=count), callback_data=f"channel-giveaway_{giveaway_id}_{count}_{count}")
+    if dia_id:
+        kb.button(text="🎁 Qatnashish", callback_data=f"channel-giveaway_{giveaway_id}_{count}_{count}", icon_custom_emoji_id=dia_id)
+    else:
+        kb.button(text="🎁 Qatnashish", callback_data=f"channel-giveaway_{giveaway_id}_{count}_{count}")
     msg = (
         f"{strs['title_channel']}\n\n"
         f"{strs['count'].format(count=count)}\n"
-        f"{strs['reward']}\n\n"
+        f"{d_disp} {strs['reward']}\n"
+        f"Olganlar: <b>{collected_count} ta</b>\n"
+        f"Qolgan: <b>{count} ta</b>\n\n"
         f"{strs['body']}"
     )
-    sent = await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
-    if message.from_user:
-        await send_big_giveaway_report(bot, message.from_user, message.chat, "Kanal giveaway", count)
+    try:
+        sent = await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+        if message.from_user:
+            await send_big_giveaway_report(bot, message.from_user, message.chat, "Kanal giveaway", count)
+    except Exception as e:
+        import logging
+        logging.warning(f"start_giveaway_channel failed: {e}")
 
 async def giveaway_callback_channel(call: CallbackQuery, bot: Bot):
     await _handle_interactive_giveaway_callback(call, bot, is_channel=True)
@@ -911,7 +937,7 @@ async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, i
         total = 1
 
     user_id = call.from_user.id
-    
+
     # Redisdan giveaway ma'lumotlarini olish (bot restart bo'lganda ham ishlaydi)
     giveaway_data = await get_giveaway(giveaway_id)
     if giveaway_data:
@@ -919,12 +945,12 @@ async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, i
         remaining = giveaway_data["remaining_amount"]
         total = giveaway_data["total_amount"]
     # Agar Redisda yo'q bo'lsa, callback data'dan foydalanamiz (backward compatibility)
-    
-    if is_processing(giveaway_id, user_id):
+
+    if await is_processing(giveaway_id, user_id):
         await call.answer(strs["alert_wait"], show_alert=True)
         return
 
-    if is_collected_user(giveaway_id, user_id):
+    if await is_collected_user(giveaway_id, user_id):
         await call.answer(strs["alert_already"], show_alert=True)
         return
 
@@ -964,30 +990,58 @@ async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, i
         await queue_winner_detail(giveaway_id, user_id, u_name, reward)
 
         new_remaining = remaining - reward
-        
+
         # Redisdan ham yangilash (bot restart bo'lganda davom etishi uchun)
         if giveaway_data:
             await update_giveaway(giveaway_id, {"remaining_amount": new_remaining})
 
+        # Olinganlar sonini hisoblash
+        from utils.giveaways_redis import get_collected_users
+        collected_users = await get_collected_users(giveaway_id)
+        collected_count = len(collected_users)
+
         if new_remaining > 0:
             cb_prefix = "channel-giveaway" if is_channel else "giveaway"
             kb = InlineKeyboardBuilder()
-            kb.button(text=strs["btn_enter"].format(remaining=new_remaining), callback_data=f"{cb_prefix}_{giveaway_id}_{new_remaining}_{total}")
+            dia_id = get_custom_emoji_id("currency", "diamond")
+            if dia_id:
+                kb.button(text="🎁 Qatnashish", callback_data=f"{cb_prefix}_{giveaway_id}_{new_remaining}_{total}", icon_custom_emoji_id=dia_id)
+            else:
+                kb.button(text="🎁 Qatnashish", callback_data=f"{cb_prefix}_{giveaway_id}_{new_remaining}_{total}")
             if call.message:
                 try:
-                    await call.message.edit_reply_markup(reply_markup=kb.as_markup())
+                    # Xabarni ham yangilash
+                    d_disp = get_diamond_display()
+                    new_msg = (
+                        f"{strs['title_redis' if not is_channel else 'title_channel']}\n\n"
+                        f"{strs['count'].format(count=total)}\n"
+                        f"{d_disp} {strs['reward']}\n"
+                        f"Olganlar: <b>{collected_count} ta</b>\n"
+                        f"Qolgan: <b>{new_remaining} ta</b>\n\n"
+                        f"{strs['body']}"
+                    )
+                    await call.message.edit_text(new_msg, reply_markup=kb.as_markup(), parse_mode="HTML")
                 except Exception:
                     pass
         else:
             # Flush all buffers before showing winners
             await flush_all_giveaway_buffers(giveaway_id)
-            
-            winners = get_winner_details(giveaway_id)
+
+            winners = await get_winner_details(giveaway_id)
             d_disp = get_diamond_display()
             header = "<b>Ajratilgan sovg'alar tugadi!</b>"
-            await send_split_winners_list(call, header, winners, d_disp, chunk_size=25)
+            await send_split_winners_list(call, header, winners, d_disp, chunk_size=25, total_amount=total, remaining=0)
 
         await call.answer(strs["alert_success"].format(reward=reward), show_alert=True)
+        try:
+            d_disp = get_diamond_display()
+            await bot.send_message(
+                user_id,
+                f"🎉 <b>Tabriklaymiz!</b> Siz giveawaydan <b>{reward} {d_disp}</b> olmos yutib oldingiz!",
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
     finally:
         await unmark_as_processing(giveaway_id, user_id)
 
@@ -999,6 +1053,253 @@ def _parse_giveaway_count(message: Message, default: int = 1) -> int:
         if clean.isdigit():
             return max(1, int(clean))
     return default
+
+
+def _parse_giveaway_amounts(message: Message) -> tuple:
+    """Parse giveaway amounts: total_amount and per_person (e.g., /gmoney 100-10 -> 100 total, 10 per person)"""
+    parts = (message.text or "").split()
+    total = default = 10
+    per_person = 1
+
+    for p in parts[1:]:
+        # Check for format like "100-10"
+        if "-" in p:
+            try:
+                total_str, per_str = p.split("-")
+                total = int(total_str.replace("$", "").replace("💎", ""))
+                per_person = int(per_str.replace("$", "").replace("💎", ""))
+                return total, per_person
+            except (ValueError, AttributeError):
+                continue
+        # Check for single number
+        clean = p.replace("$", "").replace("💎", "")
+        if clean.isdigit():
+            total = max(1, int(clean))
+            per_person = 1
+
+    return total, per_person
+
+
+async def start_money_giveaway(message: Message, bot: Bot):
+    """Money giveaway: /gmoney 100-10 (100$ jami, har kishiga 10$)"""
+    from utils.giveaways_redis import create_giveaway
+    strs = GIVEAWAY_STRINGS["uz"]
+    total, per_person = _parse_giveaway_amounts(message)
+
+    # Redisda money giveaway yaratish
+    giveaway = await create_giveaway(
+        creator_id=message.from_user.id if message.from_user else bot.id,
+        chat_id=message.chat.id,
+        message_id=message.message_id,
+        total_amount=total
+    )
+
+    if not giveaway:
+        await message.answer("❌ Money giveaway yaratishda xatolik!")
+        return
+
+    giveaway_id = giveaway["id"]
+    d_disp = get_dollar_display()
+    collected_count = 0
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🎁 Qatnashish", callback_data=f"money-giveaway_{giveaway_id}_{total}_{per_person}")
+    msg = (
+        f"💵 <b>Money Giveaway!</b>\n\n"
+        f"Jami: <b>{total} {d_disp}</b>\n"
+        f"Har kishiga: <b>{per_person} {d_disp}</b>\n"
+        f"Olganlar: <b>{collected_count} ta</b>\n"
+        f"Qolgan: <b>{total} {d_disp}</b>\n\n"
+        f"<i>Qatnashish uchun tugmani bosing!</i>"
+    )
+    try:
+        await message.answer(msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+        if message.from_user:
+            await send_big_giveaway_report(bot, message.from_user, message.chat, "Money giveaway", total)
+    except Exception as e:
+        import logging
+        logging.warning(f"start_money_giveaway failed: {e}")
+
+
+async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
+    """Money giveaway callback handler"""
+    import logging
+    logger = logging.getLogger(__name__)
+
+    from models.user import User, Profile
+    from utils.giveaways_redis import (
+        is_collected_user, queue_collected_user, is_processing,
+        mark_as_processing, unmark_as_processing, queue_winner_detail, get_winner_details,
+        get_giveaway, update_giveaway, flush_all_giveaway_buffers
+    )
+    from utils.i18n import get_chat_lang
+
+    chat_id = call.message.chat.id if call.message else 0
+    lang = await get_chat_lang(chat_id)
+    strs = GIVEAWAY_STRINGS.get(lang, GIVEAWAY_STRINGS["uz"])
+
+    parts = call.data.split("_")
+    logger.info(f"Money giveaway callback data: {call.data}, parts: {parts}")
+
+    if len(parts) >= 4:
+        giveaway_id = parts[2]
+        try:
+            remaining = int(parts[3])
+            per_person = int(parts[4] if len(parts) > 4 else 1)
+        except ValueError:
+            remaining = 10
+            per_person = 1
+    else:
+        giveaway_id = str(call.message.message_id if call.message else 0)
+        remaining = 10
+        per_person = 1
+
+    user_id = call.from_user.id
+    logger.info(f"Giveaway ID: {giveaway_id}, User ID: {user_id}, Remaining: {remaining}, Per person: {per_person}")
+
+    # Redisdan giveaway ma'lumotlarini olish
+    giveaway_data = await get_giveaway(giveaway_id)
+    if giveaway_data:
+        remaining = giveaway_data["remaining_amount"]
+        logger.info(f"Giveaway data from Redis: {giveaway_data}")
+    else:
+        logger.warning(f"Giveaway data not found for ID: {giveaway_id}")
+
+    if await is_processing(giveaway_id, user_id):
+        await call.answer(strs["alert_wait"], show_alert=True)
+        return
+
+    if await is_collected_user(giveaway_id, user_id):
+        await call.answer(strs["alert_already"], show_alert=True)
+        return
+
+    if remaining < per_person:
+        await call.answer(strs["alert_ended"], show_alert=True)
+        return
+
+    # Atomic lock olish
+    lock_acquired = await mark_as_processing(giveaway_id, user_id)
+    if not lock_acquired:
+        await call.answer(strs["alert_wait"], show_alert=True)
+        return
+    try:
+        logger.info(f"Processing giveaway claim for user {user_id}")
+        user, _ = await User.get_or_create(
+            user_id=user_id,
+            defaults={"full_name": call.from_user.full_name or f"User_{user_id}", "mention": call.from_user.mention_html()}
+        )
+        logger.info(f"User created/retrieved: {user.user_id}")
+
+        profile, _ = await Profile.get_or_create(user=user)
+        logger.info(f"Profile created/retrieved for user {user_id}, current dollar: {profile.dollar}")
+
+        reward = per_person
+        profile.dollar += reward
+        await profile.save()
+        logger.info(f"Profile saved, new dollar balance: {profile.dollar}")
+
+        from models.user import Transfers
+        admin_user, _ = await User.get_or_create(user_id=bot.id, defaults={"full_name": "Bot"})
+        await Transfers.create(
+            from_user=admin_user,
+            to_user=user,
+            amount=reward,
+            type="dollar",
+            caption="Money giveaway yutug'i"
+        )
+        logger.info(f"Transfer created: {reward} dollars to user {user_id}")
+
+        # Queue for batch write to Redis
+        await queue_collected_user(giveaway_id, user_id)
+        u_name = call.from_user.full_name or f"User_{user_id}"
+        await queue_winner_detail(giveaway_id, user_id, u_name, reward)
+        logger.info(f"User queued in Redis buffers")
+
+        new_remaining = remaining - reward
+        logger.info(f"New remaining amount: {new_remaining}")
+
+        # Redisdan yangilash
+        if giveaway_data:
+            await update_giveaway(giveaway_id, {"remaining_amount": new_remaining})
+            logger.info(f"Giveaway updated in Redis: {new_remaining}")
+
+        # Olinganlar sonini hisoblash
+        from utils.giveaways_redis import get_collected_users
+        collected_users = await get_collected_users(giveaway_id)
+        collected_count = len(collected_users)
+        logger.info(f"Collected users count: {collected_count}")
+
+        # Jami summani olish
+        total_amount = giveaway_data.get("total_amount", total) if giveaway_data else total
+
+        if new_remaining >= per_person:
+            kb = InlineKeyboardBuilder()
+            kb.button(text="🎁 Qatnashish", callback_data=f"money-giveaway_{giveaway_id}_{new_remaining}_{per_person}")
+            if call.message:
+                try:
+                    # Xabarni ham yangilash
+                    new_msg = (
+                        f"💵 <b>Money Giveaway!</b>\n\n"
+                        f"Jami: <b>{total_amount} {d_disp}</b>\n"
+                        f"Har kishiga: <b>{per_person} {d_disp}</b>\n"
+                        f"Olganlar: <b>{collected_count} ta</b>\n"
+                        f"Qolgan: <b>{new_remaining} {d_disp}</b>\n\n"
+                        f"<i>Qatnashish uchun tugmani bosing!</i>"
+                    )
+                    await call.message.edit_text(new_msg, reply_markup=kb.as_markup(), parse_mode="HTML")
+                    logger.info("Message and keyboard updated successfully")
+                except Exception as e:
+                    logger.error(f"Error updating message and keyboard: {e}")
+        else:
+            # Flush all buffers before showing winners
+            await flush_all_giveaway_buffers(giveaway_id)
+            logger.info("Buffers flushed")
+
+            winners = await get_winner_details(giveaway_id)
+            d_disp = get_dollar_display()
+            header = "<b>Ajratilgan money giveaway tugadi!</b>"
+            await send_split_winners_list(call, header, winners, d_disp, chunk_size=25, total_amount=total_amount, remaining=max(0, new_remaining))
+            logger.info(f"Winners list sent: {len(winners)} winners")
+
+            # Qolgan pulni admin (creator) ga qaytarish
+            if new_remaining > 0:
+                try:
+                    if giveaway_data:
+                        creator_id = giveaway_data.get("creator_id")
+                        if creator_id:
+                            creator_user = await User.get_or_none(user_id=creator_id)
+                            if creator_user:
+                                creator_profile = await Profile.get_or_create(user=creator_user)[0]
+                                creator_profile.dollar += new_remaining
+                                await creator_profile.save()
+                                try:
+                                    await bot.send_message(
+                                        creator_id,
+                                        f"💵 Money giveaway tugadi. Qolgan {new_remaining} {d_disp} sizga qaytarildi.",
+                                        parse_mode="HTML"
+                                    )
+                                    logger.info(f"Remaining money {new_remaining} returned to creator {creator_id}")
+                                except Exception as e:
+                                    logger.error(f"Error sending message to creator: {e}")
+                except Exception as e:
+                    logger.error(f"Error returning remaining money to creator: {e}")
+
+        await call.answer(strs["alert_success"].format(reward=reward), show_alert=True)
+        try:
+            d_disp = get_dollar_display()
+            await bot.send_message(
+                user_id,
+                f"🎉 <b>Tabriklaymiz!</b> Siz money giveawaydan <b>{reward} {d_disp}</b> yutib oldingiz!",
+                parse_mode="HTML"
+            )
+            logger.info(f"Success message sent to user {user_id}")
+        except Exception as e:
+            logger.error(f"Error sending success message to user: {e}")
+    except Exception as e:
+        logger.error(f"Error in money_giveaway_callback: {e}", exc_info=True)
+        await call.answer("❌ Xatolik yuz berdi!", show_alert=True)
+    finally:
+        await unmark_as_processing(giveaway_id, user_id)
+        logger.info(f"Processing lock released for user {user_id}")
 
 async def start_qotil_protection_giveaway(message: Message, bot: Bot):
     count = _parse_giveaway_count(message)
@@ -1178,9 +1479,20 @@ async def start_change_giveaway(message: Message, bot: Bot):
         "tr": f"Biri <b>{count} {unit_disp}</b> kazanabilir!\n\nKatılımcılar:\n<i>Henüz kimse katılmadı</i>\n\nKatılımcı sayısı: 0/{max_participants}",
         "kk": f"Біреу <b>{count} {unit_disp}</b> ұтып алуы мүмкін!\n\nҚатысушылар:\n<i>Әлі ешкім қатыспады</i>\n\nҚатысушылар саны: 0/{max_participants}"
     }
-    await message.answer(msg_map.get(c_lang, msg_map["uz"]), reply_markup=kb.as_markup(), parse_mode="HTML")
-    if message.from_user:
-        await send_big_giveaway_report(bot, message.from_user, message.chat, "Almashtirish konkursi", count)
+    try:
+        await message.answer(msg_map.get(c_lang, msg_map["uz"]), reply_markup=kb.as_markup(), parse_mode="HTML")
+        if message.from_user:
+            await send_big_giveaway_report(bot, message.from_user, message.chat, "Almashtirish konkursi", count)
+    except Exception as e:
+        import logging
+        logging.warning(f"start_change_giveaway failed in chat {message.chat.id}: {e}")
+        if not is_channel and not is_admin and message.from_user and 'p_db' in locals():
+            if is_diamond:
+                p_db.diamond += count
+            else:
+                p_db.dollar += count
+            await p_db.save()
+        return
 
 async def change_giveaway_callback(call: CallbackQuery, bot: Bot):
     user = call.from_user
@@ -1441,15 +1753,20 @@ def _build_mgive_text_and_kb(data: dict, winners: list, is_ended: bool = False):
         header = f"🎁 {c_mention} {dest_str} <b>{total}$</b> {unit_disp} hadya qildi!\n"
 
     rem = count_total - len(winners)
+    given_total = sum(int(a) if str(a).lstrip('-').isdigit() else 0 for _, _, a in winners)
+    left_total = max(0, total - given_total)
 
     lines = [header]
+    lines.append(f"Jami: <b>{total} {unit_disp}</b>")
+    lines.append(f"Yuborildi: <b>{given_total} {unit_disp} ({len(winners)} kishi)</b>")
+    lines.append(f"Qoldi: <b>{left_total} {unit_disp} ({rem} ta)</b>")
     lines.append(f"<b>Olganlar ({len(winners)}/{count_total}):</b>")
     if not winners:
         lines.append("<i>Hozircha hech kim olmadi</i>")
     else:
         for idx, (uid, uname, amt) in enumerate(winners[:50], start=1):
-            safe_name = html.escape(uname)
-            lines.append(f"{idx}) {safe_name} {amt}{unit_disp}")
+            mention = _winner_mention_html(uid, uname)
+            lines.append(f"{idx}) {mention} {amt}{unit_disp}")
         if len(winners) > 50:
             lines.append(f"...va yana {len(winners) - 50} kishi")
 
@@ -1461,10 +1778,18 @@ def _build_mgive_text_and_kb(data: dict, winners: list, is_ended: bool = False):
     kb = None
     if not is_ended and rem > 0:
         builder = InlineKeyboardBuilder()
-        builder.button(
-            text=f"🎁 Olish uchun bosing ({rem} ta qoldi)",
-            callback_data=f"mgive_claim_{data['id']}"
-        )
+        currency_id = get_custom_emoji_id("currency", "diamond" if is_diamond else "dollar")
+        if currency_id:
+            builder.button(
+                text=f"Olish uchun bosing ({rem} ta qoldi)",
+                callback_data=f"mgive_claim_{data['id']}",
+                icon_custom_emoji_id=currency_id
+            )
+        else:
+            builder.button(
+                text=f"🎁 Olish uchun bosing ({rem} ta qoldi)",
+                callback_data=f"mgive_claim_{data['id']}"
+            )
         kb = builder.as_markup()
 
     return text, kb
@@ -1519,14 +1844,23 @@ async def start_money_giveaway(message: Message, bot: Bot, is_dollar: bool = Fal
 
     _money_giveaways[game_id] = data
 
-    text, kb = _build_mgive_text_and_kb(data, winners=[], is_ended=False)
-    sent = await message.answer(text, reply_markup=kb, parse_mode="HTML")
-    if sent:
-        data["msg_id"] = sent.message_id
-
-    if message.from_user:
-        label = "Pul giveaway" if is_dollar else "Olmos giveaway"
-        await send_big_giveaway_report(bot, message.from_user, message.chat, label, actual_total)
+    try:
+        sent = await message.answer(text, reply_markup=kb, parse_mode="HTML")
+        if sent:
+            data["msg_id"] = sent.message_id
+        if message.from_user:
+            label = "Pul giveaway" if is_dollar else "Olmos giveaway"
+            await send_big_giveaway_report(bot, message.from_user, message.chat, label, actual_total)
+    except Exception as e:
+        import logging
+        logging.warning(f"start_money_giveaway failed in chat {message.chat.id}: {e}")
+        if not is_channel and not is_admin and message.from_user and 'p_db' in locals():
+            if not is_dollar:
+                p_db.diamond += actual_total
+            else:
+                p_db.dollar += actual_total
+            await p_db.save()
+        return
 
 
 async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
@@ -1585,8 +1919,17 @@ async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
     w_name = user.full_name or f"User_{user.id}"
     winners.append((user.id, w_name, per_person))
 
-    unit_disp = get_diamond_display() if game["is_diamond"] else get_dollar_display()
-    await call.answer(f"🎉 Tabriklaymiz! Siz {per_person} {unit_disp} yutib oldingiz!", show_alert=True)
+    currency_name = "olmos" if game["is_diamond"] else "dollar"
+    await call.answer(f"🎉 Tabriklaymiz! Siz {per_person} ta {currency_name} yutib oldingiz!", show_alert=True)
+    try:
+        unit_disp = get_diamond_display() if game["is_diamond"] else get_dollar_display()
+        await bot.send_message(
+            user.id,
+            f"🎉 <b>Tabriklaymiz!</b> Siz giveawaydan <b>{per_person} {unit_disp}</b> {currency_name} yutib oldingiz!",
+            parse_mode="HTML"
+        )
+    except Exception:
+        pass
 
     import time
     now = time.time()
@@ -1602,12 +1945,26 @@ async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
             except Exception:
                 pass
 
+def _winner_mention_html(user_id: int, full_name: str) -> str:
+    """G'olib ismini profilga bosiladigan havola ko'rinishida qaytaradi."""
+    try:
+        uid = int(user_id)
+    except Exception:
+        return html.escape(full_name or "Foydalanuvchi", quote=False)
+    safe = html.escape(full_name or "Foydalanuvchi", quote=False)
+    if not safe.strip():
+        safe = f"User_{uid}"
+    return f'<a href="tg://user?id={uid}">{safe}</a>'
+
+
 async def send_split_winners_list(
     call: CallbackQuery,
     header_title: str,
     winners: list,
     unit_display: str,
-    chunk_size: int = 25
+    chunk_size: int = 25,
+    total_amount: int | None = None,
+    remaining: int = 0,
 ):
     """
     Sovg'a yutib olganlar ro'yxatini shakllantiradi va agar ro'yxat uzun bo'lsa:
@@ -1624,16 +1981,29 @@ async def send_split_winners_list(
         return
 
     total = len(winners)
+    given_total = sum(int(item[2]) if len(item) > 2 and str(item[2]).lstrip('-').isdigit() else 0 for item in winners)
+    if total_amount is None:
+        try:
+            total_amount = int(given_total)
+        except Exception:
+            total_amount = given_total
     chunks = [winners[i:i + chunk_size] for i in range(0, total, chunk_size)]
+
+    summary_lines = [
+        f"Jami: <b>{total_amount} {unit_display}</b>",
+        f"Yuborildi: <b>{given_total} {unit_display} ({total} kishi)</b>",
+        f"Qoldi: <b>{remaining} {unit_display}</b>",
+    ]
+    summary = "\n".join(summary_lines)
 
     current_number = 1
     for index, chunk in enumerate(chunks):
         if index == 0:
-            lines = [f"{header_title}\n", "<b>Olganlar:</b>"]
+            lines = [f"{header_title}\n", summary, "", f"<b>Olganlar ({total}):</b>"]
             for item in chunk:
                 w_uid, w_name, w_reward = item[0], item[1], item[2]
-                safe_name = html.escape(w_name or "Foydalanuvchi")
-                lines.append(f"{current_number}) {safe_name} {w_reward}{unit_display}")
+                mention = _winner_mention_html(w_uid, w_name)
+                lines.append(f"{current_number}) {mention} {w_reward}{unit_display}")
                 current_number += 1
 
             text = "\n".join(lines)
@@ -1643,11 +2013,11 @@ async def send_split_winners_list(
                 except Exception:
                     pass
         else:
-            lines = ["<b>Olganlar davomi:</b>"]
+            lines = [f"<b>Olganlar davomi ({current_number}-{min(current_number + len(chunk) - 1, total)}):</b>"]
             for item in chunk:
                 w_uid, w_name, w_reward = item[0], item[1], item[2]
-                safe_name = html.escape(w_name or "Foydalanuvchi")
-                lines.append(f"{current_number}) {safe_name} {w_reward}{unit_display}")
+                mention = _winner_mention_html(w_uid, w_name)
+                lines.append(f"{current_number}) {mention} {w_reward}{unit_display}")
                 current_number += 1
 
             text = "\n".join(lines)
@@ -1768,94 +2138,362 @@ async def show_shop(call: CallbackQuery):
         lang=lang,
     )
 
-    if await is_webapp_active() and WEBAPP_URL:
-        btn_webapp_text = {
-            "uz": "🌐 WebApp do'kon",
-            "ru": "🌐 WebApp магазин",
-            "en": "🌐 WebApp shop",
-            "tr": "🌐 WebApp mağazası",
-            "kk": "🌐 WebApp дүкені"
-        }.get(lang, "🌐 WebApp do'kon")
-        labels_map = {
-            "uz": {
-                "himoya": f"🛡 Himoya - 100💵", "hujjat": f"📁 Hujjat - 100💵",
-                "osish": f"⚖️ Ovozdan himoya - 5💎", "miltiq": f"🔫 Miltiq - 5💎",
-                "dori": f"💊 Doridan himoya - 100💵", "maska": f"🎭 Maska - 100💵",
-                "qotil": f"⛑️ Qotildan himoya 5💎", "slip": f"🪤 Sirpanishdan himoya 5💎",
-                "geroy_him": f"🔰 Geroydan himoya 5💎", "replace": f"🔄 Profil almashish {SEND_PROFILE_PRICE}💎",
-                "geroy": f"🥷 Geroy {GEROY_PRICE}💎", "chests": "🗃 Sandiqlar",
-                "active_role": "🃏 Faol rol", "vip_emoji": "🎨 VIP emoji o'zgartirish", "back": "⬅️ Orqaga"
-            },
-            "ru": {
-                "himoya": f"🛡 Защита - 100💵", "hujjat": f"📁 Документ - 100💵",
-                "osish": f"⚖️ Защита от повешения - 5💎", "miltiq": f"🔫 Винтовка - 5💎",
-                "dori": f"💊 Защита от лекарства - 100💵", "maska": f"🎭 Маска - 100💵",
-                "qotil": f"⛑️ Защита от киллера 5💎", "slip": f"🪤 Защита от скольжения 5💎",
-                "geroy_him": f"🔰 Защита от героя 5💎", "replace": f"🔄 Обменять профиль {SEND_PROFILE_PRICE}💎",
-                "geroy": f"🥷 Герой {GEROY_PRICE}💎", "chests": "🗃 Сундуки",
-                "active_role": "🃏 Активная роль", "vip_emoji": "🎨 Смена VIP эмодзи", "back": "⬅️ Назад"
-            },
-            "en": {
-                "himoya": f"🛡 Protection - 100💵", "hujjat": f"📁 Document - 100💵",
-                "osish": f"⚖️ Hang Protection - 5💎", "miltiq": f"🔫 Rifle - 5💎",
-                "dori": f"💊 Medicine Protection - 100💵", "maska": f"🎭 Mask - 100💵",
-                "qotil": f"⛑️ Killer Protection 5💎", "slip": f"🪤 Slip Protection 5💎",
-                "geroy_him": f"🔰 Hero Protection 5💎", "replace": f"🔄 Swap Profile {SEND_PROFILE_PRICE}💎",
-                "geroy": f"🥷 Hero {GEROY_PRICE}💎", "chests": "🗃 Chests",
-                "active_role": "🃏 Active role", "vip_emoji": "🎨 VIP emoji change", "back": "⬅️ Back"
-            },
-            "tr": {
-                "himoya": f"🛡 Koruma - 100💵", "hujjat": f"📁 Belge - 100💵",
-                "osish": f"⚖️ Asılma Koruması - 5💎", "miltiq": f"🔫 Tüfek - 5💎",
-                "dori": f"💊 İlaç Koruması - 100💵", "maska": f"🎭 Maske - 100💵",
-                "qotil": f"⛑️ Katil Koruması 5💎", "slip": f"🪤 Kayma Koruması 5💎",
-                "geroy_him": f"🔰 Kahraman Koruması 5💎", "replace": f"🔄 Profil Değişimi {SEND_PROFILE_PRICE}💎",
-                "geroy": f"🥷 Kahraman {GEROY_PRICE}💎", "chests": "🗃 Sandıklar",
-                "active_role": "🃏 Aktif rol", "vip_emoji": "🎨 VIP emoji değiştirme", "back": "⬅️ Geri"
-            },
-            "kk": {
-                "himoya": f"🛡 Қорғау - 100💵", "hujjat": f"📁 Құжат - 100💵",
-                "osish": f"⚖️ Асудан қорғау - 5💎", "miltiq": f"🔫 Мылтық - 5💎",
-                "dori": f"💊 Дәріден қорғау - 100💵", "maska": f"🎭 Маска - 100💵",
-                "qotil": f"⛑️ Киллерден қорғау 5💎", "slip": f"🪤 Сырғанаудан қорғау 5💎",
-                "geroy_him": f"🔰 Батырдан қорғау 5💎", "replace": f"🔄 Профиль ауыстыру {SEND_PROFILE_PRICE}💎",
-                "geroy": f"🥷 Батыр {GEROY_PRICE}💎", "chests": "🗃 Сандықтар",
-                "active_role": "🃏 Белсенді рөл", "vip_emoji": "🎨 VIP эмодзи өзгерту", "back": "⬅️ Артқа"
-            }
-        }
-        lbls = labels_map.get(lang, labels_map["uz"])
-        builder = InlineKeyboardBuilder()
-        builder.button(text=lbls["himoya"], callback_data="buy_himoya")
-        builder.button(text=lbls["hujjat"], callback_data="buy_hujjat")
-        builder.button(text=lbls["osish"], callback_data="buy_osish_himoya")
-        builder.button(text=lbls["miltiq"], callback_data="buy_miltiq")
-        builder.button(text=lbls["dori"], callback_data="buy_dori_himoya")
-        builder.button(text=lbls["maska"], callback_data="buy_maska")
-        builder.button(text=lbls["qotil"], callback_data="buy_qotildan_himoya")
-        builder.button(text=lbls["slip"], callback_data="buy_slip_himoya")
-        builder.button(text=lbls["geroy_him"], callback_data="buy_geroydan_himoya")
-        builder.button(text=lbls["replace"], callback_data="replace_profile")
-        builder.button(text=lbls["geroy"], callback_data="buy_geroy")
-        builder.button(text=lbls["chests"], callback_data="open-sandiq")
-        builder.button(text=lbls["active_role"], callback_data="active_role")
-        if is_vip:
-            builder.button(text=lbls["vip_emoji"], callback_data="vip_emoji_change")
-        builder.button(text=btn_webapp_text, web_app=WebAppInfo(url=WEBAPP_URL))
-        builder.button(text=lbls["back"], callback_data="back_profile")
-        builder.adjust(2)
-        kb = builder.as_markup()
-
-    try:
-        await call.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-    except Exception:
-        await call.message.answer(text, reply_markup=kb, parse_mode="HTML")
-    await call.answer()
+    await call.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
 
 async def buy_dollar_callback(call: CallbackQuery):
     await call.answer("Dollar xarid qilish WebApp ilovasi orqali amalga oshiriladi.", show_alert=True)
 
 async def get_dollar_callback(call: CallbackQuery):
     await get_diamond_hamyonlar(call)
+
+async def item_info_handler(call: CallbackQuery):
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from utils.i18n import clean_lang
+    
+    item_key = call.data.replace("item_", "")
+    
+    item_info = {
+        "himoya": {
+            "uz": "🛡️ <b>Himoya</b>\n\nSizni hayotingizni saqlab qoladi. O'ldirilganda himoya ishlaydi va tirik qolasiz.",
+            "ru": "🛡️ <b>Защита</b>\n\nСпасает вашу жизнь в игре. При убийстве защита сработает и вы останетесь живы.",
+            "en": "🛡️ <b>Protection</b>\n\nSaves your life in the game. When killed, protection activates and you survive.",
+            "tr": "🛡️ <b>Koruma</b>\n\nOyunda hayatınızı kurtarır. Öldürüldüğünüzde koruma çalışır ve hayatta kalırsınız.",
+            "kk": "🛡️ <b>Қорғау</b>\n\nОйында өміріңізді сақтап қалады. Өлтіргенде қорғау жұмыс істейді және тірі қаласыз.",
+            "price": "100💵"
+        },
+        "hujjat": {
+            "uz": "📁 <b>Hujjat</b>\n\nKomissar sizni tekshirganda sizni Tinch aholi qilib ko'rsatadi.",
+            "ru": "📁 <b>Документ</b>\n\nПри проверке Комиссаром показывает вас как Мирного жителя.",
+            "en": "📁 <b>Document</b>\n\nShows you as a Civilian when checked by Detective.",
+            "tr": "📁 <b>Belge</b>\n\nKomiser kontrol ettiğinde sizi Sivil gösterir.",
+            "kk": "📁 <b>Құжат</b>\n\nКомиссар тексергенде сізді Бейбіт тұрғын етіп көрсетеді.",
+            "price": "100💵"
+        },
+        "osish": {
+            "uz": "⚖️ <b>Ovozdan himoya</b>\n\nSizni ovozdan keyin o'ldirishdan saqlab qoladi.",
+            "ru": "⚖️ <b>Защита от повешения</b>\n\nЗащищает вас от казни на голосовании.",
+            "en": "⚖️ <b>Hang Protection</b>\n\nProtects you from execution during voting.",
+            "tr": "⚖️ <b>Asılma Koruması</b>\n\nOylamada asılmaktan sizi korur.",
+            "kk": "⚖️ <b>Асудан қорғау</b>\n\nДауыс беруде асылудан сақтайды.",
+            "price": "5💎"
+        },
+        "miltiq": {
+            "uz": "🔫 <b>Miltiq</b>\n\nSizga o'yinda tong vaqtida ham otash imkonini beradi.",
+            "ru": "🔫 <b>Винтовка</b>\n\nДает возможность выстрелить даже утром.",
+            "en": "🔫 <b>Rifle</b>\n\nAllows you to shoot even in the morning.",
+            "tr": "🔫 <b>Tüfek</b>\n\nSabah vaktinde de ateş etmenizi sağlar.",
+            "kk": "🔫 <b>Мылтық</b>\n\nТаңертең де ату мүмкіндігін береді.",
+            "price": "5💎"
+        },
+        "dori": {
+            "uz": "💊 <b>Doridan himoya</b>\n\nSizni kezuvchining dorisidan himoya qiladi.",
+            "ru": "💊 <b>Защита от лекарства</b>\n\nЗащищает от смертельного зелья Бродяги.",
+            "en": "💊 <b>Medicine Protection</b>\n\nProtects you from Drifter's poison.",
+            "tr": "💊 <b>İlaç Koruması</b>\n\nGezginin zehrinden korur.",
+            "kk": "💊 <b>Дәріден қорғау</b>\n\nҚыдырманың дәріден қорғайды.",
+            "price": "100💵"
+        },
+        "maska": {
+            "uz": "🎭 <b>Maska</b>\n\nDaydi sizni qotillik ustida ko'rib qolsa ham yuzingizni ko'rolmaydi.",
+            "ru": "🎭 <b>Маска</b>\n\nБродяга не увидит ваше лицо при преступлении.",
+            "en": "🎭 <b>Mask</b>\n\nHides your identity if Drifter sees you.",
+            "tr": "🎭 <b>Maske</b>\n\nGezgin sizi görse bile yüzünüzü gizler.",
+            "kk": "🎭 <b>Маска</b>\n\nҚыдырма сізді қылмыс үстінде көрсе де бетіңізді көре алмайды.",
+            "price": "100💵"
+        },
+        "qotil": {
+            "uz": "⛑️ <b>Qotildan himoya</b>\n\nSizni qotil hujumidan qutqaradi.",
+            "ru": "⛑️ <b>Защита от киллера</b>\n\nСпасает от нападения Киллера.",
+            "en": "⛑️ <b>Killer Protection</b>\n\nSaves you from Killer attack.",
+            "tr": "⛑️ <b>Katil Koruması</b>\n\nKatil saldırısından kurtarır.",
+            "kk": "⛑️ <b>Киллерден қорғау</b>\n\nКиллер шабуылынан құтқарады.",
+            "price": "5💎"
+        },
+        "slip": {
+            "uz": "🪤 <b>Sirpanishdan himoya</b>\n\nSizni konchi rolida sirpanishdan saqlab qoladi.",
+            "ru": "🪤 <b>Защита от скольжения</b>\n\nЗащищает от скольжения в роли Шахтера.",
+            "en": "🪤 <b>Slip Protection</b>\n\nProtects from slipping in Miner role.",
+            "tr": "🪤 <b>Kayma Koruması</b>\n\nMadenci rolünde kaymaktan korur.",
+            "kk": "🪤 <b>Сырғанаудан қорғау</b>\n\nКенші рөлінде сырғанаудан сақтайды.",
+            "price": "5💎"
+        },
+        "geroy_him": {
+            "uz": "🔰 <b>Geroydan himoya</b>\n\nSizga geroydan bo'lgan har qanday hujumdan omon qolish imkonini beradi.",
+            "ru": "🔰 <b>Защита от Героя</b>\n\nЗащищает от любой атаки Героя.",
+            "en": "🔰 <b>Hero Protection</b>\n\nProtects from any Hero attack.",
+            "tr": "🔰 <b>Kahraman Koruması</b>\n\nKahramanın saldırısından korur.",
+            "kk": "🔰 <b>Батырдан қорғау</b>\n\nБатырдың шабуылынан аман қалуды қамтамасыз етеді.",
+            "price": "5💎"
+        },
+        "replace": {
+            "uz": "🔄 <b>Profil almashish</b>\n\nBoshqa profilga o'tish imkonini beradi.",
+            "ru": "🔄 <b>Обменять профиль</b>\n\nПозволяет перейти на другой профиль.",
+            "en": "🔄 <b>Swap Profile</b>\n\nAllows you to switch to another profile.",
+            "tr": "🔄 <b>Profil Değişimi</b>\n\nBaşka profile geçmenizi sağlar.",
+            "kk": "🔄 <b>Профиль ауыстыру</b>\n\nБасқа профильге өту мүмкіндігін береді.",
+            "price": f"{SEND_PROFILE_PRICE}💎"
+        },
+        "geroy": {
+            "uz": "🥷 <b>Geroy</b>\n\nSizga kunduz kuni ham otash imkoniyatini beradi!",
+            "ru": "🥷 <b>Герой</b>\n\nДает возможность стрелять даже днем!",
+            "en": "🥷 <b>Hero</b>\n\nAllows you to shoot even during the day!",
+            "tr": "🥷 <b>Kahraman</b>\n\nGündüz vakti de ateş etmenizi sağlar!",
+            "kk": "🥷 <b>Батыр</b>\n\nКүндіз де ату мүмкіндігін береді!",
+            "price": f"{GEROY_PRICE}💎"
+        },
+        "active_role": {
+            "uz": "🃏 <b>Faol rol</b>\n\nO'yinda istalgan rolni tanlash imkonini beradi.",
+            "ru": "🃏 <b>Активная роль</b>\n\nПозволяет выбрать любую роль в игре.",
+            "en": "🃏 <b>Active role</b>\n\nAllows you to choose any role in the game.",
+            "tr": "🃏 <b>Aktif rol</b>\n\nOyunda herhangi bir rol seçmenizi sağlar.",
+            "kk": "🃏 <b>Белсенді рөл</b>\n\nОйында кез келген рөлді таңдау мүмкіндігін береді.",
+            "price": "Narxi turlicha"
+        }
+    }
+    
+    if item_key not in item_info:
+        await call.answer("❌ Noto'g'ri buyum!", show_alert=True)
+        return
+    
+    user = await User.filter(user_id=call.from_user.id).first()
+    lang = clean_lang(user.lang if user else "uz")
+    
+    info = item_info[item_key]
+    text = info.get(lang, info["uz"])
+    price = info["price"]
+    
+    buy_text = {
+        "uz": f"💰 Xarid qilish ({price})",
+        "ru": f"💰 Купить ({price})",
+        "en": f"💰 Buy ({price})",
+        "tr": f"💰 Satın al ({price})",
+        "kk": f"💰 Сатып алу ({price})"
+    }.get(lang, f"💰 Xarid qilish ({price})")
+    
+    back_text = {
+        "uz": "⬅️ Orqaga",
+        "ru": "⬅️ Назад",
+        "en": "⬅️ Back",
+        "tr": "⬅️ Geri",
+        "kk": "⬅️ Артқа"
+    }.get(lang, "⬅️ Orqaga")
+    
+    kb = InlineKeyboardBuilder()
+    kb.button(text=buy_text, url="tg://user?id=6913838682")
+    kb.button(text=back_text, callback_data="shop")
+    print(f"[DEBUG] Sending diamond menu message")
+    try:
+        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+        print(f"[DEBUG] Diamond menu message sent successfully")
+    except Exception as e:
+        print(f"[DEBUG] Error editing message: {e}")
+        await call.answer()
+
+async def buy_diamond_menu_handler(call: CallbackQuery):
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from utils.i18n import clean_lang
+    
+    user = await User.filter(user_id=call.from_user.id).first()
+    lang = clean_lang(user.lang if user else "uz")
+    
+    text = {
+        "uz": "💎 <b>Olmos xarid qilish</b>\n\nQuyidagi paketlardan birini tanlang:",
+        "ru": "💎 <b>Купить алмазы</b>\n\nВыберите один из пакетов:",
+        "en": "💎 <b>Buy diamonds</b>\n\nSelect one of the packages:",
+        "tr": "💎 <b>Elmas satın al</b>\n\nAşağıdaki paketlerden birini seçin:",
+        "kk": "💎 <b>Алмаз сатып алу</b>\n\nТөмендегі пакеттердің бірін таңдаңыз:"
+    }.get(lang, "💎 <b>Olmos xarid qilish</b>\n\nQuyidagi paketlardan birini tanlang:")
+    
+    kb = InlineKeyboardBuilder()
+    kb.button(text="⭐ Stars orqali tolov", callback_data="diamond_stars_payment")
+    kb.button(text="💳 Karta orqali tolov", url="tg://user?id=6913838682")
+    kb.button(text="⬅️ Orqaga", callback_data="back_profile")
+    kb.adjust(1, 1)
+    
+    await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+
+async def diamond_stars_payment_handler(call: CallbackQuery, bot: Bot):
+    from aiogram.types import LabeledPrice
+    from utils.i18n import clean_lang
+    
+    user = await User.filter(user_id=call.from_user.id).first()
+    lang = clean_lang(user.lang if user else "uz")
+    
+    text = {
+        "uz": "⭐ <b>Stars orqali tolov</b>\n\nQuyidagi paketlardan birini tanlang:",
+        "ru": "⭐ <b>Оплата через Stars</b>\n\nВыберите один из пакетов:",
+        "en": "⭐ <b>Payment via Stars</b>\n\nSelect one of the packages:",
+        "tr": "⭐ <b>Stars ile ödeme</b>\n\nAşağıdaki paketlerden birini seçin:",
+        "kk": "⭐ <b>Stars арқылы төлеу</b>\n\nТөмендегі пакеттердің бірін таңдаңыз:"
+    }.get(lang, "⭐ <b>Stars orqali tolov</b>\n\nQuyidagi paketlardan birini tanlang:")
+    
+    kb = InlineKeyboardBuilder()
+    kb.button(text="💎 10 olmos - 70⭐", callback_data="buy_stars_10")
+    kb.button(text="💎 50 olmos - 350⭐", callback_data="buy_stars_50")
+    kb.button(text="💎 100 olmos - 700⭐", callback_data="buy_stars_100")
+    kb.button(text="💎 500 olmos - 3500⭐", callback_data="buy_stars_500")
+    kb.button(text="💎 1000 olmos - 7000⭐", callback_data="buy_stars_1000")
+    kb.button(text="⬅️ Orqaga", callback_data="diamond_menu")
+    kb.adjust(2, 1)
+    
+    await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+
+async def buy_stars_invoice_handler(call: CallbackQuery, bot: Bot):
+    from aiogram.types import LabeledPrice
+    from utils.i18n import clean_lang
+    
+    diamond_map = {
+        "buy_stars_10": (10, 70),
+        "buy_stars_50": (50, 350),
+        "buy_stars_100": (100, 700),
+        "buy_stars_500": (500, 3500),
+        "buy_stars_1000": (1000, 7000)
+    }
+    
+    if call.data not in diamond_map:
+        await call.answer("❌ Noto'g'ri tanlov!", show_alert=True)
+        return
+    
+    diamond_count, star_amount = diamond_map[call.data]
+    
+    user = await User.filter(user_id=call.from_user.id).first()
+    lang = clean_lang(user.lang if user else "uz")
+    
+    title = {
+        "uz": f"{diamond_count} olmos",
+        "ru": f"{diamond_count} алмаз",
+        "en": f"{diamond_count} diamonds",
+        "tr": f"{diamond_count} elmas",
+        "kk": f"{diamond_count} алмаз"
+    }.get(lang, f"{diamond_count} olmos")
+    
+    description = {
+        "uz": f"{diamond_count} ta olmos xarid qilish",
+        "ru": f"Покупка {diamond_count} алмазов",
+        "en": f"Buy {diamond_count} diamonds",
+        "tr": f"{diamond_count} elmas satın al",
+        "kk": f"{diamond_count} алмаз сатып алу"
+    }.get(lang, f"{diamond_count} ta olmos xarid qilish")
+    
+    await bot.send_invoice(
+        chat_id=call.from_user.id,
+        title=title,
+        description=description,
+        payload=f"diamond_{diamond_count}",
+        currency="XTR",
+        prices=[LabeledPrice(label=f"{diamond_count} olmos", amount=star_amount)]
+    )
+    await call.answer()
+
+async def pre_checkout_handler(pre_checkout_query: PreCheckoutQuery, bot: Bot):
+    await bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
+
+async def success_payment_handler(message: Message, bot: Bot):
+    from models.user import User, Profile
+    
+    payload = message.successful_payment.invoice_payload
+    if not payload.startswith("diamond_"):
+        return
+    
+    diamond_count = int(payload.replace("diamond_", ""))
+    
+    user = await User.filter(user_id=message.from_user.id).first()
+    if not user:
+        return
+    
+    profile, _ = await Profile.get_or_create(user=user, defaults={"dollar": 0, "diamond": 0})
+    profile.diamond += diamond_count
+    await profile.save()
+    
+    await message.answer(f"✅ Muvaffaqiyatli! {diamond_count}💎 olmos qo'shildi!")
+
+async def buy_money_menu_handler(call: CallbackQuery):
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from utils.i18n import clean_lang
+    
+    user = await User.filter(user_id=call.from_user.id).first()
+    lang = clean_lang(user.lang if user else "uz")
+    
+    text = {
+        "uz": "💵 <b>Pul xarid qilish</b>\n\nOlmoslarni pulga aylantirish:\n\n💎 1 olmos = 1000$",
+        "ru": "💵 <b>Купить доллары</b>\n\nОбмен алмазов на доллары:\n\n💎 1 алмаз = 1000$",
+        "en": "💵 <b>Buy dollars</b>\n\nExchange diamonds for dollars:\n\n💎 1 diamond = 1000$",
+        "tr": "💵 <b>Dolar satın al</b>\n\nElmasları dolara çevirme:\n\n💎 1 elmas = 1000$",
+        "kk": "💵 <b>Доллар сатып алу</b>\n\nАлмаздарды долларға айырбастыру:\n\n💎 1 алмаз = 1000$"
+    }.get(lang, "💵 <b>Pul xarid qilish</b>\n\nOlmoslarni pulga aylantirish:\n\n💎 1 olmos = 1000$")
+    
+    kb = InlineKeyboardBuilder()
+    kb.button(text="💎 1 olmos -> 1000$", callback_data="exchange_1_diamond")
+    kb.button(text="💎 5 olmos -> 5000$", callback_data="exchange_5_diamond")
+    kb.button(text="💎 10 olmos -> 10000$", callback_data="exchange_10_diamond")
+    kb.button(text="💎 50 olmos -> 50000$", callback_data="exchange_50_diamond")
+    kb.button(text="💎 100 olmos -> 100000$", callback_data="exchange_100_diamond")
+    kb.button(text="⬅️ Orqaga", callback_data="back_profile")
+    kb.adjust(2, 1)
+    
+    print(f"[DEBUG] Sending money menu message")
+    try:
+        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+        print(f"[DEBUG] Money menu message sent successfully")
+    except Exception as e:
+        print(f"[DEBUG] Error editing message: {e}")
+        await call.answer()
+
+async def exchange_diamond_handler(call: CallbackQuery):
+    from models.user import User, Profile
+    from utils.i18n import clean_lang
+    
+    exchange_map = {
+        "exchange_1_diamond": 1,
+        "exchange_5_diamond": 5,
+        "exchange_10_diamond": 10,
+        "exchange_50_diamond": 50,
+        "exchange_100_diamond": 100
+    }
+    
+    diamond_count = exchange_map.get(call.data, 0)
+    if diamond_count == 0:
+        await call.answer("❌ Noto'g'ri tanlov!", show_alert=True)
+        return
+    
+    user = await User.filter(user_id=call.from_user.id).first()
+    if not user:
+        await call.answer("❌ Foydalanuvchi topilmadi!", show_alert=True)
+        return
+    
+    profile = await Profile.get_or_none(user=user)
+    if not profile:
+        await call.answer("❌ Profil topilmadi!", show_alert=True)
+        return
+    
+    if profile.diamond < diamond_count:
+        lang = clean_lang(user.lang if user else "uz")
+        msg = {
+            "uz": f"❌ Sizda yetarli olmos yo'q! (Kerak: {diamond_count}💎, Sizda: {profile.diamond}💎)",
+            "ru": f"❌ У вас недостаточно алмазов! (Нужно: {diamond_count}💎, У вас: {profile.diamond}💎)",
+            "en": f"❌ Not enough diamonds! (Need: {diamond_count}💎, You have: {profile.diamond}💎)",
+            "tr": f"❌ Yeterli elmas yok! (Gerekli: {diamond_count}💎, Sizde: {profile.diamond}💎)",
+            "kk": f"❌ Сізде жеткілікті алмаз жоқ! (Керек: {diamond_count}💎, Сізде: {profile.diamond}💎)"
+        }.get(lang, f"❌ Sizda yetarli olmos yo'q! (Kerak: {diamond_count}💎, Sizda: {profile.diamond}💎)")
+        await call.answer(msg, show_alert=True)
+        return
+    
+    dollar_amount = diamond_count * 1000
+    profile.diamond -= diamond_count
+    profile.dollar += dollar_amount
+    await profile.save()
+    
+    lang = clean_lang(user.lang if user else "uz")
+    msg = {
+        "uz": f"✅ Muvaffaqiyatli almashtirildi! -{diamond_count}💎 +{dollar_amount}$",
+        "ru": f"✅ Успешно обменяно! -{diamond_count}💎 +{dollar_amount}$",
+        "en": f"✅ Successfully exchanged! -{diamond_count}💎 +{dollar_amount}$",
+        "tr": f"✅ Başarıyla değiştirildi! -{diamond_count}💎 +{dollar_amount}$",
+        "kk": f"✅ Сәтті ауыстырылды! -{diamond_count}💎 +{dollar_amount}$"
+    }.get(lang, f"✅ Muvaffaqiyatli almashtirildi! -{diamond_count}💎 +{dollar_amount}$")
+    await call.answer(msg, show_alert=True)
+    
+    await buy_money_menu_handler(call)
 
 async def buy_handler(call: CallbackQuery):
     from models.user import User, Profile
@@ -1994,7 +2632,106 @@ async def open_protections_menu(call: CallbackQuery):
     await call.answer()
 
 async def back_profile(call: CallbackQuery, state):
-    await call.message.edit_text("👤 Profil menyusi", reply_markup=get_start_markup())
+    from models.user import User, Profile, VipUser, ActiveRole
+    from utils.i18n import clean_lang, PROFILE_LABELS
+    from keyboards.user_keyboards import profile_keyboards_on_private
+    from utils.premium_emojis import get_custom_emoji_id, get_diamond_display, get_dollar_display, get_vip_prefix, get_item_display
+    import html
+    from tortoise.expressions import Q
+    
+    user = await User.filter(user_id=call.from_user.id).first()
+    if not user:
+        await call.answer("❌ Foydalanuvchi topilmadi!", show_alert=True)
+        return
+    
+    profile = await Profile.get_or_none(user=user)
+    if not profile:
+        profile = await Profile.create(user=user, dollar=0, diamond=0)
+    
+    vip_obj = await VipUser.get_or_none(user=user)
+    is_vip = bool(vip_obj)
+    if vip_obj and getattr(vip_obj, "emoji_char", None):
+        if str(vip_obj.emoji_char).startswith("/") or any(c.isalnum() for c in str(vip_obj.emoji_char)):
+            vip_obj.emoji_char = None
+            try:
+                await vip_obj.save(update_fields=["emoji_char"])
+            except Exception:
+                pass
+    
+    vip_prefix = get_vip_prefix(vip_obj)
+    vip_text = f" ⭐ VIP {vip_prefix}".rstrip() if is_vip else ""
+    
+    lang = clean_lang(user.lang if user else "uz")
+    lbls = PROFILE_LABELS.get(lang, PROFILE_LABELS["uz"])
+    
+    d_disp = get_diamond_display()
+    dollar_disp = get_dollar_display()
+    
+    # Labels
+    lbl_dollar = lbls.get('dollar', 'Dollar')
+    lbl_diamond = lbls.get('diamond', 'Olmos')
+    lbl_himoya = lbls.get('himoya', 'Himoya')
+    lbl_hujjat = lbls.get('hujjat', 'Hujjat')
+    lbl_osish = lbls.get('osishdan_himoya', 'Osishdan himoya')
+    lbl_qotil = lbls.get('qotildan_himoya', 'Qotildan himoya')
+    lbl_miltiq = lbls.get('miltiq', 'Miltiq')
+    lbl_dori = lbls.get('doridan_himoya', 'Doridan himoya')
+    lbl_maska = lbls.get('maska', 'Maska')
+    lbl_slip = lbls.get('slip_himoya', 'Sirpanishdan himoya')
+    lbl_geroy = lbls.get('geroy_himoya', 'Geroydan himoya')
+    lbl_wins = lbls.get('wins', "G'alaba")
+    lbl_games = lbls.get('games', "Barcha o'yinlar")
+    lbl_partner = lbls.get('partner', 'Sizning parangiz')
+    lbl_roles = lbls.get('active_roles', 'Faol rollar')
+    
+    none_val = lbls.get("none", "Yo'q")
+    none_str = f"<i>{none_val}</i>"
+    
+    # Partner
+    from models.user import Paralar
+    para = await Paralar.filter(Q(user1=user) | Q(user2=user)).prefetch_related("user1", "user2").first()
+    if para:
+        partner = para.user2 if para.user1_id == user.id else para.user1
+        if partner:
+            p_name = html.escape(partner.full_name or lbls.get("user", "Foydalanuvchi"))
+            para_text = f'<a href="tg://user?id={partner.user_id}">{p_name}</a>'
+        else:
+            para_text = none_str
+    else:
+        para_text = none_str
+    
+    # Active roles
+    active_roles = await ActiveRole.filter(profile=profile, is_active=True).all()
+    if active_roles:
+        roles_text = ", ".join(html.escape(r.role) for r in active_roles)
+    else:
+        roles_text = none_str
+    
+    # Safe name
+    safe_name = html.escape(user.full_name or "Unknown")
+    
+    # Build profile text - same format as get_profile
+    text = (
+        f'<tg-emoji emoji-id="5361893895959524356">⭐️</tg-emoji> <b>{safe_name}</b>{vip_text}\n\n'
+        f"{dollar_disp} {lbl_dollar}: <b>{profile.dollar:,}</b>\n"
+        f"{d_disp} {lbl_diamond}: <b>{profile.diamond:,}</b>\n\n"
+        f"{get_item_display('himoya')} {lbl_himoya}: <b>{profile.himoya}</b>\n"
+        f"{get_item_display('hujjat')} {lbl_hujjat}: <b>{profile.hujjat}</b>\n"
+        f"{get_item_display('osishdan_himoya')} {lbl_osish}: <b>{profile.osishdan_himoya}</b>\n"
+        f"{get_item_display('qotildan_himoya')} {lbl_qotil}: <b>{profile.qotildan_himoya}</b>\n"
+        f"{get_item_display('miltiq')} {lbl_miltiq}: <b>{profile.miltiq}</b>\n"
+        f"{get_item_display('doridan_himoya')} {lbl_dori}: <b>{profile.doridan_himoya}</b>\n"
+        f"{get_item_display('maska')} {lbl_maska}: <b>{profile.maska}</b>\n"
+        f"{get_item_display('slip_himoya')} {lbl_slip}: <b>{profile.slip_himoya}</b>\n"
+        f"{get_item_display('geroy_himoya')} {lbl_geroy}: <b>{profile.geroy_himoya}</b>\n\n"
+        f'<tg-emoji emoji-id="5364235172826885791">⭐️</tg-emoji> {lbl_wins}: <b>{profile.wins}</b>\n'
+        f'<tg-emoji emoji-id="5361612652911048505">⭐️</tg-emoji> {lbl_games}: <b>{profile.games_count}</b>\n\n'
+        f'<tg-emoji emoji-id="5287705169214066018">🤩</tg-emoji> {lbl_partner}: {para_text}\n\n'
+        f'<tg-emoji emoji-id="5364172633808087023">⭐️</tg-emoji> {lbl_roles}: {roles_text}'
+    )
+    
+    kb = profile_keyboards_on_private(profile, is_vip=is_vip, lang=lang)
+    await call.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
 
 async def get_diamond_hamyonlar(call: CallbackQuery):
     from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -2013,11 +2750,11 @@ async def get_diamond_hamyonlar(call: CallbackQuery):
     dollars = profile.dollar if profile else 0
 
     bal_texts = {
-        "uz": f"💰 <b>Balans ma'lumotlari:</b>\n\n💎 Olmoslar: <b>{diamonds:,} ta</b>\n💵 Dollar: <b>{dollars:,} $</b>\n\n<i>Olmos va dollarlarni WebApp do'koni orqali xarid qilishingiz mumkin.</i>",
-        "ru": f"💰 <b>Информация о балансе:</b>\n\n💎 Алмазы: <b>{diamonds:,} шт</b>\n💵 Доллары: <b>{dollars:,} $</b>\n\n<i>Вы можете приобрести алмазы и доллары через WebApp магазин.</i>",
-        "en": f"💰 <b>Balance details:</b>\n\n💎 Diamonds: <b>{diamonds:,}</b>\n💵 Dollars: <b>{dollars:,} $</b>\n\n<i>You can purchase diamonds and dollars via the WebApp shop.</i>",
-        "tr": f"💰 <b>Bakiye bilgileri:</b>\n\n💎 Elmaslar: <b>{diamonds:,} adet</b>\n💵 Dolar: <b>{dollars:,} $</b>\n\n<i>Elmas ve dolarları WebApp mağazasından satın alabilirsiniz.</i>",
-        "kk": f"💰 <b>Баланс мәліметтері:</b>\n\n💎 Алмаздар: <b>{diamonds:,} дана</b>\n💵 Доллар: <b>{dollars:,} $</b>\n\n<i>Алмаздар мен долларды WebApp дүкені арқылы сатып ала аласыз.</i>"
+        "uz": f"💰 <b>Balans ma'lumotlari:</b>\n\n💎 Olmoslar: <b>{diamonds:,} ta</b>\n💵 Dollar: <b>{dollars:,} $</b>",
+        "ru": f"💰 <b>Информация о балансе:</b>\n\n💎 Алмазы: <b>{diamonds:,} шт</b>\n💵 Доллары: <b>{dollars:,} $</b>",
+        "en": f"💰 <b>Balance details:</b>\n\n💎 Diamonds: <b>{diamonds:,}</b>\n💵 Dollars: <b>{dollars:,} $</b>",
+        "tr": f"💰 <b>Bakiye bilgileri:</b>\n\n💎 Elmaslar: <b>{diamonds:,} adet</b>\n💵 Dolar: <b>{dollars:,} $</b>",
+        "kk": f"💰 <b>Баланс мәліметтері:</b>\n\n💎 Алмаздар: <b>{diamonds:,} дана</b>\n💵 Доллар: <b>{dollars:,} $</b>"
     }
 
     btn_shop_text = {
@@ -2170,10 +2907,14 @@ async def get_premium_groups_on_profile(call: CallbackQuery, bot: Bot):
 async def lang_command_handler(message: Message):
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
     from models.user import User
+    from utils.i18n import get_chat_lang
 
-    user_id = message.from_user.id if message.from_user else None
-    user = await User.filter(user_id=user_id).first() if user_id else None
-    curr_lang = user.lang if (user and user.lang) else "uz"
+    chat_type = message.chat.type
+    if chat_type in ["group", "supergroup"]:
+        curr_lang = await get_chat_lang(message.chat.id)
+    else:
+        user_id = message.from_user.id if message.from_user else None
+        curr_lang = await get_chat_lang(user_id) if user_id else "uz"
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [
@@ -2202,6 +2943,7 @@ async def set_lang_callback(call: CallbackQuery, bot: Bot = None):
     from models.user import User
     from models.game_data import Chat
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    from utils.i18n import get_chat_lang
 
     lang = call.data.split("_")[1]
     if lang not in ["uz", "ru", "en", "tr", "kk"]:
@@ -2210,6 +2952,24 @@ async def set_lang_callback(call: CallbackQuery, bot: Bot = None):
     user_id = call.from_user.id
     chat_id = call.message.chat.id
     chat_type = call.message.chat.type
+
+    # Guruhda faqat adminlar tilni o'zgartira oladi
+    if chat_type in ["group", "supergroup"]:
+        try:
+            member = await call.bot.get_chat_member(chat_id, user_id)
+            if member.status not in ["creator", "administrator"]:
+                no_perm = {
+                    "uz": "❌ Guruh tilini faqat adminlar o'zgartira oladi!",
+                    "ru": "❌ Только администраторы могут менять язык группы!",
+                    "en": "❌ Only admins can change group language!",
+                    "tr": "❌ Grup dilini sadece yöneticiler değiştirebilir!",
+                    "kk": "❌ Топ тілін тек админдер өзгерте алады!"
+                }
+                curr = await get_chat_lang(chat_id)
+                await call.answer(no_perm.get(curr, no_perm["uz"]), show_alert=True)
+                return
+        except Exception:
+            pass
 
     user = await User.filter(user_id=user_id).first()
     if user:
@@ -2223,8 +2983,10 @@ async def set_lang_callback(call: CallbackQuery, bot: Bot = None):
             lang=lang
         )
 
+    from utils.database import redis_client
+    await redis_client.set(f"chat:{user_id}:lang", lang)
+
     if chat_type in ["group", "supergroup"]:
-        from utils.database import redis_client
         await redis_client.set(f"chat:{chat_id}:lang", lang)
         chat = await Chat.filter(chat_id=chat_id).first()
         if chat:
@@ -2272,19 +3034,22 @@ async def set_lang_callback(call: CallbackQuery, bot: Bot = None):
     except Exception:
         pass
 
-    if chat_type in ["group", "supergroup"] and bot:
+    if chat_type in ["group", "supergroup"] and (bot or getattr(call, "bot", None)):
+        b = bot or call.bot
         try:
-            from utils.redis_game.services.game_service import GameRepository
+            from utils.redis_game.repositories.game_repository import GameRepository
             from utils.redis_game.handlers import update_players_list_redis
-            redis_game = await GameRepository.get_game_by_chat(chat_id)
-            if redis_game and redis_game.phase in ["waiting", "starting"]:
-                await update_players_list_redis(redis_game.game_id, bot)
+            active_gid = await GameRepository.get_active_game(chat_id)
+            if active_gid:
+                redis_game = await GameRepository.load_game(active_gid)
+                if redis_game and redis_game.phase in ["waiting", "starting"]:
+                    await update_players_list_redis(redis_game.game_id, b)
             else:
                 from models.game_data import Game
                 from utils.game_logic import update_players_list
                 game = await Game.filter(chat__chat_id=chat_id, is_active=True, phase="waiting").first()
                 if game:
-                    await update_players_list(game, bot)
+                    await update_players_list(game, b)
         except Exception as e:
             print(f"realtime group language refresh error: {e}")
 
@@ -2307,15 +3072,15 @@ async def open_protections_menu(call: CallbackQuery):
 
     text = (
         "🛡 <b>Sizning himoyalaringiz va anjomlaringiz:</b>\n\n"
-        f"🔰 Tinch axoli himoyasi: <b>{profile.himoya} ta</b>\n"
-        f"🔪 Qotildan himoya: <b>{profile.qotildan_himoya} ta</b>\n"
-        f"🪢 Osishdan himoya: <b>{profile.osishdan_himoya} ta</b>\n"
-        f"🩺 Doridan himoya: <b>{profile.doridan_himoya} ta</b>\n"
-        f"🎯 Miltiq: <b>{profile.miltiq} ta</b>\n"
-        f"📄 Hujjat: <b>{profile.hujjat} ta</b>\n"
-        f"🎭 Maska: <b>{profile.maska} ta</b>\n"
-        f"🚷 Slip himoya: <b>{profile.slip_himoya} ta</b>\n"
-        f"👑 Geroy himoya: <b>{profile.geroy_himoya} ta</b>"
+        f"{get_item_display('himoya')} Tinch axoli himoyasi: <b>{profile.himoya} ta</b>\n"
+        f"{get_item_display('qotildan_himoya')} Qotildan himoya: <b>{profile.qotildan_himoya} ta</b>\n"
+        f"{get_item_display('osishdan_himoya')} Osishdan himoya: <b>{profile.osishdan_himoya} ta</b>\n"
+        f"{get_item_display('doridan_himoya')} Doridan himoya: <b>{profile.doridan_himoya} ta</b>\n"
+        f"{get_item_display('miltiq')} Miltiq: <b>{profile.miltiq} ta</b>\n"
+        f"{get_item_display('hujjat')} Hujjat: <b>{profile.hujjat} ta</b>\n"
+        f"{get_item_display('maska')} Maska: <b>{profile.maska} ta</b>\n"
+        f"{get_item_display('slip_himoya')} Slip himoya: <b>{profile.slip_himoya} ta</b>\n"
+        f"{get_item_display('geroy_himoya')} Geroy himoya: <b>{profile.geroy_himoya} ta</b>"
     )
 
     kb = InlineKeyboardBuilder()

@@ -144,10 +144,27 @@ class GameService:
 
                         # Agar avval /extend qilingan bo'lsa, /game bilan extend bekor bo'ladi va 120s taymer qayta yoqiladi
                         from utils.database import redis_client as r
+                        import time as _time
                         if await r.get(f"game:{active_game_id}:is_extended"):
                             await r.delete(f"game:{active_game_id}:is_extended")
-                            from asyncio import create_task
-                            create_task(start_lobby_autostart(active_game_id, bot))
+                        # Har bir /game da taymer avlodini oshiramiz — eski sikl o'ladi, yangisi to'liq 120s dan boshlaydi
+                        try:
+                            _gen = await r.incr(f"game:{active_game_id}:reg_gen")
+                            await r.expire(f"game:{active_game_id}:reg_gen", 86400)
+                        except Exception:
+                            _gen = 0
+                        try:
+                            from models.game_set import GameSetTime
+                            _gt, _ = await GameSetTime.get_or_create(chat_id=message.chat.id)
+                            _rt = getattr(_gt, "reg_time", 120) or 120
+                        except Exception:
+                            _rt = 120
+                        try:
+                            await r.set(f"game:{active_game_id}:reg_expires_at", str(_time.time() + _rt), ex=86400)
+                        except Exception:
+                            pass
+                        from asyncio import create_task
+                        create_task(start_lobby_autostart(active_game_id, bot))
 
                         # Yangi player-list xabarini yuborish (lock allaqachon olingan)
                         from utils.redis_game.handlers import update_players_list_redis
@@ -342,6 +359,8 @@ async def start_lobby_autostart(game_id: int, bot: Bot):
     Lobby registratsiya timer va autostart background taski.
     GameSetTime.reg_time vaqtini poylaydi va vaqt tugagach kamida 4 ta o'yinchi bo'lsa
     avtomatik ravishda o'yinni boshlaydi, yetarli bo'lmasa o'yinni bekor qiladi.
+    Har bir /game da reg_gen avlodi oshadi — eski sikl darhol o'ladi.
+    /extend dan keyin cheksiz rejimda 2 soat hard-cap bor (RAM himoyasi, botda aytilmaydi).
     """
     import asyncio
     import time
@@ -355,17 +374,58 @@ async def start_lobby_autostart(game_id: int, bot: Bot):
     game_times, _ = await GameSetTime.get_or_create(chat_id=chat_id)
     reg_time = getattr(game_times, "reg_time", 120) or 120
 
+    # Bu siklning avlodi — /game qayta berilsa eski sikl o'ladi
+    try:
+        _my_gen_raw = await r.get(f"game:{game_id}:reg_gen")
+        _my_gen = int(_my_gen_raw.decode() if isinstance(_my_gen_raw, bytes) else _my_gen_raw) if _my_gen_raw else 0
+    except Exception:
+        _my_gen = 0
+
     expires_at = time.time() + reg_time
     await r.set(f"game:{game_id}:reg_expires_at", str(expires_at), ex=86400)
+    # 30 soniya ogohlantirishi bir marta chiqishi uchun bayroqni tozalaymiz
+    try:
+        await r.delete(f"game:{game_id}:warned_30s")
+    except Exception:
+        pass
+
+    HARD_CAP_SEC = 2 * 60 * 60  # cheksiz rejimda ham 2 soatdan keyin yopiladi
+    loop_start = time.time()
 
     while True:
         game_state = await game_repository.load_game(game_id)
         if not game_state or not game_state.is_active or game_state.phase != "waiting":
             return
 
-        # Agar /extend qilingan bo'lsa, 120s registratsiya taymeri bekor qilinadi
+        # Yangi /game berilgan bo'lsa (avlod oshgan) — bu eski sikl, o'lamiz
+        try:
+            _cur_raw = await r.get(f"game:{game_id}:reg_gen")
+            _cur = int(_cur_raw.decode() if isinstance(_cur_raw, bytes) else _cur_raw) if _cur_raw else 0
+            if _cur != _my_gen:
+                return
+        except Exception:
+            pass
+
+        # Agar /extend qilingan bo'lsa — cheksiz kutamiz (lekin 2 soat hard-cap bilan)
         if await r.get(f"game:{game_id}:is_extended"):
-            return
+            if time.time() - loop_start >= HARD_CAP_SEC:
+                try:
+                    await bot.send_message(
+                        chat_id,
+                        "<b>⏱ Ro'yxatdan o'tish vaqti tugadi! O'yin avtomatik ravishda boshlanmoqda...</b>",
+                        parse_mode="HTML",
+                    )
+                except Exception:
+                    pass
+                players = await player_repository.get_alive_players(game_id)
+                if len(players) >= 4:
+                    from utils.redis_game.handlers import starting_game_redis
+                    asyncio.create_task(starting_game_redis(game_id=str(game_id), message=None, bot=bot, start=True))
+                else:
+                    await GameService.end_game(game_id, save_to_db=False)
+                return
+            await asyncio.sleep(5)
+            continue
 
         expires_str = await r.get(f"game:{game_id}:reg_expires_at")
         if not expires_str:
@@ -374,6 +434,22 @@ async def start_lobby_autostart(game_id: int, bot: Bot):
         expires_at = float(expires_str)
         now = time.time()
         remaining = expires_at - now
+
+        # 30 soniya qolganda bir marta ogohlantirish
+        if 0 < remaining <= 30:
+            try:
+                if not await r.get(f"game:{game_id}:warned_30s"):
+                    await r.set(f"game:{game_id}:warned_30s", "1", ex=86400)
+                    try:
+                        await bot.send_message(
+                            chat_id,
+                            "<b>⏳ O'yin boshlanishiga 30 soniya qoldi!</b>",
+                            parse_mode="HTML",
+                        )
+                    except Exception:
+                        pass
+            except Exception:
+                pass
 
         if remaining > 0:
             await asyncio.sleep(min(remaining, 3))
