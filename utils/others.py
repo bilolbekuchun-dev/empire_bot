@@ -1010,15 +1010,17 @@ async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, i
                 kb.button(text="🎁 Qatnashish", callback_data=f"{cb_prefix}_{giveaway_id}_{new_remaining}_{total}")
             if call.message:
                 try:
-                    # Xabarni ham yangilash
+                    # Xabarni ham yangilash - olganlar ro'yxati bilan
                     d_disp = get_diamond_display()
+                    winners = await get_winner_details(giveaway_id)
+                    winner_lines = [f"{i+1}) {_winner_mention_html(w[0], w[1])} {w[2]}{d_disp}" for i, w in enumerate(winners[-10:])]  # Oxirgi 10 ta
+                    winners_text = "\n".join(winner_lines) if winner_lines else ""
+                    
                     new_msg = (
                         f"{strs['title_redis' if not is_channel else 'title_channel']}\n\n"
                         f"{strs['count'].format(count=total)}\n"
-                        f"{d_disp} {strs['reward']}\n"
-                        f"Olganlar: <b>{collected_count} ta</b>\n"
-                        f"Qolgan: <b>{new_remaining} ta</b>\n\n"
-                        f"{strs['body']}"
+                        f"{d_disp} {strs['reward']}\n\n"
+                        f"<b>Olganlar:</b>\n{winners_text}"
                     )
                     await call.message.edit_text(new_msg, reply_markup=kb.as_markup(), parse_mode="HTML")
                 except Exception:
@@ -1030,7 +1032,7 @@ async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, i
             winners = await get_winner_details(giveaway_id)
             d_disp = get_diamond_display()
             header = "<b>Ajratilgan sovg'alar tugadi!</b>"
-            await send_split_winners_list(call, header, winners, d_disp, chunk_size=25)
+            await send_split_winners_list(call, header, winners, d_disp, chunk_size=25, total_amount=total, remaining=0)
 
         await call.answer(strs["alert_success"].format(reward=reward), show_alert=True)
         try:
@@ -1236,14 +1238,16 @@ async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
             kb.button(text="🎁 Qatnashish", callback_data=f"money-giveaway_{giveaway_id}_{new_remaining}_{per_person}")
             if call.message:
                 try:
-                    # Xabarni ham yangilash
+                    # Xabarni ham yangilash - olganlar ro'yxati bilan
+                    winners = await get_winner_details(giveaway_id)
+                    winner_lines = [f"{i+1}) {_winner_mention_html(w[0], w[1])} {w[2]}{d_disp}" for i, w in enumerate(winners[-10:])]  # Oxirgi 10 ta
+                    winners_text = "\n".join(winner_lines) if winner_lines else ""
+                    
                     new_msg = (
                         f"💵 <b>Money Giveaway!</b>\n\n"
                         f"Jami: <b>{total_amount} {d_disp}</b>\n"
-                        f"Har kishiga: <b>{per_person} {d_disp}</b>\n"
-                        f"Olganlar: <b>{collected_count} ta</b>\n"
-                        f"Qolgan: <b>{new_remaining} {d_disp}</b>\n\n"
-                        f"<i>Qatnashish uchun tugmani bosing!</i>"
+                        f"Har kishiga: <b>{per_person} {d_disp}</b>\n\n"
+                        f"<b>Olganlar:</b>\n{winners_text}"
                     )
                     await call.message.edit_text(new_msg, reply_markup=kb.as_markup(), parse_mode="HTML")
                     logger.info("Message and keyboard updated successfully")
@@ -1257,7 +1261,7 @@ async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
             winners = await get_winner_details(giveaway_id)
             d_disp = get_dollar_display()
             header = "<b>Ajratilgan money giveaway tugadi!</b>"
-            await send_split_winners_list(call, header, winners, d_disp, chunk_size=25)
+            await send_split_winners_list(call, header, winners, d_disp, chunk_size=25, total_amount=total_amount, remaining=max(0, new_remaining))
             logger.info(f"Winners list sent: {len(winners)} winners")
 
             # Qolgan pulni admin (creator) ga qaytarish
@@ -1753,15 +1757,20 @@ def _build_mgive_text_and_kb(data: dict, winners: list, is_ended: bool = False):
         header = f"🎁 {c_mention} {dest_str} <b>{total}$</b> {unit_disp} hadya qildi!\n"
 
     rem = count_total - len(winners)
+    given_total = sum(int(a) if str(a).lstrip('-').isdigit() else 0 for _, _, a in winners)
+    left_total = max(0, total - given_total)
 
     lines = [header]
+    lines.append(f"Jami: <b>{total} {unit_disp}</b>")
+    lines.append(f"Yuborildi: <b>{given_total} {unit_disp} ({len(winners)} kishi)</b>")
+    lines.append(f"Qoldi: <b>{left_total} {unit_disp} ({rem} ta)</b>")
     lines.append(f"<b>Olganlar ({len(winners)}/{count_total}):</b>")
     if not winners:
         lines.append("<i>Hozircha hech kim olmadi</i>")
     else:
         for idx, (uid, uname, amt) in enumerate(winners[:50], start=1):
-            safe_name = html.escape(uname)
-            lines.append(f"{idx}) {safe_name} {amt}{unit_disp}")
+            mention = _winner_mention_html(uid, uname)
+            lines.append(f"{idx}) {mention} {amt}{unit_disp}")
         if len(winners) > 50:
             lines.append(f"...va yana {len(winners) - 50} kishi")
 
@@ -1838,6 +1847,8 @@ async def start_money_giveaway(message: Message, bot: Bot, is_dollar: bool = Fal
     }
 
     _money_giveaways[game_id] = data
+
+    text, kb = _build_mgive_text_and_kb(data, winners=[], is_ended=False)
 
     try:
         sent = await message.answer(text, reply_markup=kb, parse_mode="HTML")
@@ -1940,12 +1951,26 @@ async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
             except Exception:
                 pass
 
+def _winner_mention_html(user_id: int, full_name: str) -> str:
+    """G'olib ismini profilga bosiladigan havola ko'rinishida qaytaradi."""
+    try:
+        uid = int(user_id)
+    except Exception:
+        return html.escape(full_name or "Foydalanuvchi", quote=False)
+    safe = html.escape(full_name or "Foydalanuvchi", quote=False)
+    if not safe.strip():
+        safe = f"User_{uid}"
+    return f'<a href="tg://user?id={uid}">{safe}</a>'
+
+
 async def send_split_winners_list(
     call: CallbackQuery,
     header_title: str,
     winners: list,
     unit_display: str,
-    chunk_size: int = 25
+    chunk_size: int = 25,
+    total_amount: int | None = None,
+    remaining: int = 0,
 ):
     """
     Sovg'a yutib olganlar ro'yxatini shakllantiradi va agar ro'yxat uzun bo'lsa:
@@ -1962,16 +1987,22 @@ async def send_split_winners_list(
         return
 
     total = len(winners)
+    given_total = sum(int(item[2]) if len(item) > 2 and str(item[2]).lstrip('-').isdigit() else 0 for item in winners)
+    if total_amount is None:
+        try:
+            total_amount = int(given_total)
+        except Exception:
+            total_amount = given_total
     chunks = [winners[i:i + chunk_size] for i in range(0, total, chunk_size)]
 
     current_number = 1
     for index, chunk in enumerate(chunks):
         if index == 0:
-            lines = [f"{header_title}\n", "<b>Olganlar:</b>"]
+            lines = [f"{header_title}\n", "", f"<b>Olganlar:</b>"]
             for item in chunk:
                 w_uid, w_name, w_reward = item[0], item[1], item[2]
-                safe_name = html.escape(w_name or "Foydalanuvchi")
-                lines.append(f"{current_number}) {safe_name} {w_reward}{unit_display}")
+                mention = _winner_mention_html(w_uid, w_name)
+                lines.append(f"{current_number}) {mention} {w_reward}{unit_display}")
                 current_number += 1
 
             text = "\n".join(lines)
@@ -1981,11 +2012,11 @@ async def send_split_winners_list(
                 except Exception:
                     pass
         else:
-            lines = ["<b>Olganlar davomi:</b>"]
+            lines = [f"<b>Olganlar davomi ({current_number}-{min(current_number + len(chunk) - 1, total)}):</b>"]
             for item in chunk:
                 w_uid, w_name, w_reward = item[0], item[1], item[2]
-                safe_name = html.escape(w_name or "Foydalanuvchi")
-                lines.append(f"{current_number}) {safe_name} {w_reward}{unit_display}")
+                mention = _winner_mention_html(w_uid, w_name)
+                lines.append(f"{current_number}) {mention} {w_reward}{unit_display}")
                 current_number += 1
 
             text = "\n".join(lines)
@@ -2031,13 +2062,13 @@ async def show_shop(call: CallbackQuery):
             f"🛡️ <b>Himoya</b> - Sizni hayotingizni saqlab qoladi\n\n"
             f"📁 <b>Hujjat</b> - Komissar sizni tekshirganda sizni Tinch aholi qilib ko'rsatadi.\n\n"
             f"⚖️ <b>Ovozdan himoya</b> - Sizni ovozdan keyin o'ldirishdan saqlab qoladi.\n\n"
-            f"🔫 <b>Miltiq</b> - Sizga o'yinda tong vaqtida ham otash imkonini beradi...\n\n"
+            f"🔫 <b>Miltiq</b> - Sizga o'yinda tong vaqtida ham otish imkonini beradi...\n\n"
             f"💊 <b>Doridan himoya</b> - sizni kezuvchining dorisidan himoya qiladi\n\n"
             f"🎭 <b>Maska</b> - Daydi sizni qotillik ustida ko'rib qolsa ham yuzingizni ko'rolmaydi\n\n"
             f"⛑️ <b>Qotildan himoya</b> - Sizni qotil hujumidan qutqaradi\n\n"
             f"🪤 <b>Sirpanishdan himoya</b> - Sizni konchi rolida sirpanishdan saqlab qoladi.\n\n"
             f"🔰 <b>Geroydan himoya</b> - Sizga geroydan bo'lgan har qanday hujumdan omon qolish imkonini beradi.\n\n"
-            f"🥷 <b>Geroy</b> - Sizga kunduz kuni ham otash imkoniyatini beradi!"
+            f"🥷 <b>Geroy</b> - Sizga kunduz kuni ham otish imkoniyatini beradi!"
         ),
         "ru": (
             f"🛡️ <b>Защита</b> - Спасает вашу жизнь в игре\n\n"
@@ -2119,6 +2150,16 @@ async def item_info_handler(call: CallbackQuery):
     from utils.i18n import clean_lang
     
     item_key = call.data.replace("item_", "")
+    
+    # Callback_data ni SHOP_ITEM_PRICES key ga mapping qilish
+    item_key_mapping = {
+        "osish": "osish_himoya",
+        "dori": "dori_himoya",
+        "qotil": "qotildan_himoya",
+        "slip": "slip_himoya",
+        "geroy_him": "geroydan_himoya",
+    }
+    item_key = item_key_mapping.get(item_key, item_key)
     
     item_info = {
         "himoya": {
@@ -2247,22 +2288,31 @@ async def item_info_handler(call: CallbackQuery):
     }.get(lang, "⬅️ Orqaga")
     
     kb = InlineKeyboardBuilder()
-    kb.button(text=buy_text, url="tg://user?id=6913838682")
-    kb.button(text=back_text, callback_data="shop")
-    kb.adjust(1)
     
-    await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    # Replace uchun maxsus callback_data, qolganlari uchun buy_
+    if item_key == "replace":
+        kb.button(text=buy_text, callback_data="replace_profile")
+    elif item_key == "active_role":
+        # Active role uchun mavjud handlerdan foydalanamiz
+        kb.button(text=buy_text, callback_data="active_role")
+    else:
+        kb.button(text=buy_text, callback_data=f"buy_{item_key}")
+    
+    kb.button(text=back_text, callback_data="shop")
+    print(f"[DEBUG] Sending item info message for {item_key}")
+    try:
+        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+        print(f"[DEBUG] Item info message sent successfully")
+    except Exception as e:
+        print(f"[DEBUG] Error editing message: {e}")
+        await call.answer()
 
 async def buy_diamond_menu_handler(call: CallbackQuery):
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     from utils.i18n import clean_lang
     
-    print(f"[DEBUG] buy_diamond_menu_handler called: user={call.from_user.id}")
-    
     user = await User.filter(user_id=call.from_user.id).first()
     lang = clean_lang(user.lang if user else "uz")
-    
-    print(f"[DEBUG] User lang: {lang}")
     
     text = {
         "uz": "💎 <b>Olmos xarid qilish</b>\n\nQuyidagi paketlardan birini tanlang:",
@@ -2278,13 +2328,7 @@ async def buy_diamond_menu_handler(call: CallbackQuery):
     kb.button(text="⬅️ Orqaga", callback_data="back_profile")
     kb.adjust(1, 1)
     
-    print(f"[DEBUG] Sending diamond menu message")
-    try:
-        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
-        print(f"[DEBUG] Diamond menu message sent successfully")
-    except Exception as e:
-        print(f"[DEBUG] Error editing message: {e}")
-        await call.answer()
+    await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
 
 async def diamond_stars_payment_handler(call: CallbackQuery, bot: Bot):
     from aiogram.types import LabeledPrice
@@ -2385,12 +2429,8 @@ async def buy_money_menu_handler(call: CallbackQuery):
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     from utils.i18n import clean_lang
     
-    print(f"[DEBUG] buy_money_menu_handler called: user={call.from_user.id}")
-    
     user = await User.filter(user_id=call.from_user.id).first()
     lang = clean_lang(user.lang if user else "uz")
-    
-    print(f"[DEBUG] User lang: {lang}")
     
     text = {
         "uz": "💵 <b>Pul xarid qilish</b>\n\nOlmoslarni pulga aylantirish:\n\n💎 1 olmos = 1000$",
@@ -2478,6 +2518,16 @@ async def buy_handler(call: CallbackQuery):
     from models.game_data import Geroys
 
     item_key = call.data.replace("buy_", "")
+    
+    # Callback_data ni SHOP_ITEM_PRICES key ga mapping qilish
+    item_key_mapping = {
+        "osish": "osish_himoya",
+        "dori": "dori_himoya",
+        "qotil": "qotildan_himoya",
+        "slip": "slip_himoya",
+        "geroy_him": "geroydan_himoya",
+    }
+    item_key = item_key_mapping.get(item_key, item_key)
 
     if item_key not in SHOP_ITEM_PRICES:
         await call.answer("❌ Noto'g'ri buyum!", show_alert=True)
@@ -2508,6 +2558,11 @@ async def buy_handler(call: CallbackQuery):
         await profile.save()
         await Geroys.create(user=user, name=f"Geroy_{user.user_id}", ball=1100, level=1, himoya=10, patron=10)
         await call.answer(f"✅ Geroy muvaffaqiyatli sotib olindi! (-{price}💎)", show_alert=True)
+        return
+
+    # Replace va active_role - SHOP_ITEM_PRICES da bo'lishi kerak emas, ular alohida handlerlar orqali ishlaydi
+    if field in ("_replace", "_active_role"):
+        await call.answer("Bu funksiya do'kondan alohida ishlaydi.", show_alert=True)
         return
 
     # Oddiy buyumlar uchun
@@ -2610,7 +2665,7 @@ async def open_protections_menu(call: CallbackQuery):
     await call.answer()
 
 async def back_profile(call: CallbackQuery, state):
-    from models.user import User, Profile, VipUser, ActiveRole, Paralar
+    from models.user import User, Profile, VipUser, ActiveRole
     from utils.i18n import clean_lang, PROFILE_LABELS
     from keyboards.user_keyboards import profile_keyboards_on_private
     from utils.premium_emojis import get_custom_emoji_id, get_diamond_display, get_dollar_display, get_vip_prefix, get_item_display
@@ -2666,6 +2721,7 @@ async def back_profile(call: CallbackQuery, state):
     none_str = f"<i>{none_val}</i>"
     
     # Partner
+    from models.user import Paralar
     para = await Paralar.filter(Q(user1=user) | Q(user2=user)).prefetch_related("user1", "user2").first()
     if para:
         partner = para.user2 if para.user1_id == user.id else para.user1
