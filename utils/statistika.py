@@ -893,7 +893,7 @@ async def get_chat_stats(message: Message, bot: Bot):
 
     try:
         # O'yinlar so'rovi
-        games_query = Game.select_related("chat")
+        games_query = Game.all().select_related("chat")
         if time_filter:
             games_query = games_query.filter(created_at__gte=time_filter)
         
