@@ -4377,19 +4377,21 @@ async def get_premium_groups_on_profile(call: CallbackQuery, bot: Bot):
     kb = InlineKeyboardBuilder()
     
     if group_balances:
-        for gb in group_balances:
+        for rank, gb in enumerate(group_balances, start=1):
             chat = await Chat.filter(chat_id=gb.chat_id).first()
             if chat:
                 title = chat.title or "Nomsiz guruh"
                 invite_link = chat.invite_link
-                button_text = f"{title} 💎 {gb.balance}"
+                real_money_text = f"+{gb.real_money}$" if gb.real_money > 0 else ""
+                button_text = f"{rank}) {title} (💎{gb.balance}){real_money_text}"
                 if invite_link:
                     kb.button(text=button_text, url=invite_link)
                 else:
                     kb.button(text=button_text, callback_data=f"group_no_link_{gb.chat_id}")
             else:
                 # Chat jadvalida yo'q, lekin GroupBalance bor - guruh ID bilan ko'rsatish
-                button_text = f"Guruh #{gb.chat_id} 💎 {gb.balance}"
+                real_money_text = f"+{gb.real_money}$" if gb.real_money > 0 else ""
+                button_text = f"{rank}) Guruh #{gb.chat_id} (💎{gb.balance}){real_money_text}"
                 kb.button(text=button_text, callback_data=f"group_no_link_{gb.chat_id}")
     else:
         kb.button(text="📭 Premium guruhlar yo'q", callback_data="prem_groups")
