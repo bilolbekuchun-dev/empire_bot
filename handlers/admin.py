@@ -702,6 +702,7 @@ async def f_ghelp(message: Message):
 /extend - O'yin vaqtini uzaytirish
 /lang - Guruh tilini o'zgartirish
 /sozlamalar - O'yin sozlamalarini shaxsiyda ochish
+/tep - O'yinchini o'yindan haydash (kick)
 
 👤 <b>Foydalanuvchi komandalari (Shaxsiy chat):</b>
 /start - O'yinni boshlash
@@ -772,6 +773,7 @@ async def f_ghelp(message: Message):
 
 🎮 <b>O'yin boshqaruvi:</b>
 /stopgames - Barcha o'yinlarni to'xtatish
+/active - Faol o'yinni topish
 
 🔧 <b>Boshqa:</b>
 /id - Chat ID olish
