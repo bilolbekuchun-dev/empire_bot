@@ -4386,6 +4386,9 @@ async def get_premium_groups_on_profile(call: CallbackQuery, bot: Bot):
                     kb.button(text=title, url=invite_link)
                 else:
                     kb.button(text=title, callback_data=f"group_no_link_{gb.chat_id}")
+            else:
+                # Chat jadvalida yo'q, lekin GroupBalance bor - guruh ID bilan ko'rsatish
+                kb.button(text=f"Guruh #{gb.chat_id}", callback_data=f"group_no_link_{gb.chat_id}")
     else:
         kb.button(text="📭 Premium guruhlar yo'q", callback_data="prem_groups")
     

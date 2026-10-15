@@ -393,7 +393,8 @@ async def add_diamond_group_balance(message: Message):
             await chat_entry.save()
         else:
             await Chat.create(chat_id=message.chat.id, title=message.chat.title or "Guruh", type=str(message.chat.type), invite_link=link)
-    except Exception:
+    except Exception as e:
+        print(f"Chat yaratishda xato: {e}")
         pass
 
     await message.answer(f"<b>{sender_user.mention} guruh hisobiga {count} 💎 ta olmos hadya qildi!</b>", parse_mode="HTML")
