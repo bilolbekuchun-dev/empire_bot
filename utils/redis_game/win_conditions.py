@@ -572,7 +572,7 @@ async def announce_game_result_redis(
 
 
 async def _get_premium_group_bonus(chat_id: int) -> int:
-    """Premium guruh reytingiga qarab bonus miqdorini qaytaradi."""
+    """Premium guruh reytingiga qarab bonus miqdorini qaytarida."""
     try:
         week_ago = datetime.now(timezone.utc) - timedelta(days=7)
         group_balances = await GroupBalance.filter(
@@ -583,11 +583,11 @@ async def _get_premium_group_bonus(chat_id: int) -> int:
         for rank, gb in enumerate(group_balances, start=1):
             if gb.chat_id == chat_id:
                 if rank == 1:
-                    return 45
-                elif rank == 2:
-                    return 40
-                elif rank == 3:
                     return 35
+                elif rank == 2:
+                    return 30
+                elif rank == 3:
+                    return 25
                 else:
                     return 0
     except Exception:
