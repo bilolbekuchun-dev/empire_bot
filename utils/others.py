@@ -4382,24 +4382,22 @@ async def get_premium_groups_on_profile(call: CallbackQuery, bot: Bot):
             if chat:
                 title = chat.title or "Nomsiz guruh"
                 invite_link = chat.invite_link
+                button_text = f"{title} 💎 {gb.balance}"
                 if invite_link:
-                    kb.button(text=title, url=invite_link)
+                    kb.button(text=button_text, url=invite_link)
                 else:
-                    kb.button(text=title, callback_data=f"group_no_link_{gb.chat_id}")
+                    kb.button(text=button_text, callback_data=f"group_no_link_{gb.chat_id}")
             else:
                 # Chat jadvalida yo'q, lekin GroupBalance bor - guruh ID bilan ko'rsatish
-                kb.button(text=f"Guruh #{gb.chat_id}", callback_data=f"group_no_link_{gb.chat_id}")
+                button_text = f"Guruh #{gb.chat_id} 💎 {gb.balance}"
+                kb.button(text=button_text, callback_data=f"group_no_link_{gb.chat_id}")
     else:
         kb.button(text="📭 Premium guruhlar yo'q", callback_data="prem_groups")
     
     kb.button(text="⬅️ Orqaga", callback_data="back_profile")
     kb.adjust(1)
     
-    text = (
-        "🌟 <b>Premium Guruhlar:</b>\n\n"
-        "Bot ulangan rasmiy va premium guruhlar ro'yxati.\n"
-        "Ro'yxat /gsend orqali guruh hisobiga olmos yuborilgan guruhlarni o'z ichiga oladi."
-    )
+    text = "🌟 <b>Premium Guruhlar:</b>\n\nBot ulangan rasmiy va premium guruhlar ro'yxati."
     
     try:
         await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
