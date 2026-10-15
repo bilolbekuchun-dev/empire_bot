@@ -683,6 +683,107 @@ async def f_tchats(message: Message, bot: Bot):
     await statistika.get_detailed_chat_stats(message=message, bot=bot)
 
 
+@router.message(Command("ghelp"), F.chat.type == "private")
+async def f_ghelp(message: Message):
+    """Barcha bot komandalarini ko'rsatish (yashirinlar bilan birga)"""
+    if message.from_user.id not in ADMINS:
+        await message.answer("⚠️ Bu komanda faqat adminlar uchun.")
+        return
+    
+    help_text = """📚 <b>BOT KOMANDALARI RO'YXATI:</b>
+
+🎮 <b>O'yin komandalari (Guruhlar uchun):</b>
+/start - O'yinni boshlash
+/game - O'yin yaratish
+/vsgame - Jamoaviy o'yin yaratish
+/roles - O'yin rollarini ko'rish
+/leave - O'yindan chiqish
+/stop - O'yinni to'xtatish
+/extend - O'yin vaqtini uzaytirish
+/lang - Guruh tilini o'zgartirish
+/sozlamalar - O'yin sozlamalarini shaxsiyda ochish
+
+👤 <b>Foydalanuvchi komandalari (Shaxsiy chat):</b>
+/start - O'yinni boshlash
+/profile - Profilingizni ko'rish
+/roles - O'yin rollarini ko'rich
+/lang - Tilni o'zgartirish
+
+📊 <b>Statistika komandalari:</b>
+/tchat - Barcha vaqt bo'yicha eng faol guruhlar
+/tchat1 - Bugungi eng faol guruhlar
+/tchat7 - Haftalik eng faol guruhlar
+/tchat30 - 30 kunlik eng faol guruhlar
+/tchats - Batafsil guruh statistikasi
+/gtop1 - Bugungi global statistika (olmos)
+/gtop7 - Haftalik global statistika (olmos)
+/gtop30 - 30 kunlik global statistika (olmos)
+/gtop - Barcha vaqt global statistika (olmos)
+/top - Global top statistika
+/boylar - Eng boy foydalanuvchilar ro'yxati
+/eboylar - Eng boy foydalanuvchilarni Excelga eksport qilish
+
+👑 <b>Admin komandalari:</b>
+/admin - Admin panel
+/panel - Admin panel
+/admins - Adminlar ro'yxati
+/adminlist - Adminlar ro'yxati
+/groups - Guruhlar ro'yxati
+/vips - VIP foydalanuvchilar ro'yxati
+/blocks - Bloklangan foydalanuvchilar ro'yxati
+/banlar - Banlanganlar ro'yxati
+/banned - Banlanganlar ro'yxati
+/geroys - Geroylar ro'yxati
+/stats - Bozor statistikasi
+/gboylar - Shu guruhdagi eng boy foydalanuvchilar
+
+💰 <b>Pul boshqaruvi:</b>
+/zapravka1 - 100 olmos berish
+/zapravka7 - 10,000 dollar berish
+/setmoney - Guruh pulini sozlash
+/gmoney - Guruh pulini sozlash
+/set_gmoney - Guruh pulini sozlash
+/gbust - Guruh balansini bankrot qilish
+
+👤 <b>Foydalanuvchi boshqaruvi:</b>
+/checkuser <user_id> - Foydalanuvchi mavjudligini tekshirish
+/check <user_id> - Foydalanuvchi to'liq ma'lumotlari
+/block <user_id> - Foydalanuvchini bloklash
+/ban <user_id> - Foydalanuvchini bloklash
+/unblock <user_id> - Blokdan chiqarish
+/unban <user_id> - Blokdan chiqarish
+/bust <user_id> 1 - Dollar hisobini bankrot qilish
+/bust <user_id> 2 - Olmos hisobini bankrot qilish
+/pchange - Profil o'zgartirish
+
+🌟 <b>VIP boshqaruvi:</b>
+/vip <son> - VIP giveaway
+/givevip <user_id> - VIP berish
+/takevip <user_id> - VIP olish
+/setvip <user_id> - VIP sozlash
+/addvip <user_id> - VIP qo'shish
+/delvip <user_id> - VIP o'chirish
+
+🏢 <b>Guruh boshqaruvi:</b>
+/gblock - Guruhni bloklash
+/ungblock - Guruh blokdan chiqarish
+/gsearch <nom> - Guruh qidirish
+/checkgaming <user_id> - O'yin guruhlarini tekshirish
+
+🎮 <b>O'yin boshqaruvi:</b>
+/stopgames - Barcha o'yinlarni to'xtatish
+
+🔧 <b>Boshqa:</b>
+/id - Chat ID olish
+/error - Error log
+/rgm - Geroy market elementini o'chirish
+/addadmin - Admin qo'shish (faqat config orqali)
+/deladmin - Admin o'chirish (faqat config orqali)
+"""
+
+    await message.answer(help_text, parse_mode="HTML")
+
+
 # ==========================================
 # 🤡 MEM PANEL BOSHQARUVI
 # ==========================================
