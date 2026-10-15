@@ -856,15 +856,17 @@ async def get_chat_stats(message: Message, bot: Bot):
     /tchat1, /tchat7, /tchat30, /tchat
     Faqat bot adminlari ishlata oladi
     """
-    print(f"[DEBUG] get_chat_stats called by user_id: {message.from_user.id}")
-    print(f"[DEBUG] ADMINS list: {ADMINS}")
-    print(f"[DEBUG] Command received: {message.text}")
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"[DEBUG] get_chat_stats called by user_id: {message.from_user.id}")
+    logger.info(f"[DEBUG] ADMINS list: {ADMINS}")
+    logger.info(f"[DEBUG] Command received: {message.text}")
     
     if message.from_user.id not in ADMINS:
-        print(f"[DEBUG] User {message.from_user.id} is NOT in ADMINS, returning")
+        logger.warning(f"[DEBUG] User {message.from_user.id} is NOT in ADMINS, returning")
         return
     
-    print(f"[DEBUG] User {message.from_user.id} is in ADMINS, proceeding")
+    logger.info(f"[DEBUG] User {message.from_user.id} is in ADMINS, proceeding")
 
     command = (message.text or "").strip().lower()
     days, title = None, None
@@ -878,10 +880,10 @@ async def get_chat_stats(message: Message, bot: Bot):
     elif command == "/tchat":
         days, title = None, "🏆 Eng faol guruhlar (barcha vaqt)"
     else:
-        print(f"[DEBUG] Unknown command: {command}")
+        logger.warning(f"[DEBUG] Unknown command: {command}")
         return
 
-    print(f"[DEBUG] Processing: days={days}, title={title}")
+    logger.info(f"[DEBUG] Processing: days={days}, title={title}")
 
     # Vaqt filtri
     time_filter = datetime.now() - timedelta(days=days) if days else None
