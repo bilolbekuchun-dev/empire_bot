@@ -4137,10 +4137,96 @@ async def show_ball_profile_answer(call: CallbackQuery):
     await call.answer("Ballar profil bo'limi", show_alert=True)
 
 async def get_premium_groups_on_start(call: CallbackQuery, bot: Bot):
-    await call.message.edit_text("🌟 <b>Premium Guruhlar:</b>\n\nBot ulangan rasmiy va premium guruhlar ro'yxati.", parse_mode="HTML")
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from models.game_set import GroupBalance
+    from models.game_data import Chat
+    from datetime import datetime, timezone, timedelta
+    
+    # 7 kun ichida /gsend qilingan guruhlarni olish
+    week_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    group_balances = await GroupBalance.filter(
+        last_reset_at__gte=week_ago,
+        balance__gt=0
+    ).order_by('-balance').limit(7)
+    
+    kb = InlineKeyboardBuilder()
+    
+    if group_balances:
+        for rank, gb in enumerate(group_balances, start=1):
+            chat = await Chat.filter(chat_id=gb.chat_id).first()
+            if chat:
+                title = chat.title or "Nomsiz guruh"
+                invite_link = chat.invite_link
+                real_money_text = f"+{gb.real_money}$" if gb.real_money > 0 else ""
+                button_text = f"{rank}) {title} (💎{gb.balance}){real_money_text}"
+                if invite_link:
+                    kb.button(text=button_text, url=invite_link)
+                else:
+                    kb.button(text=button_text, callback_data=f"group_no_link_{gb.chat_id}")
+            else:
+                # Chat jadvalida yo'q, lekin GroupBalance bor - guruh ID bilan ko'rsatish
+                real_money_text = f"+{gb.real_money}$" if gb.real_money > 0 else ""
+                button_text = f"{rank}) Guruh #{gb.chat_id} (💎{gb.balance}){real_money_text}"
+                kb.button(text=button_text, callback_data=f"group_no_link_{gb.chat_id}")
+    else:
+        kb.button(text="📭 Premium guruhlar yo'q", callback_data="prem_groups_start")
+    
+    kb.button(text="⬅️ Orqaga", callback_data="back_start")
+    kb.adjust(1)
+    
+    text = "🌟 <b>Premium Guruhlar:</b>\n\nBot ulangan rasmiy va premium guruhlar ro'yxati."
+    
+    try:
+        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    except Exception:
+        await call.message.answer(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    await call.answer()
 
 async def get_premium_groups_on_profile(call: CallbackQuery, bot: Bot):
-    await call.message.edit_text("🌟 <b>Premium Guruhlar:</b>\n\nSiz a'zo bo'lgan guruhlar.", parse_mode="HTML")
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from models.game_set import GroupBalance
+    from models.game_data import Chat
+    from datetime import datetime, timezone, timedelta
+    
+    # 7 kun ichida /gsend qilingan guruhlarni olish
+    week_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    group_balances = await GroupBalance.filter(
+        last_reset_at__gte=week_ago,
+        balance__gt=0
+    ).order_by('-balance').limit(7)
+    
+    kb = InlineKeyboardBuilder()
+    
+    if group_balances:
+        for rank, gb in enumerate(group_balances, start=1):
+            chat = await Chat.filter(chat_id=gb.chat_id).first()
+            if chat:
+                title = chat.title or "Nomsiz guruh"
+                invite_link = chat.invite_link
+                real_money_text = f"+{gb.real_money}$" if gb.real_money > 0 else ""
+                button_text = f"{rank}) {title} (💎{gb.balance}){real_money_text}"
+                if invite_link:
+                    kb.button(text=button_text, url=invite_link)
+                else:
+                    kb.button(text=button_text, callback_data=f"group_no_link_{gb.chat_id}")
+            else:
+                # Chat jadvalida yo'q, lekin GroupBalance bor - guruh ID bilan ko'rsatish
+                real_money_text = f"+{gb.real_money}$" if gb.real_money > 0 else ""
+                button_text = f"{rank}) Guruh #{gb.chat_id} (💎{gb.balance}){real_money_text}"
+                kb.button(text=button_text, callback_data=f"group_no_link_{gb.chat_id}")
+    else:
+        kb.button(text="📭 Premium guruhlar yo'q", callback_data="prem_groups")
+    
+    kb.button(text="⬅️ Orqaga", callback_data="back_profile")
+    kb.adjust(1)
+    
+    text = "🌟 <b>Premium Guruhlar:</b>\n\nBot ulangan rasmiy va premium guruhlar ro'yxati."
+    
+    try:
+        await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    except Exception:
+        await call.message.answer(text, reply_markup=kb.as_markup(), parse_mode="HTML")
+    await call.answer()
 
 async def lang_command_handler(message: Message):
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
