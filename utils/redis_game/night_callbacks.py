@@ -658,6 +658,15 @@ async def _ensure_day_phase(call: CallbackQuery, gid: int, day: int) -> bool:
         except Exception:
             pass
         return False
+    # Ovoz berish boshlanganligini va hali tugamaganligini tekshirish
+    voting_started = await r.get(f"game:{gid}:day:{day}:voting_started")
+    if not voting_started:
+        await call.answer("Ovoz berish hali boshlanmadi.", show_alert=True)
+        try:
+            await call.message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+        return False
     player = await player_repo.load_player(gid, call.from_user.id)
     if not player or not player.is_alive:
         await call.answer("Siz ovoz bera olmaysiz.", show_alert=True)
