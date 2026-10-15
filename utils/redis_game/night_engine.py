@@ -1357,6 +1357,7 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
 async def send_day_votes(game_id: int, day_num: int, players: List, bot: Bot, chat: Chat) -> None:
     alive = await player_repo.get_alive_players(game_id)
     names = await _name_map([p.user_id for p in alive])
+    message_ids = []
     for p in alive:
         if p.is_sleep:
             continue
@@ -1369,8 +1370,17 @@ async def send_day_votes(game_id: int, day_num: int, players: List, bot: Bot, ch
         kb.button(text="🚷 O'tkazib yuborish", callback_data=f"nv|{game_id}|{day_num}|s")
         kb.adjust(2)
         day_head = "Kimga ovoz berasiz?"
-        await _send_private(bot, p.user_id, day_head, kb.as_markup())
+        msg = await _send_private(bot, p.user_id, day_head, kb.as_markup())
+        if msg:
+            message_ids.append((p.user_id, msg.message_id))
         await asyncio.sleep(0.04)
+    
+    # Ovoz xabari IDlarini Redisda saqlash
+    try:
+        for uid, msg_id in message_ids:
+            await r.set(f"game:{game_id}:day:{day_num}:vote_msg:{uid}", str(msg_id), ex=7200)
+    except Exception:
+        pass
 
 
 async def _check_role_succession(by_uid: Dict, lang_map: Dict, bot: Bot, game_id: Optional[int] = None, chat_id: Optional[int] = None, is_night: bool = False) -> None:
@@ -1466,6 +1476,22 @@ def lynch_confirm_kb(game_id: int, day_num: int, target_id: int, likes: int = 0,
 
 
 async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot, chat: Chat, like_time: int = 30) -> None:
+    # Ovoz tugmalarini o'chirish - like/dislike bosqichi boshlanganda
+    try:
+        all_players = await player_repo.get_all_players(game_id)
+        for p in all_players:
+            msg_id_key = f"game:{game_id}:day:{day_num}:vote_msg:{p.user_id}"
+            msg_id_raw = await r.get(msg_id_key)
+            if msg_id_raw:
+                try:
+                    msg_id = int(msg_id_raw)
+                    await bot.edit_message_reply_markup(chat_id=p.user_id, message_id=msg_id, reply_markup=None)
+                except Exception:
+                    pass
+                await r.delete(msg_id_key)
+    except Exception:
+        pass
+
     all_players = await player_repo.get_all_players(game_id)
     names = await _name_map([p.user_id for p in all_players])
     from utils.i18n import get_chat_lang

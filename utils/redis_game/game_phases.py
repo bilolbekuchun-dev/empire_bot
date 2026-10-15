@@ -433,6 +433,12 @@ async def execute_day_phase_redis(
     if not game_state or not game_state.is_active:
         return
 
+    # Ovoz berishni tugatish - like/dislike bosqichida yangi ovozlar qabul qilinmasligi uchun
+    try:
+        await r.delete(f"game:{game_id}:day:{day_number}:voting_started")
+    except Exception:
+        pass
+
     # Qolgan barcha yig'ilgan ovozlarni guruhga chiqarish
     try:
         from utils.redis_game.night_callbacks import flush_day_votes
@@ -481,8 +487,3 @@ async def execute_day_phase_redis(
     
     # Check joker card selection penalty
     # TODO: joker_card_penalty_redis
-
-    try:
-        await r.delete(f"game:{game_id}:day:{day_number}:voting_started")
-    except Exception:
-        pass
