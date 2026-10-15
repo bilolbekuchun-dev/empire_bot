@@ -248,39 +248,43 @@ def format_large_list(
 async def get_chat_join_link(bot: Bot, chat_id: int) -> str:
     """
     Guruh/kanal uchun taklif havolasini olish yoki yaratish.
-    Har safar yangi (fresh) havola yaratiladi:
-    1. Agar guruhda public username bo'lsa -> https://t.me/<username> (doim ishlaydi)
-    2. export_chat_invite_link orqali asosiy havolani yangilaydi va qaytaradi
-    3. create_chat_invite_link orqali yangi havola yaratadi (zaxira)
-    4. bot.get_chat() dagi invite_link (eng oxirgi zaxira)
+    Havolani Redisda keshlash - har safar yangi havola yaratmaslik uchun.
     """
+    from utils.database import redis_client as r
+    
+    # Redisdan keshlangan havolani olish
+    try:
+        cached_link = await r.get(f"chat_invite_link:{chat_id}")
+        if cached_link:
+            return cached_link.decode() if isinstance(cached_link, bytes) else cached_link
+    except Exception:
+        pass
+    
+    # Public username bo'lsa, uni ishlatish (hech qachon eskirmaydi)
     try:
         chat = await bot.get_chat(chat_id)
         if chat.username:
-            return f"https://t.me/{chat.username}"
-    except Exception:
-        pass
-
-    # Har safar yangi havola yaratish — eskirgan havoladan saqlanish uchun
-    try:
-        link = await bot.export_chat_invite_link(chat_id=chat_id)
-        if link:
+            link = f"https://t.me/{chat.username}"
+            await r.set(f"chat_invite_link:{chat_id}", link, ex=86400)  # 24 soat kesh
             return link
     except Exception:
         pass
 
-    try:
-        invite = await bot.create_chat_invite_link(chat_id=chat_id, name="Empire Mafia")
-        if invite and invite.invite_link:
-            return invite.invite_link
-    except Exception:
-        pass
-
-    # Oxirgi zaxira: keshda saqlangan havola
+    # Mavjud havolani olish (yangi yaratmaslik)
     try:
         chat = await bot.get_chat(chat_id)
         if chat.invite_link:
+            await r.set(f"chat_invite_link:{chat_id}", chat.invite_link, ex=86400)
             return chat.invite_link
+    except Exception:
+        pass
+
+    # Faqat agar hech qanday havola bo'lmasa, yangi yaratish
+    try:
+        invite = await bot.create_chat_invite_link(chat_id=chat_id, name="Empire Mafia", creates_join_request=False)
+        if invite and invite.invite_link:
+            await r.set(f"chat_invite_link:{chat_id}", invite.invite_link, ex=86400)
+            return invite.invite_link
     except Exception:
         pass
 
