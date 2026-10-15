@@ -3,11 +3,12 @@ Win conditions checker for Redis-based game.
 """
 import asyncio
 import html
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from aiogram import Bot
 from models.game_data import Chat
+from models.game_set import GroupBalance
 from models.user import User
 from utils.redis_game.repositories.game_repository import game_repository as game_repo
 from utils.redis_game.repositories.player_repository import player_repository as player_repo
@@ -562,15 +563,39 @@ async def announce_game_result_redis(
 
     # Shaxsiy lichkaga har bir o'yinchiga g'alaba/mag'lubiyat profili va mukofotini yuborish
     for p in winners:
-        await _send_player_end_game_profile_dm(bot, p.user_id, is_winner=True, win_reward=win_reward)
+        await _send_player_end_game_profile_dm(bot, p.user_id, is_winner=True, win_reward=win_reward, chat_id=target_chat_id)
         await asyncio.sleep(0.04)
 
     for p in others:
-        await _send_player_end_game_profile_dm(bot, p.user_id, is_winner=False, lose_reward=lose_reward)
+        await _send_player_end_game_profile_dm(bot, p.user_id, is_winner=False, lose_reward=lose_reward, chat_id=target_chat_id)
         await asyncio.sleep(0.04)
 
 
-async def _send_player_end_game_profile_dm(bot: Bot, uid: int, is_winner: bool, win_reward: int = 20, lose_reward: int = 5):
+async def _get_premium_group_bonus(chat_id: int) -> int:
+    """Premium guruh reytingiga qarab bonus miqdorini qaytaradi."""
+    try:
+        week_ago = datetime.now(timezone.utc) - timedelta(days=7)
+        group_balances = await GroupBalance.filter(
+            last_reset_at__gte=week_ago,
+            balance__gt=0
+        ).order_by('-balance').limit(7)
+        
+        for rank, gb in enumerate(group_balances, start=1):
+            if gb.chat_id == chat_id:
+                if rank == 1:
+                    return 45
+                elif rank == 2:
+                    return 40
+                elif rank == 3:
+                    return 35
+                else:
+                    return 0
+    except Exception:
+        pass
+    return 0
+
+
+async def _send_player_end_game_profile_dm(bot: Bot, uid: int, is_winner: bool, win_reward: int = 20, lose_reward: int = 5, chat_id: int = None):
     try:
         from models.user import User, Profile, Paralar, ActiveRole, VipUser
         from utils.i18n import get_chat_lang, clean_lang
@@ -584,6 +609,13 @@ async def _send_player_end_game_profile_dm(bot: Bot, uid: int, is_winner: bool, 
 
         profile, _ = await Profile.get_or_create(user=user)
         reward = win_reward if is_winner else lose_reward
+
+        # Premium guruh bonusi
+        premium_bonus = 0
+        if chat_id:
+            premium_bonus = await _get_premium_group_bonus(chat_id)
+            if premium_bonus > 0:
+                reward += premium_bonus
 
         # Update profile stats
         profile.dollar += reward
