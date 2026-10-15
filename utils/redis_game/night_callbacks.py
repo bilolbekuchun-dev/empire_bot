@@ -186,6 +186,9 @@ NIGHT_ACTION_ANNOUNCE = {
 
 async def _announce_night_action(call: CallbackQuery, gid: int, ph: int, uid: int, role: str, *, skipped: bool = False, kind: str = None) -> None:
     """Guruhga tungi harakat e'lonini bir marta yuborish (nishon ochilmaydi)."""
+    if role == RoleNames.MAFIA:
+        return
+
     key = f"game:{gid}:night:{ph}:announced:{uid}"
     try:
         if not await r.set(key, "1", nx=True, ex=7200):
