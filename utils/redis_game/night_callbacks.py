@@ -186,9 +186,6 @@ NIGHT_ACTION_ANNOUNCE = {
 
 async def _announce_night_action(call: CallbackQuery, gid: int, ph: int, uid: int, role: str, *, skipped: bool = False, kind: str = None) -> None:
     """Guruhga tungi harakat e'lonini bir marta yuborish (nishon ochilmaydi)."""
-    if role == RoleNames.MAFIA or ("mafia" in str(role).lower() and "don" not in str(role).lower()):
-        return
-
     key = f"game:{gid}:night:{ph}:announced:{uid}"
     try:
         if not await r.set(key, "1", nx=True, ex=7200):
@@ -231,8 +228,8 @@ async def _announce_night_action(call: CallbackQuery, gid: int, ph: int, uid: in
             tmpl = dict_by_lang.get(role, "{role} tungi ishga chiqdi...")
             text = tmpl.format(role=shown)
         await call.bot.send_message(game_state.chat_id, text, parse_mode="HTML")
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[ANNOUNCE ERROR] Failed to announce night action: {e}")
 
 
 async def _alive_targets(gid: int, exclude_uid=None):

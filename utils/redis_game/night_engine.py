@@ -295,24 +295,36 @@ def _target_kb(code: str, gid: int, ph: int, targets: List[tuple], skip_label="�
     return kb.as_markup()
 
 
-async def _send_private(bot: Bot, uid: int, text: str, kb=None, max_retries: int = 3) -> bool:
+async def _send_private(bot: Bot, uid: int, text: str, kb=None, max_retries: int = 3):
     for attempt in range(max_retries):
         try:
-            await bot.send_message(uid, text, parse_mode="HTML", reply_markup=kb)
-            return True
+            msg = await bot.send_message(uid, text, parse_mode="HTML", reply_markup=kb)
+            return msg
         except TelegramRetryAfter as e:
             await asyncio.sleep(e.retry_after + 0.1)
-        except Exception:
+        except Exception as e:
             try:
-                await bot.send_message(uid, text, reply_markup=kb)
-                return True
-            except Exception:
-                return False
-    return False
+                msg = await bot.send_message(uid, text, reply_markup=kb)
+                return msg
+            except Exception as e2:
+                print(f"_send_private xato: uid={uid}, error={e2}")
+                return None
+    print(f"_send_private failed after {max_retries} retries: uid={uid}")
+    return None
 
 
 def _targets_list(players: List, exclude: set) -> List[tuple]:
     return [(p.user_id, None) for p in players if p.user_id not in exclude]
+
+
+async def _mark_action_completed_if_possible(game_id: int, night_num: int, uid: int):
+    """Agar xabar yuborib bo'lmasa, o'yinchini completed_users ga qo'shish - tun darhol tugashi uchun"""
+    try:
+        key = f"game:{game_id}:night:{night_num}:completed_users"
+        await r.sadd(key, str(uid))
+        await r.expire(key, 3600)
+    except Exception:
+        pass
 
 
 async def send_night_actions(
@@ -436,11 +448,13 @@ async def send_night_actions(
             kb.button(text=ns.get("komissar_shoot_btn", "🔫 O'ldirish"), callback_data=_cb("ko", game_id, night_num, "k", 0))
             kb.button(text=skip_label, callback_data=_cb("ko", game_id, night_num, "s", 0))
             kb.adjust(2, 1)
-            await _send_private(
+            msg = await _send_private(
                 bot, uid,
                 kom_prompt,
                 kb.as_markup()
             )
+            if not msg:
+                print(f"[NIGHT BUTTONS ERROR] Failed to send Komissar buttons to uid={uid}")
             continue
 
         # --- Konchi: kon tanlash ---
@@ -450,31 +464,42 @@ async def send_night_actions(
                 kb.button(text=f"⛏ Kon {i}", callback_data=_cb("kn", game_id, night_num, "t", i))
             kb.button(text=skip_label, callback_data=_cb("kn", game_id, night_num, "s", 0))
             kb.adjust(5, 1)
-            await _send_private(
+            msg = await _send_private(
                 bot, uid,
                 ns.get("konchi_prompt", "👷🏻‍♂️ <b>Konchi</b>, qaysi kondan qazasiz? (ba'zilarida tuzoq bor!)"),
                 kb.as_markup()
             )
+            if not msg:
+                print(f"[NIGHT BUTTONS ERROR] Failed to send Konchi buttons to uid={uid}")
             continue
 
         # --- Qaroqchi: nishon tanlash ---
         if role == RoleNames.QAROQCHI:
-            await _send_private(bot, uid, f"⚔️ {role_display(role)}",
+            msg = await _send_private(bot, uid, f"⚔️ {role_display(role)}",
                                 _target_kb("qa", game_id, night_num, mk_targets, skip_label=skip_label))
+            if not msg:
+                print(f"[NIGHT BUTTONS ERROR] Failed to send Qaroqchi buttons to uid={uid}, marking as skipped")
+                await _mark_action_completed_if_possible(game_id, night_num, uid)
             await asyncio.sleep(0.03)
             continue
 
         # --- Qoriqchi: nishon tanlash ---
         if role == RoleNames.QORIQCHI:
-            await _send_private(bot, uid, f"🛡 {role_display(role)} — qo'riqlash uchun nishonni tanlang:",
+            msg = await _send_private(bot, uid, f"🛡 {role_display(role)} — qo'riqlash uchun nishonni tanlang:",
                                 _target_kb("qr", game_id, night_num, mk_targets, skip_label=skip_label))
+            if not msg:
+                print(f"[NIGHT BUTTONS ERROR] Failed to send Qoriqchi buttons to uid={uid}, marking as skipped")
+                await _mark_action_completed_if_possible(game_id, night_num, uid)
             await asyncio.sleep(0.03)
             continue
 
         # --- Bo'ri: nishon tanlash ---
         if role == RoleNames.BORI:
-            await _send_private(bot, uid, f"🐺 {role_display(role)} — nishonni tanlang:",
+            msg = await _send_private(bot, uid, f"🐺 {role_display(role)} — nishonni tanlang:",
                                 _target_kb("bw", game_id, night_num, mk_targets, skip_label=skip_label))
+            if not msg:
+                print(f"[NIGHT BUTTONS ERROR] Failed to send Bori buttons to uid={uid}, marking as skipped")
+                await _mark_action_completed_if_possible(game_id, night_num, uid)
             await asyncio.sleep(0.03)
             continue
 
@@ -487,7 +512,10 @@ async def send_night_actions(
                 "tr": "🌙 🧞 <b>Cin</b> — ziyaret edeceğiniz oyuncuyu seçin:\n<i>(O oyuncu 3 dilekten birini seçecek ve siz gerçekleştireceksiniz)</i>",
                 "kk": "🌙 🧞 <b>Жын</b> — баратын ойыншыны таңдаңыз:\n<i>(Ол ойыншы 3 тілектің бірін таңдайды, сіз оны орындайсыз)</i>"
             }.get(chat_lang, "🌙 🧞 <b>Jin</b> — huzuriga borish uchun o'yinchini tanlang:")
-            await _send_private(bot, uid, jin_prompt, _target_kb("ji", game_id, night_num, mk_targets, skip_label=skip_label))
+            msg = await _send_private(bot, uid, jin_prompt, _target_kb("ji", game_id, night_num, mk_targets, skip_label=skip_label))
+            if not msg:
+                print(f"[NIGHT BUTTONS ERROR] Failed to send Jin buttons to uid={uid}, marking as skipped")
+                await _mark_action_completed_if_possible(game_id, night_num, uid)
             await asyncio.sleep(0.03)
             continue
 
@@ -497,14 +525,20 @@ async def send_night_actions(
                 tcode, label = "zj", ns.get("zanjir_prompt", "⛓ <b>Zanjir</b>: bog'lash uchun <b>1-nishon</b>ni tanlang.")
             else:
                 tcode, label = "se", ns.get("sehrgar_prompt", "🧙 <b>Sehrgar</b>: almashtirish uchun <b>1-nishon</b>ni tanlang.")
-            await _send_private(bot, uid, label, _target_kb(tcode, game_id, night_num, mk_targets, skip_label=skip_label))
+            msg = await _send_private(bot, uid, label, _target_kb(tcode, game_id, night_num, mk_targets, skip_label=skip_label))
+            if not msg:
+                print(f"[NIGHT BUTTONS ERROR] Failed to send {role} buttons to uid={uid}, marking as skipped")
+                await _mark_action_completed_if_possible(game_id, night_num, uid)
             await asyncio.sleep(0.04)
             continue
 
         # --- Oddiy bitta nishonli harakatlar ---
         target_fmt = ns.get("target_prompt", "🌙 {role} — nishonni tanlang:")
         label = target_fmt.format(role=role_display(role))
-        await _send_private(bot, uid, label, _target_kb(code, game_id, night_num, mk_targets, skip_label=skip_label))
+        msg = await _send_private(bot, uid, label, _target_kb(code, game_id, night_num, mk_targets, skip_label=skip_label))
+        if not msg:
+            print(f"[NIGHT BUTTONS ERROR] Failed to send target selection for uid={uid}, role={role}, code={code}, marking as skipped")
+            await _mark_action_completed_if_possible(game_id, night_num, uid)
         await asyncio.sleep(0.04)
 
     # Tungi kutilayotgan harakatlarni Redis keshiga saqlaymiz
@@ -527,6 +561,7 @@ async def _kill(game_id: int, uid: int, by_uid: Dict, bot: Bot, chat: Chat, name
                 reason: str = "", killer_role: Optional[Union[str, List[str]]] = None, custom_text: Optional[str] = None) -> Optional[object]:
     p = by_uid.get(uid)
     if not p or not p.is_alive:
+        print(f"[KILL] Skipped - player not found or already dead: uid={uid}")
         return None
     p.is_alive = False
     p.deaded_at = datetime.now(timezone.utc)
@@ -551,6 +586,7 @@ async def _kill(game_id: int, uid: int, by_uid: Dict, bot: Bot, chat: Chat, name
                     text += f"\nAytishlaricha unikiga {joined_roles} kelgan ekan..."
             elif reason:
                 text += f"\n{reason}"
+        print(f"[KILL] Killing uid={uid}, role={p.role}, killer={killer_role}, text={text[:100]}...")
         # Xabar darhol emas, TONGDAN KEYIN yuboriladi (navbatga qo'yiladi).
         await queue_death_message(game_id, text)
         try:
@@ -562,10 +598,10 @@ async def _kill(game_id: int, uid: int, by_uid: Dict, bot: Bot, chat: Chat, name
                 d_msg,
                 parse_mode="HTML"
             )
-        except Exception:
-            pass
-    except Exception:
-        pass
+        except Exception as e:
+            print(f"[KILL] Failed to send death PM to uid={uid}: {e}")
+    except Exception as e:
+        print(f"[KILL ERROR] Error in _kill for uid={uid}: {e}")
     return p
 
 
@@ -578,8 +614,9 @@ async def queue_death_message(game_id: int, text: str) -> None:
         key = f"game:{game_id}:pending_deaths"
         await r.rpush(key, text)
         await r.expire(key, 3600)
-    except Exception:
-        pass
+        print(f"[DEATH QUEUE] Queued death message for game {game_id}: {text[:100]}...")
+    except Exception as e:
+        print(f"[DEATH QUEUE ERROR] Failed to queue death message: {e}")
 
 
 async def flush_pending_deaths(game_id: int, bot: Bot, chat: Any) -> int:
@@ -863,7 +900,7 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
         if len(top) == 1:
             family_target = top[0]
             family_killer = RoleNames.DON
-            family_actor_id = don_actor_id if don_target else mafia_voters.get(top[0])
+            family_actor_id = mafia_voters.get(top[0])
 
     protected |= set(jin_protect)
 
@@ -1371,7 +1408,7 @@ async def send_day_votes(game_id: int, day_num: int, players: List, bot: Bot, ch
         kb.adjust(2)
         day_head = "Kimga ovoz berasiz?"
         msg = await _send_private(bot, p.user_id, day_head, kb.as_markup())
-        if msg:
+        if msg and hasattr(msg, 'message_id'):
             message_ids.append((p.user_id, msg.message_id))
         await asyncio.sleep(0.04)
     
