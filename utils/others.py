@@ -4363,12 +4363,41 @@ async def get_diamond_hamyonlar_webapp(call: CallbackQuery):
 
 async def get_premium_groups_on_profile(call: CallbackQuery, bot: Bot):
     from aiogram.utils.keyboard import InlineKeyboardBuilder
-    text = (
-        "⭐ <b>Premium va rasmiy guruhlar:</b>\n\n"
-        "Bot ulangan guruhlarda o'yin o'ynab tajriba va mukofotlar oshiring!"
-    )
+    from models.game_set import GroupBalance
+    from models.game_data import Chat
+    from datetime import datetime, timezone, timedelta
+    
+    # 7 kun ichida /gsend qilingan guruhlarni olish
+    week_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    group_balances = await GroupBalance.filter(
+        last_reset_at__gte=week_ago,
+        balance__gt=0
+    ).order_by('-balance').limit(7)
+    
     kb = InlineKeyboardBuilder()
+    
+    if group_balances:
+        for gb in group_balances:
+            chat = await Chat.filter(chat_id=gb.chat_id).first()
+            if chat:
+                title = chat.title or "Nomsiz guruh"
+                invite_link = chat.invite_link
+                if invite_link:
+                    kb.button(text=title, url=invite_link)
+                else:
+                    kb.button(text=title, callback_data=f"group_no_link_{gb.chat_id}")
+    else:
+        kb.button(text="📭 Premium guruhlar yo'q", callback_data="prem_groups")
+    
     kb.button(text="⬅️ Orqaga", callback_data="back_profile")
+    kb.adjust(1)
+    
+    text = (
+        "🌟 <b>Premium Guruhlar:</b>\n\n"
+        "Bot ulangan rasmiy va premium guruhlar ro'yxati.\n"
+        "Ro'yxat /gsend orqali guruh hisobiga olmos yuborilgan guruhlarni o'z ichiga oladi."
+    )
+    
     try:
         await call.message.edit_text(text, reply_markup=kb.as_markup(), parse_mode="HTML")
     except Exception:
