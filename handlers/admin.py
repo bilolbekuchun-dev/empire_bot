@@ -673,6 +673,9 @@ async def f_geroys(message: Message):
 @router.message(Command("tchat30"), F.chat.type == "private")
 @router.message(Command("tchat"), F.chat.type == "private")
 async def f_tchat(message: Message, bot: Bot):
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"[HANDLER DEBUG] f_tchat called by user_id: {message.from_user.id}, command: {message.text}")
     await statistika.get_chat_stats(message=message, bot=bot)
 
 @router.message(Command("tchats"), F.chat.type == "private")
