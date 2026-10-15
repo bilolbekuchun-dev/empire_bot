@@ -987,5 +987,58 @@ async def calculate_and_cache_global_stats(period: str = "today"):
     pass
 
 async def export_global_richest_to_excel(message, bot):
-    pass
+    """Eng boy foydalanuvchilar ro'yxatini Excel fayliga eksport qiladi."""
+    if message.from_user.id not in ADMINS:
+        await message.answer("⚠️ Sizda bu komandadan foydalanish huquqi yo'q.")
+        return
+    
+    try:
+        import pandas as pd
+        from io import BytesIO
+        from aiogram.types import BufferedInputFile
+        
+        # Eng boy foydalanuvchilarni olish (dollar bo'yicha)
+        profiles = await Profile.all().prefetch_related('user').order_by('-dollar').limit(100)
+        
+        data = []
+        for idx, profile in enumerate(profiles, start=1):
+            user = profile.user
+            data.append({
+                "Rank": idx,
+                "User ID": user.user_id,
+                "Full Name": user.full_name or "",
+                "Username": f"@{user.username}" if user.username else "",
+                "Dollar": profile.dollar,
+                "Diamond": profile.diamond,
+                "Games": profile.games_count,
+                "Wins": profile.wins
+            })
+        
+        # DataFrame yaratish
+        df = pd.DataFrame(data)
+        
+        # Excel fayliga yozish
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Richest Users')
+        
+        output.seek(0)
+        
+        # Faylni yuborish
+        file = BufferedInputFile(
+            output.read(),
+            filename=f"richest_users_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        )
+        
+        await message.answer_document(
+            file,
+            caption=f"📊 Eng boy 100 foydalanuvchi ro'yxati\n\nJami: {len(profiles)} ta foydalanuvchi"
+        )
+        
+    except ImportError as e:
+        print(f"Excel kutubxonalari o'rnatilmagan: {e}")
+        await message.answer("⚠️ Xatolik yuz berdi.")
+    except Exception as e:
+        print(f"Excel eksport xatoligi: {e}")
+        await message.answer("⚠️ Xatolik yuz berdi.")
 
