@@ -1016,38 +1016,51 @@ async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, i
                     # Xabarni ham yangilash - olganlar ro'yxati bilan
                     d_disp = get_diamond_display()
                     winners = await get_winner_details(giveaway_id)
-                    winner_lines = [f"{i+1}) {_winner_mention_html(w[0], w[1])} {w[2]}{d_disp}" for i, w in enumerate(winners)]
                     
-                    # Xabarni bo'lish uchun header
-                    header = (
-                        f"{strs['title_redis' if not is_channel else 'title_channel']}\n\n"
-                        f"{strs['count'].format(count=total)}\n"
-                        f"{d_disp} {strs['reward']}\n\n"
-                        f"<b>Olganlar:</b>\n"
-                    )
-                    
-                    full_msg = header
-                    messages_to_send = [full_msg]
-                    
-                    for line in winner_lines:
-                        test_msg = messages_to_send[-1] + "\n" + line
-                        if len(test_msg) > 4000:
-                            messages_to_send.append(line)
-                        else:
-                            messages_to_send[-1] = test_msg
-                    
-                    # Birinchi xabarni tugma bilan yangilash
-                    try:
-                        await call.message.edit_text(messages_to_send[0], reply_markup=kb.as_markup(), parse_mode="HTML")
-                    except Exception:
-                        pass
-                    
-                    # Qolgan xabarlarni yuborish (agar bo'lsa)
-                    for i in range(1, len(messages_to_send)):
-                        try:
-                            await call.message.reply_text(messages_to_send[i], parse_mode="HTML")
-                        except Exception:
-                            pass
+                    if not winners:
+                        # Agar hali hech kim olmagan bo'lsa, oddiy yangilash
+                        header = (
+                            f"{strs['title_redis' if not is_channel else 'title_channel']}\n\n"
+                            f"{strs['count'].format(count=total)}\n"
+                            f"{d_disp} {strs['reward']}\n\n"
+                            f"Olganlar: <b>{collected_count} ta</b>\n"
+                            f"Qolgan: <b>{new_remaining} ta</b>\n\n"
+                            f"{strs['body']}"
+                        )
+                        await call.message.edit_text(header, reply_markup=kb.as_markup(), parse_mode="HTML")
+                    else:
+                        # G'oliblar ro'yxatini ko'rsatish - chunklash bilan
+                        winner_lines = [f"{i+1}) {_winner_mention_html(w[0], w[1])} {w[2]}{d_disp}" for i, w in enumerate(winners)]
+                        
+                        # Xabarni bo'lish uchun header
+                        header = (
+                            f"{strs['title_redis' if not is_channel else 'title_channel']}\n\n"
+                            f"{strs['count'].format(count=total)}\n"
+                            f"{d_disp} {strs['reward']}\n\n"
+                            f"<b>Olganlar:</b>\n"
+                        )
+                        
+                        messages_to_send = []
+                        current_msg = header
+                        
+                        for line in winner_lines:
+                            test_msg = current_msg + "\n" + line
+                            if len(test_msg) > 4000:
+                                messages_to_send.append(current_msg)
+                                current_msg = f"<b>Olganlar davomi:</b>\n" + line
+                            else:
+                                current_msg = test_msg
+                        
+                        if current_msg:
+                            messages_to_send.append(current_msg)
+                        
+                        # Birinchi xabarni tugma bilan yangilash
+                        if messages_to_send:
+                            await call.message.edit_text(messages_to_send[0], reply_markup=kb.as_markup(), parse_mode="HTML")
+                            
+                            # Qolgan xabarlarni yuborish (agar bo'lsa)
+                            for i in range(1, len(messages_to_send)):
+                                await call.message.reply_text(messages_to_send[i], parse_mode="HTML")
                 except Exception:
                     pass
         else:
@@ -2973,7 +2986,7 @@ async def send_split_winners_list(
     header_title: str,
     winners: list,
     unit_display: str,
-    chunk_size: int = 25,
+    chunk_size: int = 50,  # Oshirildi - ko'proq g'olib bir xabarda chiqadi
     total_amount: int | None = None,
     remaining: int = 0,
 ):

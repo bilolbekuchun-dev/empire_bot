@@ -11,8 +11,8 @@ _LOCK_TTL = 30
 _GIVEAWAY_TTL = 604800
 
 # Batch settings
-_BATCH_SIZE = 2  # Har 2 claimdan keyin flush
-_BATCH_TIMEOUT = 1.0  # Yoki 1 sekund timeout
+_BATCH_SIZE = 1  # Har 1 claimdan keyin flush (tezroq saqlash uchun)
+_BATCH_TIMEOUT = 0.5  # Yoki 0.5 sekund timeout
 
 # In-memory buffers for batching
 _collected_buffers = defaultdict(list)  # {giveaway_id: [user_ids]}
