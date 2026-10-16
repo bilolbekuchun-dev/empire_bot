@@ -123,12 +123,6 @@ async def check_real_mode_win(game_id, players, fuqarolar, mafiyalar, yakka_tara
     if len(players) == 0:
         return False
 
-    # Yakka rollarning maxsus g'alaba shartlarini tekshirish
-    yakka_winners = await check_yakka_win_conditions(game_id, yakka_taraflar)
-    if yakka_winners:
-        await announce_game_result_redis(game_id, bot, chat, winner_roles=[p.role for p in yakka_winners], real_mode=True)
-        return True
-
     # 1 ta o'yinchi qolgan
     if len(players) == 1:
         await announce_game_result_redis(game_id, bot, chat, winner_roles=[players[0].role], real_mode=True)
@@ -139,7 +133,7 @@ async def check_real_mode_win(game_id, players, fuqarolar, mafiyalar, yakka_tara
         await announce_game_result_redis(game_id, bot, chat, winner_roles=tinchlar, real_mode=True)
         return True
     
-    # Faqat yakkalar qolgan
+    # Faqat yakkalar qolgan - yakka rollar g'alaba qozonadi
     if len(players) > 0 and (len(players) == len(yakka_taraflar) or (len(fuqarolar) == 0 and len(mafiyalar) == 0)):
         await announce_game_result_redis(game_id, bot, chat, winner_roles=yakkalar, real_mode=True)
         return True
@@ -205,12 +199,6 @@ async def check_vsgame_win(game_id, players, game_state, bot, chat):
 
 async def check_zombie_mode_win(game_id, players, zombilar, yakkalar, fuqarolar, mafiyalar, qotil, bot, chat):
     """Zombie mode g'alaba shartlari."""
-    # Yakka rollarning maxsus g'alaba shartlarini tekshirish
-    yakka_winners = await check_yakka_win_conditions(game_id, yakkalar)
-    if yakka_winners:
-        await announce_game_result_redis(game_id, bot, chat, winner_roles=[p.role for p in yakka_winners])
-        return True
-    
     # Barcha zombie bo'lib qolgan
     if len(zombilar) == len(players) and zombilar:
         await announce_game_result_redis(game_id, bot, chat, winner_roles=[RoleNames.ZOMBI], zombilar=True)
@@ -296,13 +284,6 @@ async def check_classic_mode_win(game_id, players, fuqarolar, mafiyalar, qotil, 
     """Classic/Super/Mega mode g'alaba shartlari."""
     if len(players) == 0:
         return False
-
-    # Yakka rollarning maxsus g'alaba shartlarini tekshirish
-    yakka_taraflar = [p for p in players if p.role in yakkalar]
-    yakka_winners = await check_yakka_win_conditions(game_id, yakka_taraflar)
-    if yakka_winners:
-        await announce_game_result_redis(game_id, bot, chat, winner_roles=[p.role for p in yakka_winners])
-        return True
 
     # 1 ta o'yinchi qolgan
     if len(players) == 1:
