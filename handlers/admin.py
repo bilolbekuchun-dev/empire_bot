@@ -686,7 +686,8 @@ async def f_tchats(message: Message, bot: Bot):
 @router.message(Command("ghelp"), F.chat.type == "private")
 async def f_ghelp(message: Message):
     """Barcha bot komandalarini ko'rsatish (yashirinlar bilan birga)"""
-    if message.from_user.id not in ADMINS:
+    from config import PRIMARY_ADMIN_IDS
+    if message.from_user.id not in PRIMARY_ADMIN_IDS:
         await message.answer("⚠️ Bu komanda faqat adminlar uchun.")
         return
     
