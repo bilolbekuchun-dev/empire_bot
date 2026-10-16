@@ -748,29 +748,29 @@ async def f_ghelp(message: Message):
 /gbust - Guruh balansini bankrot qilish
 
 👤 <b>Foydalanuvchi boshqaruvi:</b>
-/checkuser <user_id> - Foydalanuvchi mavjudligini tekshirish
-/check <user_id> - Foydalanuvchi to'liq ma'lumotlari
-/block <user_id> - Foydalanuvchini bloklash
-/ban <user_id> - Foydalanuvchini bloklash
-/unblock <user_id> - Blokdan chiqarish
-/unban <user_id> - Blokdan chiqarish
-/bust <user_id> 1 - Dollar hisobini bankrot qilish
-/bust <user_id> 2 - Olmos hisobini bankrot qilish
+/checkuser &lt;user_id&gt; - Foydalanuvchi mavjudligini tekshirish
+/check &lt;user_id&gt; - Foydalanuvchi to'liq ma'lumotlari
+/block &lt;user_id&gt; - Foydalanuvchini bloklash
+/ban &lt;user_id&gt; - Foydalanuvchini bloklash
+/unblock &lt;user_id&gt; - Blokdan chiqarish
+/unban &lt;user_id&gt; - Blokdan chiqarish
+/bust &lt;user_id&gt; 1 - Dollar hisobini bankrot qilish
+/bust &lt;user_id&gt; 2 - Olmos hisobini bankrot qilish
 /pchange - Profil o'zgartirish
 
 🌟 <b>VIP boshqaruvi:</b>
-/vip <son> - VIP giveaway
-/givevip <user_id> - VIP berish
-/takevip <user_id> - VIP olish
-/setvip <user_id> - VIP sozlash
-/addvip <user_id> - VIP qo'shish
-/delvip <user_id> - VIP o'chirish
+/vip &lt;son&gt; - VIP giveaway
+/givevip &lt;user_id&gt; - VIP berish
+/takevip &lt;user_id&gt; - VIP olish
+/setvip &lt;user_id&gt; - VIP sozlash
+/addvip &lt;user_id&gt; - VIP qo'shish
+/delvip &lt;user_id&gt; - VIP o'chirish
 
 🏢 <b>Guruh boshqaruvi:</b>
 /gblock - Guruhni bloklash
 /ungblock - Guruh blokdan chiqarish
-/gsearch <nom> - Guruh qidirish
-/checkgaming <user_id> - O'yin guruhlarini tekshirish
+/gsearch &lt;nom&gt; - Guruh qidirish
+/checkgaming &lt;user_id&gt; - O'yin guruhlarini tekshirish
 
 🎮 <b>O'yin boshqaruvi:</b>
 /stopgames - Barcha o'yinlarni to'xtatish
