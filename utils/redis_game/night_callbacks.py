@@ -308,7 +308,7 @@ async def _notify_mafia_team_vote(bot: Bot, gid: int, voter_uid: int, target_uid
 
 
 @router.callback_query(F.data.startswith("na|"))
-async def night_action_cb(call: CallbackQuery, bot=None):
+async def night_action_cb(call: CallbackQuery, bot: Bot):
     try:
         _, code, gid, ph, kind, target = call.data.split("|")
         gid, ph = int(gid), int(ph)
@@ -675,7 +675,7 @@ async def _ensure_day_phase(call: CallbackQuery, gid: int, day: int) -> bool:
 
 
 @router.callback_query(F.data.startswith("nv|"))
-async def day_vote_cb(call: CallbackQuery, bot=None):
+async def day_vote_cb(call: CallbackQuery, bot: Bot):
     try:
         _, gid, day, target = call.data.split("|")
         gid, day = int(gid), int(day)
@@ -741,7 +741,7 @@ async def day_vote_cb(call: CallbackQuery, bot=None):
 
 
 @router.callback_query(F.data.startswith("vl|"))
-async def vote_like_cb(call: CallbackQuery, bot=None):
+async def vote_like_cb(call: CallbackQuery, bot: Bot):
     try:
         _, gid, day, tid, flag = call.data.split("|")
         gid, day, tid = int(gid), int(day), int(tid)
@@ -785,7 +785,7 @@ async def vote_like_cb(call: CallbackQuery, bot=None):
 
 
 @router.callback_query(F.data.startswith("jw|"))
-async def jin_wish_choice_cb(call: CallbackQuery, bot=None):
+async def jin_wish_choice_cb(call: CallbackQuery, bot: Bot):
     """Jin kelgan o'yinchi 3 ta tilakdan birini tanlaydi (Hayot / Boylik / Qotillik)."""
     try:
         _, gid, ph, wish, jin_uid, wisher_uid = call.data.split("|")
@@ -901,11 +901,11 @@ async def jin_wish_choice_cb(call: CallbackQuery, bot=None):
 
 
 @router.callback_query(F.data.startswith("jk|"))
-async def jin_kill_target_cb(call: CallbackQuery, bot=None):
+async def jin_kill_target_cb(call: CallbackQuery, bot: Bot):
     """Jin qotillik tilagi uchun o'yinchi nishon tanlaganda."""
     try:
-        _, gid, ph, victim_uid, jin_uid, wisher_uid = call.data.split("|")
-        gid, ph, victim_uid, jin_uid, wisher_uid = int(gid), int(ph), int(victim_uid), int(jin_uid), int(wisher_uid)
+        _, gid, ph, target, jin_uid, wisher_uid = call.data.split("|")
+        gid, ph, target, jin_uid, wisher_uid = int(gid), int(ph), int(target), int(jin_uid), int(wisher_uid)
     except Exception:
         await call.answer()
         return

@@ -114,7 +114,7 @@ tinch_rollar = [
     RoleNames.KOMISSAR, RoleNames.SERJANT, RoleNames.DAYDI,
     RoleNames.DOKTOR, RoleNames.KEZUVCHI, RoleNames.FUQARO,
     RoleNames.JANOB, RoleNames.OMADLI, RoleNames.QORIQCHI,
-    RoleNames.ZANJIR, RoleNames.QASOSKOR
+    RoleNames.ZANJIR
 ]
 
 mafia_rollar = [
@@ -126,5 +126,5 @@ yakka_rollar = [
     RoleNames.AFERIST, RoleNames.BORI, RoleNames.GAZABDOR,
     RoleNames.QOTIL, RoleNames.SEHRGAR, RoleNames.SUIDSID,
     RoleNames.QAROQCHI, RoleNames.AKTYOR, RoleNames.JIN, RoleNames.KONCHI,
-    RoleNames.TAQLIDCHI
+    RoleNames.TAQLIDCHI, RoleNames.QASOSKOR
 ]

@@ -123,6 +123,12 @@ async def check_real_mode_win(game_id, players, fuqarolar, mafiyalar, yakka_tara
     if len(players) == 0:
         return False
 
+    # Yakka rollarning maxsus g'alaba shartlarini tekshirish
+    yakka_winners = await check_yakka_win_conditions(game_id, yakka_taraflar)
+    if yakka_winners:
+        await announce_game_result_redis(game_id, bot, chat, winner_roles=[p.role for p in yakka_winners], real_mode=True)
+        return True
+
     # 1 ta o'yinchi qolgan
     if len(players) == 1:
         await announce_game_result_redis(game_id, bot, chat, winner_roles=[players[0].role], real_mode=True)
@@ -199,6 +205,12 @@ async def check_vsgame_win(game_id, players, game_state, bot, chat):
 
 async def check_zombie_mode_win(game_id, players, zombilar, yakkalar, fuqarolar, mafiyalar, qotil, bot, chat):
     """Zombie mode g'alaba shartlari."""
+    # Yakka rollarning maxsus g'alaba shartlarini tekshirish
+    yakka_winners = await check_yakka_win_conditions(game_id, yakkalar)
+    if yakka_winners:
+        await announce_game_result_redis(game_id, bot, chat, winner_roles=[p.role for p in yakka_winners])
+        return True
+    
     # Barcha zombie bo'lib qolgan
     if len(zombilar) == len(players) and zombilar:
         await announce_game_result_redis(game_id, bot, chat, winner_roles=[RoleNames.ZOMBI], zombilar=True)
@@ -285,6 +297,13 @@ async def check_classic_mode_win(game_id, players, fuqarolar, mafiyalar, qotil, 
     if len(players) == 0:
         return False
 
+    # Yakka rollarning maxsus g'alaba shartlarini tekshirish
+    yakka_taraflar = [p for p in players if p.role in yakkalar]
+    yakka_winners = await check_yakka_win_conditions(game_id, yakka_taraflar)
+    if yakka_winners:
+        await announce_game_result_redis(game_id, bot, chat, winner_roles=[p.role for p in yakka_winners])
+        return True
+
     # 1 ta o'yinchi qolgan
     if len(players) == 1:
         await announce_game_result_redis(game_id, bot, chat, winner_roles=[
@@ -345,6 +364,67 @@ async def check_classic_mode_win(game_id, players, fuqarolar, mafiyalar, qotil, 
 def check_mafialar_list(mafiyalar: list) -> bool:
     """Mafiyalar orasida tirik mafia bor yoki yo'qligini tekshirish."""
     return len(mafiyalar) > 0
+
+
+async def check_yakka_win_conditions(game_id: str, yakka_taraflar: list) -> list:
+    """
+    Yakka rollarning maxsus g'alaba shartlarini tekshirish.
+    
+    Real mode da yakka rollar (Jin, Konchi, Sehrgar, Bori, Aferist, Qaroqchi, Aktyor, Taqlidchi, Qasoskor)
+    o'yin tugaguncha tirik qolsalar, g'alaba qozonishadi.
+    
+    Args:
+        game_id: O'yin ID
+        yakka_taraflar: Yakka rollar ro'yxati
+    
+    Returns:
+        G'alaba qozongan yakka o'yinchilar ro'yxati (bo'sh bo'lishi mumkin)
+    """
+    if not yakka_taraflar:
+        return []
+    
+    winners = []
+    
+    # Jin: tirik qolsa g'alaba qozonadi
+    jin_players = [p for p in yakka_taraflar if p.role == RoleNames.JIN and p.is_alive]
+    winners.extend(jin_players)
+    
+    # Konchi: tirik qolsa g'alaba qozonadi
+    konchi_players = [p for p in yakka_taraflar if p.role == RoleNames.KONCHI and p.is_alive]
+    winners.extend(konchi_players)
+    
+    # Sehrgar: tirik qolsa g'alaba qozonadi
+    sehr_players = [p for p in yakka_taraflar if p.role == RoleNames.SEHRGAR and p.is_alive]
+    winners.extend(sehr_players)
+    
+    # Bori: tirik qolsa g'alaba qozonadi
+    bori_players = [p for p in yakka_taraflar if p.role == RoleNames.BORI and p.is_alive]
+    winners.extend(bori_players)
+    
+    # Aferist: tirik qolsa g'alaba qozonadi
+    aferist_players = [p for p in yakka_taraflar if p.role == RoleNames.AFERIST and p.is_alive]
+    winners.extend(aferist_players)
+    
+    # Qaroqchi: tirik qolsa g'alaba qozonadi
+    qaroqchi_players = [p for p in yakka_taraflar if p.role == RoleNames.QAROQCHI and p.is_alive]
+    winners.extend(qaroqchi_players)
+    
+    # Aktyor: tirik qolsa g'alaba qozonadi
+    aktyor_players = [p for p in yakka_taraflar if p.role == RoleNames.AKTYOR and p.is_alive]
+    winners.extend(aktyor_players)
+    
+    # Taqlidchi: tirik qolsa g'alaba qozonadi
+    taqlidchi_players = [p for p in yakka_taraflar if p.role == RoleNames.TAQLIDCHI and p.is_alive]
+    winners.extend(taqlidchi_players)
+    
+    # Qasoskor: tirik qolsa g'alaba qozonadi
+    qasoskor_players = [p for p in yakka_taraflar if p.role == RoleNames.QASOSKOR and p.is_alive]
+    winners.extend(qasoskor_players)
+    
+    # Qotil, Gazabdor, Suidsid - ular allaqachon boshqa shartlarda qo'shilgan
+    # Bu yerda ularni qo'shamaslik kerak, chunki ular classic/zombie mode shartlarida alohida qo'rilgan
+    
+    return winners
 
 
 WIN_RESULT_STRINGS = {
