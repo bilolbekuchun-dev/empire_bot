@@ -341,6 +341,7 @@ async def night_action_cb(call: CallbackQuery, bot: Bot):
         await _announce_night_action(call, gid, ph, uid, role, skipped=True)
         await _confirm_choice(call, role, skip_text, lang=chat_lang, gid=gid)
         await _mark_action_completed(gid, ph, uid)
+        await call.answer()
         return
 
     # Komissar: Ortga qaytish (rejim tanlash menyusi)
