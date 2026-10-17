@@ -816,9 +816,18 @@ GIVEAWAY_STRINGS = {
 async def start_giveaway_redis(message: Message, bot: Bot):
     from utils.i18n import get_chat_lang
     from utils.giveaways_redis import create_giveaway
+    from models.user import User, Profile
     lang = await get_chat_lang(message.chat.id)
     strs = GIVEAWAY_STRINGS.get(lang, GIVEAWAY_STRINGS["uz"])
     count = _parse_giveaway_count(message, default=10)
+
+    # Adminning olmos balansini tekshirish
+    if message.from_user:
+        admin_user, _ = await User.get_or_create(user_id=message.from_user.id)
+        admin_profile, _ = await Profile.get_or_create(user=admin_user)
+        if admin_profile.diamond < count:
+            await message.answer(f"❌ Sizda yetarli olmos yo'q! Sizda: {admin_profile.diamond}💎, kerak: {count}💎")
+            return
 
     # Redisda giveaway yaratish
     giveaway = await create_giveaway(
@@ -855,8 +864,17 @@ async def start_giveaway_redis(message: Message, bot: Bot):
 
 async def start_giveaway_channel(message: Message, bot: Bot):
     from utils.giveaways_redis import create_giveaway
+    from models.user import User, Profile
     strs = GIVEAWAY_STRINGS["uz"]
     count = _parse_giveaway_count(message, default=10)
+
+    # Adminning olmos balansini tekshirish
+    if message.from_user:
+        admin_user, _ = await User.get_or_create(user_id=message.from_user.id)
+        admin_profile, _ = await Profile.get_or_create(user=admin_user)
+        if admin_profile.diamond < count:
+            await message.answer(f"❌ Sizda yetarli olmos yo'q! Sizda: {admin_profile.diamond}💎, kerak: {count}💎")
+            return
 
     # Redisda giveaway yaratish
     giveaway = await create_giveaway(
@@ -1123,8 +1141,17 @@ def _parse_giveaway_amounts(message: Message) -> tuple:
 async def start_money_giveaway(message: Message, bot: Bot):
     """Money giveaway: /gmoney 100-10 (100$ jami, har kishiga 10$)"""
     from utils.giveaways_redis import create_giveaway
+    from models.user import User, Profile
     strs = GIVEAWAY_STRINGS["uz"]
     total, per_person = _parse_giveaway_amounts(message)
+
+    # Adminning pul balansini tekshirish
+    if message.from_user:
+        admin_user, _ = await User.get_or_create(user_id=message.from_user.id)
+        admin_profile, _ = await Profile.get_or_create(user=admin_user)
+        if admin_profile.dollar < total:
+            await message.answer(f"❌ Sizda yetarli pul yo'q! Sizda: {admin_profile.dollar}$, kerak: {total}$")
+            return
 
     # Redisda money giveaway yaratish
     giveaway = await create_giveaway(
