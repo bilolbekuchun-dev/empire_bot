@@ -405,6 +405,9 @@ async def night_action_cb(call: CallbackQuery, bot: Bot):
 
     # Zanjir / Sehrgar: 1-nishon -> 2-nishon
     if code in ("zj", "se") and kind == "t":
+        if int(target) == int(uid):
+            await call.answer("❌ O'zingizni tanlab bo'lmaydi!", show_alert=True)
+            return
         await ActionService.clear_player_actions(gid, ph, uid)
         await r.set(f"game:{gid}:tmp:{uid}:first", str(target), ex=3600)
         _p, tg = await _alive_targets(gid, exclude_uid=int(target))
@@ -422,13 +425,21 @@ async def night_action_cb(call: CallbackQuery, bot: Bot):
         await call.answer()
         return
     if code in ("zj", "se") and kind == "2":
+        if int(target) == int(uid):
+            await call.answer("❌ O'zingizni tanlab bo'lmaydi!", show_alert=True)
+            return
         await ActionService.clear_player_actions(gid, ph, uid)
         first = _redis_str(await r.get(f"game:{gid}:tmp:{uid}:first"))
+        if not first or int(first) == int(target):
+            await call.answer("❌ Ikkita har xil o'yinchini tanlang!", show_alert=True)
+            return
         atype = "zanjir" if code == "zj" else "sehrgar"
-        if first:
-            await ActionService.save_action(gid, ph, uid, int(first), atype)
+        await ActionService.save_action(gid, ph, uid, int(first), atype)
         await ActionService.save_action(gid, ph, uid, int(target), atype)
-        n1 = await _player_name(int(first)) if first else "?"
+        if atype == "zanjir":
+            # Kunduzgi osish uchun juftlikni Redisda saqlaymiz (yo'qolsa oxirgi tun action'laridan qayta tiklanadi)
+            await persist_zanjir_pairs(gid, [[int(first), int(target)]])
+        n1 = await _player_name(int(first))
         n2 = await _player_name(int(target))
         await _announce_night_action(call, gid, ph, uid, role)
         await _confirm_choice(call, role, f"{n1}, {n2}", lang=chat_lang, gid=gid)
@@ -528,6 +539,29 @@ async def night_action_cb(call: CallbackQuery, bot: Bot):
         choice = await _player_name(int(target))
         await _announce_night_action(call, gid, ph, uid, role)
         await _confirm_choice(call, role, f"Qo'riqlash ➔ {choice}", lang=chat_lang, gid=gid)
+        await _mark_action_completed(gid, ph, uid)
+        return
+
+    # Doktor: o'zini faqat 1 marta davolay oladi (can_heal_self)
+    if code == "do" and kind == "t":
+        target_iid = int(target)
+        if target_iid == int(uid):
+            player_state = await player_repo.load_player(gid, uid)
+            if player_state is not None and not getattr(player_state, "can_heal_self", True):
+                await call.answer("❌ Siz o'zingizni o'yin davomida faqat 1 marta davolay olasiz!", show_alert=True)
+                return
+        atype = ROLE_ACTION_TYPE.get(role, "heal")
+        await ActionService.save_action(gid, ph, uid, target_iid, atype)
+        await _set_last_visited(gid, uid, target_iid)
+        if target_iid == int(uid):
+            # O'zini davoladi — keyingi tunda o'zini tanlab bo'lmaydi
+            try:
+                await player_repo.update_player_field(gid, uid, "can_heal_self", False)
+            except Exception:
+                pass
+        choice = await _player_name(target_iid)
+        await _announce_night_action(call, gid, ph, uid, role)
+        await _confirm_choice(call, role, f"Davolash ➔ {choice}", lang=chat_lang, gid=gid)
         await _mark_action_completed(gid, ph, uid)
         return
 

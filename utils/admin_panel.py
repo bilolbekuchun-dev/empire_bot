@@ -4,7 +4,7 @@ from aiogram import Bot
 from aiogram.types import Message, CallbackQuery
 from tortoise.functions import Sum, Count
 from models.user import User, Profile, VipUser, Blocked_user, AdminGiveLog
-from models.game_data import Chat, Game, GamePlayer, GamePhase
+from models.game_data import Chat, Game, GamePlayer, GamePhase, PlayersGameBall
 from models.game_set import GroupBalance, BlockGrousp
 from keyboards.admin_keyboard import (
     admin_main_menu, admin_users_menu_kb, admin_user_manage_kb,
@@ -100,6 +100,11 @@ async def get_user_manage_info(user_id: int):
 
     total_games = await GamePlayer.filter(user=user).count()
     wins = await GamePlayer.filter(user=user, win=True).count()
+    try:
+        ball_row = await PlayersGameBall.filter(player__user=user).aggregate(total=Sum("ball"))
+        total_balls = int((ball_row or {}).get("total") or 0)
+    except Exception:
+        total_balls = 0
 
     vip_str = "✅ Bor (Aktiv)" if is_vip else "❌ Yo'q"
     block_str = "🚫 Bloklangan" if is_blocked else "✅ Toza (Faol)"
@@ -113,14 +118,14 @@ async def get_user_manage_info(user_id: int):
         f"• <b>Holat:</b> {block_str}\n"
         f"• <b>VIP status:</b> {vip_str}\n\n"
         f"💰 <b>Balans:</b>\n"
-        f"• 💵 Pul: <code>${profile.money:,.0f}</code>\n"
+        f"• 💵 Pul: <code>${profile.dollar:,.0f}</code>\n"
         f"• 💎 Olmos: <code>{profile.diamond:,}</code> ta\n"
-        f"• 🪙 Ball: <code>{profile.score:,}</code>\n\n"
+        f"• 🪙 Ball: <code>{total_balls:,}</code>\n\n"
         f"🛡 <b>Inventar va Qurollar:</b>\n"
         f"• 🔫 Miltiq: <code>{profile.miltiq}</code> ta\n"
         f"• 🛡 Himoya: <code>{profile.himoya}</code> ta\n"
         f"• 💊 Doridan himoya: <code>{profile.doridan_himoya}</code> ta\n"
-        f"• 🎭 Niqob: <code>{profile.mask}</code> ta\n"
+        f"• 🎭 Niqob: <code>{profile.maska}</code> ta\n"
         f"• 📜 Hujjat: <code>{profile.hujjat}</code> ta\n"
         f"• 🔒 Osishdan himoya: <code>{profile.osishdan_himoya}</code> ta\n\n"
         f"🎮 <b>O'yin statistikasi:</b>\n"

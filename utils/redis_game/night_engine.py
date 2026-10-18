@@ -421,6 +421,9 @@ async def send_night_actions(
         others = [q for q in alive if q.user_id != uid]
         if role in (RoleNames.DOKTOR, RoleNames.GAZABDOR, RoleNames.ZANJIR):
             target_pool = alive[:]
+            # Doktor o'zini faqat 1 marta davolay oladi — keyingi tunda o'zi ro'yxatda bo'lmaydi
+            if role == RoleNames.DOKTOR and not getattr(p, "can_heal_self", True):
+                target_pool = [q for q in alive if q.user_id != uid]
         elif role in MAFIA_ROLES:
             target_pool = [q for q in others if q.role not in MAFIA_ROLES]
         elif role == RoleNames.OVCHI:
@@ -874,7 +877,8 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
         elif atype == "jin_hayot" and tgt:
             jin_protect.append(tgt)
         elif atype == "jin_pul" and tgt:
-            jin_pul.append(tgt)
+            # (target, jin_uid) — jin o'ziga qancha hadya berganini ko'rsata olishi uchun
+            jin_pul.append((tgt, actor.user_id))
         elif atype == "jin_qotil" and tgt:
             jin_kill.append((tgt, actor.user_id))
         elif atype == "qaroqchi" or atype == "qaroqchi_pul":
@@ -905,7 +909,7 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
     protected |= set(jin_protect)
 
     # --- Jin pul in'omi ---
-    for target in jin_pul:
+    for target, jin_uid in jin_pul:
         try:
             from models.user import User, Profile
             t_user = await User.filter(user_id=target).first()
@@ -915,10 +919,13 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
                     t_prof = await Profile.create(user=t_user)
                 if t_prof:
                     t_lang = lang_map.get(target, "uz")
+                    gave_diamond = False
+                    money_given = 0
                     # Yoki pul (85%) YOKI 1 olmos (15%)
                     if random.random() < 0.15:
                         t_prof.diamond = (t_prof.diamond or 0) + 1
                         await t_prof.save()
+                        gave_diamond = True
                         diamond_msgs = {
                             "uz": "🧞 <b>Jin sizga 💎 1 olmos in'om etdi!</b>",
                             "ru": "🧞 <b>Джинн одарил вас 💎 1 алмазом!</b>",
@@ -944,6 +951,30 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
                         }
                         msg = dollar_msgs.get(t_lang, dollar_msgs["uz"])
                     await _send_private(bot, target, msg)
+                    # Jin o'ziga qancha hadya berganini ko'rsatish (masalan: "Siz Ali ga 100$ hadya qildingiz!")
+                    try:
+                        jin_lang = lang_map.get(jin_uid, "uz")
+                        t_name_for_jin = html.escape(names.get(target) or str(target))
+                        if gave_diamond:
+                            jin_gift_msgs = {
+                                "uz": f"🧞 Siz <b>{t_name_for_jin}</b> ga 💎 1 olmos hadya qildingiz!",
+                                "ru": f"🧞 Вы подарили <b>{t_name_for_jin}</b> 💎 1 алмаз!",
+                                "en": f"🧞 You gifted <b>{t_name_for_jin}</b> 💎 1 diamond!",
+                                "tr": f"🧞 <b>{t_name_for_jin}</b> kişisine 💎 1 elmas hediye ettiniz!",
+                                "kk": f"🧞 Сіз <b>{t_name_for_jin}</b> адамына 💎 1 алмаз сыйладыңыз!"
+                            }
+                            await _send_private(bot, jin_uid, jin_gift_msgs.get(jin_lang, jin_gift_msgs["uz"]))
+                        else:
+                            jin_gift_msgs = {
+                                "uz": f"🧞 Siz <b>{t_name_for_jin}</b> ga 💰 {money_given}$ hadya qildingiz!",
+                                "ru": f"🧞 Вы подарили <b>{t_name_for_jin}</b> 💰 {money_given}$!",
+                                "en": f"🧞 You gifted <b>{t_name_for_jin}</b> 💰 {money_given}$!",
+                                "tr": f"🧞 <b>{t_name_for_jin}</b> kişisine 💰 {money_given}$ hediye ettiniz!",
+                                "kk": f"🧞 Сіз <b>{t_name_for_jin}</b> адамына 💰 {money_given}$ сыйладыңыз!"
+                            }
+                            await _send_private(bot, jin_uid, jin_gift_msgs.get(jin_lang, jin_gift_msgs["uz"]))
+                    except Exception:
+                        pass
         except Exception as e:
             logger.error(f"Error giving Jin money reward to target {target}: {e}")
 
@@ -1074,12 +1105,46 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
                 if qasoskor_id not in direct_killers[attacker_id]:
                     direct_killers[attacker_id].append(qasoskor_id)
 
-    # --- Zanjir: juftlikdan biri o'lsa, ikkinchisi ham ---
+    # --- Zanjir: juftlikdan biri o'lsa, ikkinchisi ham (himoya/davolashdan O'TADI) ---
+    _z_chain_extra: list = []
+    _z_pairs_persist: list = []
+    dead_set = set()
+    for x in dead_uids:
+        try:
+            dead_set.add(int(x))
+        except (TypeError, ValueError):
+            continue
     for actor_uid, tgts in zanjir.items():
-        if len(tgts) >= 2 and any(t in dead_uids for t in tgts[:2]):
-            for t in tgts[:2]:
-                if t not in dead_uids:
-                    dead_uids.append(t)
+        uniq = _normalize_zanjir_targets(tgts)
+        if len(uniq) < 2:
+            continue
+        _z_pairs_persist.append([uniq[0], uniq[1]])
+        if any(t in dead_set for t in uniq[:2]):
+            for t in uniq[:2]:
+                if t not in dead_set and t not in _z_chain_extra:
+                    _z_chain_extra.append(t)
+    if _z_pairs_persist:
+        await persist_zanjir_pairs(game_id, _z_pairs_persist)
+    for t in _z_chain_extra:
+        dead_uids.append(t)
+        healed.discard(t)
+        protected.discard(t)
+        if t not in kill_sources:
+            kill_sources[t] = []
+        if "⛓ Zanjir" not in kill_sources[t]:
+            kill_sources[t].append("⛓ Zanjir")
+        # Zanjir ikkinchi qurboni uchun tong xabari — jufti bilan birga o'lgani ko'rinsin
+        try:
+            _cp = by_uid.get(t)
+            _cname = html.escape(str(names.get(t) or t), quote=False)
+            _cmention = f'<a href="tg://user?id={int(t)}">{_cname}</a>'
+            _crole = role_display(_cp.role) if _cp and getattr(_cp, "role", None) else "⛓ Zanjir"
+            await queue_death_message(
+                game_id,
+                f"⛓ {_cmention} zanjirlangan edi va jufti bilan birga halok bo'ldi!\nU edi {_crole}."
+            )
+        except Exception:
+            pass
 
     # --- Jin qotillik: jin_kill hujumlari yuqoridagi kill_attempts ro'yxatida to'liq hisobga olingan. ---
 
@@ -1324,11 +1389,11 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
                 a_prof = await Profile.filter(user=a_user).first()
                 if t_prof and a_prof:
                     if choice == "pul":
-                        # Pul olish
-                        if t_prof.money >= 10:
-                            stolen = min(t_prof.money, random.randint(10, 50))
-                            t_prof.money -= stolen
-                            a_prof.money += stolen
+                        # Pul olish (Profile modelida maydon: dollar)
+                        if t_prof.dollar >= 10:
+                            stolen = min(t_prof.dollar, random.randint(10, 50))
+                            t_prof.dollar -= stolen
+                            a_prof.dollar += stolen
                             await t_prof.save()
                             await a_prof.save()
                             await _send_private(bot, actor_uid, f"⚔️ <b>Qaroqchi</b>: Siz {target_name}dan 💵 {stolen}$ o'g'irladingiz!")
@@ -1714,6 +1779,40 @@ async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot,
         )
     except Exception:
         pass
+
+    # --- Zanjir: osilgan zanjirlangan bo'lsa, jufti ham o'ladi (kunduz) ---
+    # Vorislikdan OLDIN: succession xato bersa ham juft o'lishi kerak.
+    try:
+        _vid = int(victim.user_id)
+        # Zanjir action'lari tunda bo'ladi, shuning uchun oxirgi tun (day_num - 1) ni qidiramiz
+        # load_zanjir_pairs ichida ham Redis dagi saqlangan juftlik, ham action'lar tekshiriladi.
+        for _t1, _t2 in await load_zanjir_pairs(int(game_id), int(day_num)):
+            if _vid not in (_t1, _t2):
+                continue
+            _other_uid = _t2 if _vid == _t1 else _t1
+            _other_p = by_uid.get(_other_uid)
+            if _other_p and _other_p.is_alive:
+                _other_p.is_alive = False
+                _other_p.deaded_at = datetime.now(timezone.utc)
+                await player_repo.save_player(_other_p)
+                _other_mention = _mention_html(_other_p.user_id, names)
+                _other_role_str = role_display(_other_p.role, lang=c_lang)
+                _chain_lynch_text = {
+                    "uz": f"⛓ {_other_mention} {mention} bilan zanjirlangan edi va u bilan birga halok bo'ldi!\nU edi <b>{_other_role_str}</b>.",
+                    "ru": f"⛓ {_other_mention} был(а) связан(а) с {mention} и погиб(ла) вместе с ним(ней)!\nОн(а) был(а) <b>{_other_role_str}</b>.",
+                    "en": f"⛓ {_other_mention} was chained to {mention} and died together!\nThey were <b>{_other_role_str}</b>.",
+                    "tr": f"⛓ {_other_mention}, {mention} ile zincirliydi ve onunla birlikte öldü!\nRolü <b>{_other_role_str}</b>.",
+                    "kk": f"⛓ {_other_mention} {mention} -мен шынжырланған еді және онымен бірге қаза тапты!\nОның рөлі <b>{_other_role_str}</b>.",
+                }.get(c_lang, f"⛓ {_other_mention} {mention} bilan zanjirlangan edi va u bilan birga halok bo'ldi!\nU edi <b>{_other_role_str}</b>.")
+                await bot.send_message(chat.chat_id, _chain_lynch_text, parse_mode="HTML")
+                try:
+                    d_pm_msg = NIGHT_STRINGS.get(c_lang, NIGHT_STRINGS["uz"]).get("lynch_death_pm_msg", NIGHT_STRINGS["uz"]["death_pm_msg"])
+                    await bot.send_message(_other_p.user_id, d_pm_msg, parse_mode="HTML")
+                except Exception:
+                    pass
+    except Exception as e:
+        logger.warning(f"Error executing Zanjir lynch chain: {e}")
+
     await _check_role_succession(by_uid, lang_map, bot, game_id=game_id, chat_id=chat.chat_id, is_night=False)
 
     # Qasoskor osilsa: eng birinchi ovoz bergan foydalanuvchi ham o'ladi
