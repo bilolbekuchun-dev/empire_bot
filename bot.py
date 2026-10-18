@@ -119,7 +119,6 @@ async def main():
     dp.message.middleware(GroupWriteGuardMiddleware())
     dp.include_router(router)
     dp.include_router(stats_router)
-    dp.include_router(stats_router)
     create_task(daily_balance_task(bot=bot))
     create_task(long_games_attack(bot=bot))
     create_task(check_vip_users(bot=bot))
