@@ -27,7 +27,7 @@ from mylogger import setup_db_logging
 import os
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
-from stats_bridge import router as stats_router, start_bridge
+from stats_bridge import router as stats_router, start_bridge, _credit, _ping
 
 # Ma'lumotlar
 # nginx (82.39.213.9.nip.io) allaqachon "/" yo'lini shu botning PORT'iga (8000)
@@ -119,6 +119,7 @@ async def main():
     dp.message.middleware(GroupWriteGuardMiddleware())
     dp.include_router(router)
     dp.include_router(stats_router)
+    dp.include_router(stats_router)
     create_task(daily_balance_task(bot=bot))
     create_task(long_games_attack(bot=bot))
     create_task(check_vip_users(bot=bot))
@@ -147,7 +148,7 @@ async def main():
             print(f"FakeRedis ulanishida xatolik ({fr_err}), davom etiladi...")
 
     await resume_active_games(bot)
-    await start_bridge(bot)
+    # await start_bridge(bot)  # Webapp app ga qo'shilganligi sababli o'chirildi
     use_polling = os.getenv("USE_POLLING", "false").lower() in ("true", "1", "yes")
     
     if use_polling:
@@ -158,6 +159,12 @@ async def main():
         app = web.Application(client_max_size=20 * 1024 * 1024)
         from utils.webapp_api import setup_webapp_routes
         setup_webapp_routes(app, static_dir=os.path.dirname(os.path.abspath(__file__)), bot=bot)
+
+        # Stats bridge ni app ga qo'shish
+        app["bot"] = bot
+        app.router.add_post("/exchange/credit", _credit)
+        app.router.add_get("/exchange/ping", _ping)
+
         runner = web.AppRunner(app)
         await runner.setup()
         site = web.TCPSite(runner, host=WEBAPP_HOST, port=int(os.getenv("PORT", "8002")))
