@@ -2,7 +2,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from config import CHANNEL_USERNAME
 from models.user import Profile
 from utils.premium_emojis import get_custom_emoji_id, get_diamond_display, get_dollar_display
-from stats_bridge import stats_button
+from stats_bridge import stats_button_text
 
 def protection_toggle_keyboard(profile: Profile):
     markup = InlineKeyboardBuilder()
@@ -55,7 +55,7 @@ def profile_keyboards_on_private(profile: Profile, is_vip: bool = False, lang: s
     markup.button(text=lbls.get("btn_shop", "Do'kon"), callback_data="shop", icon_custom_emoji_id="5373052667671093676")
 
     markup.button(text=lbls.get("btn_profile", "👤 Mening param"), callback_data="profile")
-    markup.button(stats_button(lang=lang))
+    markup.button(text=stats_button_text(lang=lang), callback_data="sx:menu")
     if is_vip:
         status_text = {
             "uz": "✨ Statusni o'zgartirish",
@@ -106,7 +106,7 @@ def profile_keyboards(lang: str = "uz", is_vip: bool = False):
 
     markup.button(text=lbls.get("btn_shop", "Do'kon"), callback_data="shop", icon_custom_emoji_id="5373052667671093676")
     markup.button(text=lbls.get("btn_para", "Mening param"), callback_data="my_para_menu", icon_custom_emoji_id="5402100905883488232")
-    markup.button(stats_button(lang=lang))
+    markup.button(text=stats_button_text(lang=lang), callback_data="sx:menu")
 
     # Olmos va pul xarid qilish uchun alohida tugmalar
     buy_diamond_text = {

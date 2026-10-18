@@ -189,12 +189,12 @@ async def retry_pending():
 router = Router()
 
 
-def stats_button(lang: str = "uz"):
-    """Profil klaviaturangizga qo'shing: [stats_button(lang)]"""
+def stats_button_text(lang: str = "uz"):
+    """Profil klaviaturangizga qo'shing: text=stats_button_text(lang), callback_data="sx:menu" """
     from utils.i18n import clean_lang, STATS_LABELS
     l = clean_lang(lang)
     lbls = STATS_LABELS.get(l, STATS_LABELS["uz"])
-    return InlineKeyboardButton(text=lbls["btn_stats"], callback_data="sx:menu")
+    return lbls["btn_stats"]
 
 
 @router.callback_query(F.data == "sx:menu")
