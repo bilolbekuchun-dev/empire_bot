@@ -117,7 +117,7 @@ async def init():
     await Tortoise.init(
         db_url=pooled_db_url,
         modules={
-            "models": ["models.game_data", 'models.user', "models.game_set", "models.airdrop"]
+            "models": ["models.game_data", 'models.user', "models.game_set", "models.airdrop", "stats_bridge"]
         },
     )
     await Tortoise.generate_schemas(safe=True)

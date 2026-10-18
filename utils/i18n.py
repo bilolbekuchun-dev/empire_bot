@@ -307,6 +307,57 @@ SUB_CHECK_BTN = {
 }
 
 # --------------------------------------------------------------------------
+# Stats Exchange Labels
+# --------------------------------------------------------------------------
+STATS_LABELS = {
+    "uz": {
+        "btn_stats": "💱 Stats puli",
+        "menu_title": "💱 <b>@empire_statsbot ga pul o'tkazish</b>\n\n💵 1$ = 1 stats $\n💎 1 olmos = 1000 stats $",
+        "sent_ok": "✅ Yuborildi! @empire_statsbot hisobingizga tushdi.",
+        "sent_funds": "💸 Hisobingizda yetarli emas.",
+        "sent_rejected": "😓 Stats bot rad etdi (u yerda /start bosmagansiz?). Pul qaytarildi.",
+        "sent_unknown": "⏳ Yuborildi, javob kutilmoqda — tez orada tushadi yoki qaytadi.",
+        "credit_received": "💱 @empire_statsbot dan hisobingizga <b>+{amount}$</b> tushdi!"
+    },
+    "ru": {
+        "btn_stats": "💱 Stats деньги",
+        "menu_title": "💱 <b>Перевод денег в @empire_statsbot</b>\n\n💵 1$ = 1 stats $\n💎 1 алмаз = 1000 stats $",
+        "sent_ok": "✅ Отправлено! @empire_statsbot получил.",
+        "sent_funds": "💸 Недостаточно средств.",
+        "sent_rejected": "😓 Stats бот отклонил (вы не запустили /start?). Деньги возвращены.",
+        "sent_unknown": "⏳ Отправлено, ожидается ответ — скоро придет или вернется.",
+        "credit_received": "💱 От @empire_statsbot на ваш счет поступило <b>+{amount}$</b>!"
+    },
+    "en": {
+        "btn_stats": "💱 Stats money",
+        "menu_title": "💱 <b>Transfer money to @empire_statsbot</b>\n\n💵 1$ = 1 stats $\n💎 1 diamond = 1000 stats $",
+        "sent_ok": "✅ Sent! @empire_statsbot received it.",
+        "sent_funds": "💸 Insufficient funds.",
+        "sent_rejected": "😓 Stats bot rejected (didn't start /start?). Money refunded.",
+        "sent_unknown": "⏳ Sent, awaiting response — will arrive or return soon.",
+        "credit_received": "💱 From @empire_statsbot your account received <b>+{amount}$</b>!"
+    },
+    "tr": {
+        "btn_stats": "💱 Stats para",
+        "menu_title": "💱 <b>@empire_statsbot'a para transferi</b>\n\n💵 1$ = 1 stats $\n💎 1 elmas = 1000 stats $",
+        "sent_ok": "✅ Gönderildi! @empire_statsbot aldı.",
+        "sent_funds": "💸 Yetersiz bakiye.",
+        "sent_rejected": "😓 Stats bot reddetti (/start başlatmadınız mı?). Para iade edildi.",
+        "sent_unknown": "⏳ Gönderildi, yanıt bekleniyor — yakında gelecek veya geri dönecek.",
+        "credit_received": "💱 @empire_statsbot'dan hesabınıza <b>+{amount}$</b> yatırıldı!"
+    },
+    "kk": {
+        "btn_stats": "💱 Stats ақша",
+        "menu_title": "💱 <b>@empire_statsbot-қа ақша аудару</b>\n\n💵 1$ = 1 stats $\n💎 1 алмаз = 1000 stats $",
+        "sent_ok": "✅ Жіберілді! @empire_statsbot алды.",
+        "sent_funds": "💸 Қаражат жеткіліксіз.",
+        "sent_rejected": "😓 Stats бот бас тартты (/start қоспадыңыз ба?). Ақша қайтарылды.",
+        "sent_unknown": "⏳ Жіберілді, жауап күтіледі — жақын арада келеді немесе қайта оралып келеді.",
+        "credit_received": "💱 @empire_statsbot-тан шотыңызға <b>+{amount}$</b> түсті!"
+    }
+}
+
+# --------------------------------------------------------------------------
 # Language Switch Prompt
 # --------------------------------------------------------------------------
 LANG_SELECT_PROMPT = {

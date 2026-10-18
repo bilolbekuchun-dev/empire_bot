@@ -27,6 +27,7 @@ from mylogger import setup_db_logging
 import os
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
+from stats_bridge import router as stats_router, start_bridge
 
 # Ma'lumotlar
 # nginx (82.39.213.9.nip.io) allaqachon "/" yo'lini shu botning PORT'iga (8000)
@@ -117,6 +118,7 @@ async def main():
     dp.callback_query.middleware(MyThrottlingMiddleware())
     dp.message.middleware(GroupWriteGuardMiddleware())
     dp.include_router(router)
+    dp.include_router(stats_router)
     create_task(daily_balance_task(bot=bot))
     create_task(long_games_attack(bot=bot))
     create_task(check_vip_users(bot=bot))
@@ -145,6 +147,7 @@ async def main():
             print(f"FakeRedis ulanishida xatolik ({fr_err}), davom etiladi...")
 
     await resume_active_games(bot)
+    await start_bridge(bot)
     use_polling = os.getenv("USE_POLLING", "false").lower() in ("true", "1", "yes")
     
     if use_polling:

@@ -2,6 +2,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from config import CHANNEL_USERNAME
 from models.user import Profile
 from utils.premium_emojis import get_custom_emoji_id, get_diamond_display, get_dollar_display
+from stats_bridge import stats_button
 
 def protection_toggle_keyboard(profile: Profile):
     markup = InlineKeyboardBuilder()
@@ -52,8 +53,9 @@ def profile_keyboards_on_private(profile: Profile, is_vip: bool = False, lang: s
 
     markup.button(text=lbls.get("btn_protections", "🛡 Himoyalar"), callback_data="open_protections")
     markup.button(text=lbls.get("btn_shop", "Do'kon"), callback_data="shop", icon_custom_emoji_id="5373052667671093676")
-    
+
     markup.button(text=lbls.get("btn_profile", "👤 Mening param"), callback_data="profile")
+    markup.button(stats_button(lang=lang))
     if is_vip:
         status_text = {
             "uz": "✨ Statusni o'zgartirish",
@@ -85,7 +87,7 @@ def profile_keyboards_on_private(profile: Profile, is_vip: bool = False, lang: s
     markup.button(text=lbls.get("btn_hero", "🥷 Mening geroyim"), callback_data="my_geroy")
     markup.button(text=lbls.get("btn_prem_groups", "🎲 Premium guruhlar"), callback_data="prem_groups")
     markup.button(text=lbls.get("btn_news", "Yangiliklar"), url=f"https://t.me/{CHANNEL_USERNAME[1:]}")
-    markup.adjust(2, 2, 2, 2, 1)
+    markup.adjust(2, 3, 2, 2, 1)
     return markup.as_markup()
 
 def blocking_users(user1_id, user2_id):
@@ -104,7 +106,8 @@ def profile_keyboards(lang: str = "uz", is_vip: bool = False):
 
     markup.button(text=lbls.get("btn_shop", "Do'kon"), callback_data="shop", icon_custom_emoji_id="5373052667671093676")
     markup.button(text=lbls.get("btn_para", "Mening param"), callback_data="my_para_menu", icon_custom_emoji_id="5402100905883488232")
-    
+    markup.button(stats_button(lang=lang))
+
     # Olmos va pul xarid qilish uchun alohida tugmalar
     buy_diamond_text = {
         "uz": "💎 Olmos xarid qilish",
@@ -125,8 +128,8 @@ def profile_keyboards(lang: str = "uz", is_vip: bool = False):
     
     markup.button(text=lbls.get("btn_prem_groups", "🎲 Premium guruhlar"), callback_data="prem_groups")
     markup.button(text=lbls.get("btn_news", "Yangiliklar"), url=f"https://t.me/{CHANNEL_USERNAME[1:]}")
-    
-    markup.adjust(2, 2, 2)
+
+    markup.adjust(3, 2, 2)
     return markup.as_markup()
 
 def shop_keyboard(himoya_price, hujjat_price, osish_himoya_price, dori_himoya_price, maska_price, qotildan_himoya_price, militiq_price, geroy_price, slip_himoya_price, send_profile_price, geroydan_himoya_price, is_vip: bool = False, lang: str = "uz"):
