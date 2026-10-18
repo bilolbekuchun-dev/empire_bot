@@ -28,8 +28,8 @@ SECRET = os.getenv("EXCHANGE_SECRET", "").encode()
 STATS_URL = os.getenv("STATS_URL", "").rstrip("/")
 TS_WINDOW = 300
 DIAMOND_RATE = 1000          # 1 olmos = 1000 stats $
-DOLLAR_AMOUNTS = [100, 500, 1000, 5000]
-DIAMOND_AMOUNTS = [1, 3, 5, 10]
+DOLLAR_AMOUNTS = [100, 500, 1000, 2500, 5000, 10000]
+DIAMOND_AMOUNTS = [1, 3, 5, 10, 20, 50]
 
 # ⚙️ 1) O'z User modelingizni import qiling va maydon nomlarini yozing
 from models.user import User, Profile    # ← sizning modelingiz
@@ -117,6 +117,10 @@ async def _ping(_):
 
 async def start_bridge(bot, port: int | None = None):
     """Bot ishga tushganda (masalan dp.startup da) bir marta chaqiring."""
+    secret_status = "bor" if SECRET else "YOQ"
+    stats_url_status = STATS_URL if STATS_URL else "YOQ"
+    log.info(f"✅ Stats bridge yo'llari qo'shildi (secret={secret_status}, STATS_URL={stats_url_status})")
+
     app = web.Application()
     app["bot"] = bot
     app.router.add_post("/exchange/credit", _credit)
@@ -186,7 +190,9 @@ async def retry_pending():
 
 # ───────────────────────── "💱 Stats puli" tugmasi (aiogram Router) ─────────────────────────
 
+# Router ni faqat callback_query uchun cheklash - boshqa handlerlarga ta'sir qilmasligi uchun
 router = Router()
+# Hech qanday message handler yo'q - faqat callback_query
 
 
 def stats_button_text(lang: str = "uz"):
@@ -214,7 +220,7 @@ async def sx_menu(q: CallbackQuery):
 
     kb = [[InlineKeyboardButton(text=f"💵 {a}$", callback_data=f"sx:usd:{a}") for a in DOLLAR_AMOUNTS],
           [InlineKeyboardButton(text=f"💎 {a}", callback_data=f"sx:dia:{a}") for a in DIAMOND_AMOUNTS]]
-    await q.message.answer(
+    await q.message.edit_text(
         lbls["menu_title"],
         reply_markup=InlineKeyboardMarkup(inline_keyboard=kb), parse_mode="HTML")
     await q.answer()
