@@ -123,8 +123,10 @@ async def start_bridge(bot, port: int | None = None):
     app.router.add_get("/exchange/ping", _ping)
     runner = web.AppRunner(app)
     await runner.setup()
-    await web.TCPSite(runner, "0.0.0.0", port or int(os.getenv("PORT", "8080"))).start()
-    log.info("Stats bridge ishga tushdi")
+    # Alohida port ishlatamiz (webapp server PORT dan farqli)
+    bridge_port = port or int(os.getenv("EXCHANGE_PORT", "8081"))
+    await web.TCPSite(runner, "0.0.0.0", bridge_port).start()
+    log.info(f"Stats bridge ishga tushdi on port {bridge_port}")
 
 
 # ───────────────────────── Chiquvchi: stats botga yuborish ─────────────────────────
