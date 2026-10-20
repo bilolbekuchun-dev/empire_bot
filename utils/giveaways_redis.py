@@ -95,31 +95,40 @@ async def batch_add_collected_users(giveaway_id: int, user_ids: list):
         pass
 
 
-async def queue_collected_user(giveaway_id: int, user_id: int):
-    """Queue user for batch write to Redis."""
+async def queue_collected_user(giveaway_id, user_id):
+    """Queue user for batch write to Redis (deadlock-free)."""
+    giveaway_id = str(giveaway_id)
+    need_flush = False
+    need_schedule = False
     lock = _buffer_locks[giveaway_id]
     async with lock:
         _collected_buffers[giveaway_id].append(user_id)
-        
-        # Flush if buffer size reached
         if len(_collected_buffers[giveaway_id]) >= _BATCH_SIZE:
-            await _flush_collected_buffer(giveaway_id)
+            need_flush = True
         else:
-            # Schedule delayed flush if not already scheduled
-            if giveaway_id not in _flush_tasks or _flush_tasks[giveaway_id].done():
-                _flush_tasks[giveaway_id] = asyncio.create_task(
-                    _delayed_flush_collected(giveaway_id)
-                )
+            t = _flush_tasks.get(("c", giveaway_id))
+            if t is None or t.done():
+                need_schedule = True
+    if need_flush:
+        await _flush_collected_buffer(giveaway_id)
+    elif need_schedule:
+        _flush_tasks[("c", giveaway_id)] = asyncio.create_task(_delayed_flush_collected(giveaway_id))
 
 
-async def _delayed_flush_collected(giveaway_id: int):
+
+
+async def _delayed_flush_collected(giveaway_id):
     """Flush buffer after timeout."""
     await asyncio.sleep(_BATCH_TIMEOUT)
-    await _flush_collected_buffer(giveaway_id)
+    try:
+        await _flush_collected_buffer(giveaway_id)
+    finally:
+        _flush_tasks.pop(("c", str(giveaway_id)), None)
 
 
-async def _flush_collected_buffer(giveaway_id: int):
+async def _flush_collected_buffer(giveaway_id):
     """Flush collected users buffer to Redis."""
+    giveaway_id = str(giveaway_id)
     lock = _buffer_locks[giveaway_id]
     async with lock:
         if not _collected_buffers[giveaway_id]:
@@ -135,14 +144,17 @@ async def _flush_collected_buffer(giveaway_id: int):
 async def is_collected_user(giveaway_id: int, user_id: int) -> bool:
     """Check if a user has already collected from this giveaway (checks both buffer and Redis)."""
     # First check in-memory buffer (for recent claims not yet flushed)
-    lock = _buffer_locks[giveaway_id]
-    async with lock:
-        if user_id in _collected_buffers[giveaway_id]:
+    try:
+        buf = _collected_buffers.get(str(giveaway_id), [])
+        if user_id in buf or str(user_id) in buf:
             return True
+    except Exception:
+        pass
     
     # Then check Redis
     try:
-        return await redis_client.sismember(_collected_set_key(giveaway_id), str(user_id))
+        res = await redis_client.sismember(_collected_set_key(giveaway_id), str(user_id))
+        return bool(res)
     except Exception:
         return False
 
@@ -187,31 +199,40 @@ async def batch_add_winner_details(giveaway_id: int, winners: list):
         pass
 
 
-async def queue_winner_detail(giveaway_id: int, user_id: int, full_name: str, reward: int):
-    """Queue winner detail for batch write to Redis."""
+async def queue_winner_detail(giveaway_id, user_id, full_name, reward):
+    """Queue winner detail for batch write to Redis (deadlock-free)."""
+    giveaway_id = str(giveaway_id)
+    need_flush = False
+    need_schedule = False
     lock = _buffer_locks[giveaway_id]
     async with lock:
         _winner_buffers[giveaway_id].append((user_id, full_name, reward))
-        
-        # Flush if buffer size reached
         if len(_winner_buffers[giveaway_id]) >= _BATCH_SIZE:
-            await _flush_winner_buffer(giveaway_id)
+            need_flush = True
         else:
-            # Schedule delayed flush if not already scheduled
-            if giveaway_id not in _flush_tasks or _flush_tasks[giveaway_id].done():
-                _flush_tasks[giveaway_id] = asyncio.create_task(
-                    _delayed_flush_winner(giveaway_id)
-                )
+            t = _flush_tasks.get(("w", giveaway_id))
+            if t is None or t.done():
+                need_schedule = True
+    if need_flush:
+        await _flush_winner_buffer(giveaway_id)
+    elif need_schedule:
+        _flush_tasks[("w", giveaway_id)] = asyncio.create_task(_delayed_flush_winner(giveaway_id))
 
 
-async def _delayed_flush_winner(giveaway_id: int):
+
+
+async def _delayed_flush_winner(giveaway_id):
     """Flush buffer after timeout."""
     await asyncio.sleep(_BATCH_TIMEOUT)
-    await _flush_winner_buffer(giveaway_id)
+    try:
+        await _flush_winner_buffer(giveaway_id)
+    finally:
+        _flush_tasks.pop(("w", str(giveaway_id)), None)
 
 
-async def _flush_winner_buffer(giveaway_id: int):
+async def _flush_winner_buffer(giveaway_id):
     """Flush winner details buffer to Redis."""
+    giveaway_id = str(giveaway_id)
     lock = _buffer_locks[giveaway_id]
     async with lock:
         if not _winner_buffers[giveaway_id]:
@@ -272,52 +293,67 @@ async def save_giveaway(giveaway):
         "collected_users": json.dumps(giveaway["collected_users"]),  # JSON sifatida
         "created_at": giveaway["created_at"].isoformat()  # ISO formatida
     }
-    for field, value in data.items():
-        await redis_client.hset(giveaway_key, field, value)
+    # Bitta HSET (mapping) bilan yozamiz — qisman yozuv qolmasligi uchun atomik
+    await redis_client.hset(giveaway_key, mapping=data)
+    await redis_client.expire(giveaway_key, _GIVEAWAY_TTL)
 
 async def get_giveaway(giveaway_id):
     giveaway_key = f"giveaway:{giveaway_id}"
-    data = await redis_client.hgetall(giveaway_key)
+    try:
+        data = await redis_client.hgetall(giveaway_key)
+    except Exception:
+        # Redis vaqtincha ishlamasa — callback data'dagi qiymatlar ishlayveradi
+        return None
     if not data:
         return None
-    return {
-        "id": int(data["id"]),
-        "creator_id": int(data["creator_id"]),
-        "chat_id": int(data["chat_id"]),
-        "message_id": int(data["message_id"]),
-        "total_amount": int(data["total_amount"]),
-        "remaining_amount": int(data["remaining_amount"]),
-        "collected_users": json.loads(data["collected_users"]),
-        "created_at": datetime.fromisoformat(data["created_at"])
-    }
+    try:
+        return {
+            "id": int(data["id"]),
+            "creator_id": int(data["creator_id"]),
+            "chat_id": int(data["chat_id"]),
+            "message_id": int(data["message_id"]),
+            "total_amount": int(data["total_amount"]),
+            "remaining_amount": int(data["remaining_amount"]),
+            "collected_users": json.loads(data.get("collected_users") or "[]"),
+            "created_at": datetime.fromisoformat(data["created_at"])
+        }
+    except Exception:
+        # Hash qisman yozilgan bo'lsa ham butunlay ishlashdan to'xtamaslik uchun
+        return None
 
 async def create_giveaway(creator_id, chat_id, message_id, total_amount):
-    # ID generatsiya qilish uchun INCR ishlatamiz
-    new_id = await redis_client.incr("giveaway:counter")
-    giveaway = {
-        "id": new_id,
-        "creator_id": creator_id,
-        "chat_id": chat_id,
-        "message_id": message_id,
-        "total_amount": total_amount,
-        "remaining_amount": total_amount,
-        "collected_users": [],
-        "created_at": datetime.now(timezone.utc)
-    }
-    await save_giveaway(giveaway)
-    return giveaway
+    try:
+        # ID generatsiya qilish uchun INCR ishlatamiz
+        new_id = await redis_client.incr("giveaway:counter")
+        giveaway = {
+            "id": new_id,
+            "creator_id": creator_id,
+            "chat_id": chat_id,
+            "message_id": message_id,
+            "total_amount": total_amount,
+            "remaining_amount": total_amount,
+            "collected_users": [],
+            "created_at": datetime.now(timezone.utc)
+        }
+        await save_giveaway(giveaway)
+        return giveaway
+    except Exception:
+        # Redis xatosi — chaqiruvchi "if not giveaway" ni tekshirib xabar chiqaradi
+        return None
 
 async def update_giveaway(giveaway_id, updates):
     giveaway_key = f"giveaway:{giveaway_id}"
-    if await redis_client.exists(giveaway_key):
-        # Faqat yangilanadigan maydonlarni konvertatsiya qilish
-        if "collected_users" in updates:
-            updates["collected_users"] = json.dumps(updates["collected_users"])
-        if "created_at" in updates:
-            updates["created_at"] = updates["created_at"].isoformat()
-        for field, value in updates.items():
-            await redis_client.hset(giveaway_key, field, value)
-        return True
+    try:
+        if await redis_client.exists(giveaway_key):
+            # Faqat yangilanadigan maydonlarni konvertatsiya qilish
+            if "collected_users" in updates:
+                updates["collected_users"] = json.dumps(updates["collected_users"])
+            if "created_at" in updates:
+                updates["created_at"] = updates["created_at"].isoformat()
+            await redis_client.hset(giveaway_key, mapping=updates)
+            return True
+    except Exception:
+        pass
     return False
 
 async def delete_giveaway(giveaway_id):

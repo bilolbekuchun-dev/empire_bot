@@ -6,3 +6,6 @@ class AdminEmojiStates(StatesGroup):
 class AdminMemeStates(StatesGroup):
     waiting_for_text = State()
     waiting_for_sticker = State()
+
+class AdminImportStates(StatesGroup):
+    waiting_for_import_file = State()

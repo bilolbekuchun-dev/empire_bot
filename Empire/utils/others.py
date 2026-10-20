@@ -1141,10 +1141,11 @@ async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
     logger.info(f"Money giveaway callback data: {call.data}, parts: {parts}")
 
     if len(parts) >= 4:
-        giveaway_id = parts[2]
+        # Format: money-giveaway_{giveaway_id}_{remaining}_{per_person}
+        giveaway_id = parts[1]
         try:
-            remaining = int(parts[3])
-            per_person = int(parts[4] if len(parts) > 4 else 1)
+            remaining = int(parts[2])
+            per_person = int(parts[3] if len(parts) > 3 else 1)
         except ValueError:
             remaining = 10
             per_person = 1
@@ -1229,13 +1230,19 @@ async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
         logger.info(f"Collected users count: {collected_count}")
 
         # Jami summani olish
-        total_amount = giveaway_data.get("total_amount", total) if giveaway_data else total
+        total_amount = giveaway_data.get("total_amount") if giveaway_data else None
+        if total_amount is None:
+            try:
+                total_amount = remaining + reward
+            except Exception:
+                total_amount = remaining
 
         if new_remaining >= per_person:
             kb = InlineKeyboardBuilder()
             kb.button(text="🎁 Qatnashish", callback_data=f"money-giveaway_{giveaway_id}_{new_remaining}_{per_person}")
             if call.message:
                 try:
+                    d_disp = get_dollar_display()
                     # Xabarni ham yangilash
                     new_msg = (
                         f"💵 <b>Money Giveaway!</b>\n\n"

@@ -37,7 +37,10 @@ async def admin_emoji_main_menu() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="🚫 Banlanganlar", callback_data="adm_blocked_list_0")
     )
     builder.row(
-        InlineKeyboardButton(text="🔴 🚨 BARCHA EMOJILARNI TOZALASH 🚨 🔴", callback_data="adm_emj_reset_ask")
+        InlineKeyboardButton(text="💾 Baza ko'chirish", callback_data="adm_db_migration")
+    )
+    builder.row(
+        InlineKeyboardButton(text="� 🚨 BARCHA EMOJILARNI TOZALASH 🚨 🔴", callback_data="adm_emj_reset_ask")
     )
     return builder.as_markup()
 
@@ -273,6 +276,18 @@ def blocked_list_keyboard(page: int = 0, total_pages: int = 1) -> InlineKeyboard
         builder.row(*nav_buttons)
     builder.row(
         InlineKeyboardButton(text="❌ Yopish", callback_data="adm_close"),
+        InlineKeyboardButton(text="🔙 Admin panel", callback_data="adm_emj_main")
+    )
+    return builder.as_markup()
+
+def admin_db_migration_menu() -> InlineKeyboardMarkup:
+    """Baza ko'chirish menyusi"""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="📤 Eksport (Backup)", callback_data="adm_export_data"),
+        InlineKeyboardButton(text="📥 Import (Restore)", callback_data="adm_import_data")
+    )
+    builder.row(
         InlineKeyboardButton(text="🔙 Admin panel", callback_data="adm_emj_main")
     )
     return builder.as_markup()

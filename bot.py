@@ -164,6 +164,12 @@ async def main():
         app.router.add_post("/exchange/credit", _credit)
         app.router.add_get("/exchange/ping", _ping)
 
+
+        # Stats bridge ni app ga qo'shish
+        app["bot"] = bot
+        app.router.add_post("/exchange/credit", _credit)
+        app.router.add_get("/exchange/ping", _ping)
+
         runner = web.AppRunner(app)
         await runner.setup()
         site = web.TCPSite(runner, host=WEBAPP_HOST, port=int(os.getenv("PORT", "8002")))

@@ -95,31 +95,40 @@ async def batch_add_collected_users(giveaway_id: int, user_ids: list):
         pass
 
 
-async def queue_collected_user(giveaway_id: int, user_id: int):
-    """Queue user for batch write to Redis."""
+async def queue_collected_user(giveaway_id, user_id):
+    """Queue user for batch write to Redis (deadlock-free)."""
+    giveaway_id = str(giveaway_id)
+    need_flush = False
+    need_schedule = False
     lock = _buffer_locks[giveaway_id]
     async with lock:
         _collected_buffers[giveaway_id].append(user_id)
-        
-        # Flush if buffer size reached
         if len(_collected_buffers[giveaway_id]) >= _BATCH_SIZE:
-            await _flush_collected_buffer(giveaway_id)
+            need_flush = True
         else:
-            # Schedule delayed flush if not already scheduled
-            if giveaway_id not in _flush_tasks or _flush_tasks[giveaway_id].done():
-                _flush_tasks[giveaway_id] = asyncio.create_task(
-                    _delayed_flush_collected(giveaway_id)
-                )
+            t = _flush_tasks.get(("c", giveaway_id))
+            if t is None or t.done():
+                need_schedule = True
+    if need_flush:
+        await _flush_collected_buffer(giveaway_id)
+    elif need_schedule:
+        _flush_tasks[("c", giveaway_id)] = asyncio.create_task(_delayed_flush_collected(giveaway_id))
 
 
-async def _delayed_flush_collected(giveaway_id: int):
+
+
+async def _delayed_flush_collected(giveaway_id):
     """Flush buffer after timeout."""
     await asyncio.sleep(_BATCH_TIMEOUT)
-    await _flush_collected_buffer(giveaway_id)
+    try:
+        await _flush_collected_buffer(giveaway_id)
+    finally:
+        _flush_tasks.pop(("c", str(giveaway_id)), None)
 
 
-async def _flush_collected_buffer(giveaway_id: int):
+async def _flush_collected_buffer(giveaway_id):
     """Flush collected users buffer to Redis."""
+    giveaway_id = str(giveaway_id)
     lock = _buffer_locks[giveaway_id]
     async with lock:
         if not _collected_buffers[giveaway_id]:
@@ -135,14 +144,17 @@ async def _flush_collected_buffer(giveaway_id: int):
 async def is_collected_user(giveaway_id: int, user_id: int) -> bool:
     """Check if a user has already collected from this giveaway (checks both buffer and Redis)."""
     # First check in-memory buffer (for recent claims not yet flushed)
-    lock = _buffer_locks[giveaway_id]
-    async with lock:
-        if user_id in _collected_buffers[giveaway_id]:
+    try:
+        buf = _collected_buffers.get(str(giveaway_id), [])
+        if user_id in buf or str(user_id) in buf:
             return True
+    except Exception:
+        pass
     
     # Then check Redis
     try:
-        return await redis_client.sismember(_collected_set_key(giveaway_id), str(user_id))
+        res = await redis_client.sismember(_collected_set_key(giveaway_id), str(user_id))
+        return bool(res)
     except Exception:
         return False
 
@@ -187,31 +199,40 @@ async def batch_add_winner_details(giveaway_id: int, winners: list):
         pass
 
 
-async def queue_winner_detail(giveaway_id: int, user_id: int, full_name: str, reward: int):
-    """Queue winner detail for batch write to Redis."""
+async def queue_winner_detail(giveaway_id, user_id, full_name, reward):
+    """Queue winner detail for batch write to Redis (deadlock-free)."""
+    giveaway_id = str(giveaway_id)
+    need_flush = False
+    need_schedule = False
     lock = _buffer_locks[giveaway_id]
     async with lock:
         _winner_buffers[giveaway_id].append((user_id, full_name, reward))
-        
-        # Flush if buffer size reached
         if len(_winner_buffers[giveaway_id]) >= _BATCH_SIZE:
-            await _flush_winner_buffer(giveaway_id)
+            need_flush = True
         else:
-            # Schedule delayed flush if not already scheduled
-            if giveaway_id not in _flush_tasks or _flush_tasks[giveaway_id].done():
-                _flush_tasks[giveaway_id] = asyncio.create_task(
-                    _delayed_flush_winner(giveaway_id)
-                )
+            t = _flush_tasks.get(("w", giveaway_id))
+            if t is None or t.done():
+                need_schedule = True
+    if need_flush:
+        await _flush_winner_buffer(giveaway_id)
+    elif need_schedule:
+        _flush_tasks[("w", giveaway_id)] = asyncio.create_task(_delayed_flush_winner(giveaway_id))
 
 
-async def _delayed_flush_winner(giveaway_id: int):
+
+
+async def _delayed_flush_winner(giveaway_id):
     """Flush buffer after timeout."""
     await asyncio.sleep(_BATCH_TIMEOUT)
-    await _flush_winner_buffer(giveaway_id)
+    try:
+        await _flush_winner_buffer(giveaway_id)
+    finally:
+        _flush_tasks.pop(("w", str(giveaway_id)), None)
 
 
-async def _flush_winner_buffer(giveaway_id: int):
+async def _flush_winner_buffer(giveaway_id):
     """Flush winner details buffer to Redis."""
+    giveaway_id = str(giveaway_id)
     lock = _buffer_locks[giveaway_id]
     async with lock:
         if not _winner_buffers[giveaway_id]:

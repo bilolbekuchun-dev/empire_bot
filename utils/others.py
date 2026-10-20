@@ -914,10 +914,26 @@ async def start_giveaway_channel(message: Message, bot: Bot):
         logging.warning(f"start_giveaway_channel failed: {e}")
 
 async def giveaway_callback_channel(call: CallbackQuery, bot: Bot):
-    await _handle_interactive_giveaway_callback(call, bot, is_channel=True)
+    try:
+        await _handle_interactive_giveaway_callback(call, bot, is_channel=True)
+    except Exception as e:
+        import logging
+        logging.exception(f"channel-giveaway callback xatolik: {e}")
+        try:
+            await call.answer("❌ Xatolik yuz berdi! Iltimos, qayta urinib ko'ring.", show_alert=True)
+        except Exception:
+            pass
 
 async def giveaway_callback_redis(call: CallbackQuery, bot: Bot):
-    await _handle_interactive_giveaway_callback(call, bot, is_channel=False)
+    try:
+        await _handle_interactive_giveaway_callback(call, bot, is_channel=False)
+    except Exception as e:
+        import logging
+        logging.exception(f"giveaway callback xatolik: {e}")
+        try:
+            await call.answer("❌ Xatolik yuz berdi! Iltimos, qayta urinib ko'ring.", show_alert=True)
+        except Exception:
+            pass
 
 async def _handle_interactive_giveaway_callback(call: CallbackQuery, bot: Bot, is_channel: bool = False):
     from models.user import User, Profile
@@ -1208,16 +1224,19 @@ async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
     logger.info(f"Money giveaway callback data: {call.data}, parts: {parts}")
 
     if len(parts) >= 4:
-        giveaway_id = parts[2]
+        # Format: money-giveaway_{giveaway_id}_{remaining}_{per_person}
+        giveaway_id = parts[1]
         try:
-            remaining = int(parts[3])
-            per_person = int(parts[4] if len(parts) > 4 else 1)
+            remaining = int(parts[2])
+            per_person = int(parts[3])
         except ValueError:
             remaining = 10
             per_person = 1
     else:
         giveaway_id = str(call.message.message_id if call.message else 0)
         remaining = 10
+        per_person = 1
+    if per_person < 1:
         per_person = 1
 
     user_id = call.from_user.id
@@ -1299,7 +1318,12 @@ async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
         logger.info(f"Collected users count: {collected_count}")
 
         # Jami summani olish
-        total_amount = giveaway_data.get("total_amount", total) if giveaway_data else total
+        total_amount = giveaway_data.get("total_amount") if giveaway_data else None
+        if total_amount is None:
+            try:
+                total_amount = remaining + reward
+            except Exception:
+                total_amount = remaining
 
         if new_remaining >= per_person:
             kb = InlineKeyboardBuilder()
@@ -1308,6 +1332,7 @@ async def money_giveaway_callback(call: CallbackQuery, bot: Bot):
                 try:
                     # Xabarni ham yangilash - olganlar ro'yxati bilan
                     winners = await get_winner_details(giveaway_id)
+                    d_disp = get_dollar_display()
                     winner_lines = [f"{i+1}) {_winner_mention_html(w[0], w[1])} {w[2]}{d_disp}" for i, w in enumerate(winners)]
                     
                     # Xabarni bo'lish uchun header

@@ -97,6 +97,7 @@ NIGHT_STRINGS = {
         "aygoqchi_res": "🦇 Ayg'oqchi: {name} → {role}",
         "konchi_kill_reason": "Kon tuzog'iga tushdi.",
         "konchi_win": "⛏ Kon {no}: {count} 💎 qazib oldingiz!",
+        "konchi_money": "⛏ Kon {no}: 💰 {amount}$ qazib oldingiz!",
         "day_vote_prompt": "Kimga ovoz berasiz?",
         "day_no_vote": "Bugun hech kim osilmadi.",
         "day_tie_vote": "Ovozlar teng bo'ldi — bugun hech kim osilmadi.",
@@ -132,6 +133,7 @@ NIGHT_STRINGS = {
         "aygoqchi_res": "🦇 Шпион: {name} → <b>{role}</b>",
         "konchi_kill_reason": "Попал в ловушку в шахте.",
         "konchi_win": "⛏ Шахта {no}: вы добыли {count} 💎!",
+        "konchi_money": "⛏ Шахта {no}: вы добыли 💰 {amount}$!",
         "day_vote_prompt": "<b>День</b> — кого повесим?",
         "day_no_vote": "Сегодня никто не был повешен.",
         "day_tie_vote": "Голоса разделились поровну — никто не повешен.",
@@ -166,6 +168,7 @@ NIGHT_STRINGS = {
         "aygoqchi_res": "🦇 Spy: {name} → <b>{role}</b>",
         "konchi_kill_reason": "Fell into a mine trap.",
         "konchi_win": "⛏ Mine {no}: You mined {count} 💎!",
+        "konchi_money": "⛏ Mine {no}: You mined 💰 {amount}$!",
         "day_vote_prompt": "<b>Day</b> — Who shall we lynch?",
         "day_no_vote": "No one was lynched today.",
         "day_tie_vote": "Tie vote — no one was lynched today.",
@@ -200,6 +203,7 @@ NIGHT_STRINGS = {
         "aygoqchi_res": "🦇 Ajan: {name} → <b>{role}</b>",
         "konchi_kill_reason": "Maden tuzağına düştü.",
         "konchi_win": "⛏ Maden {no}: {count} 💎 çıkardınız!",
+        "konchi_money": "⛏ Maden {no}: 💰 {amount}$ çıkardınız!",
         "day_vote_prompt": "<b>Gündüz</b> — Kimi asıyoruz?",
         "day_no_vote": "Bugün kimse asılmadı.",
         "day_tie_vote": "Oylar eşit — bugün kimse asılmadı.",
@@ -234,6 +238,7 @@ NIGHT_STRINGS = {
         "aygoqchi_res": "🦇 Тыңшы: {name} → <b>{role}</b>",
         "konchi_kill_reason": "Шахта тұзағына түсті.",
         "konchi_win": "⛏ Шахта {no}: {count} 💎 қазып алдыңыз!",
+        "konchi_money": "⛏ Шахта {no}: 💰 {amount}$ қазып алдыңыз!",
         "day_vote_prompt": "Кімге дауыс бересіз?",
         "day_no_vote": "Бүгін ешкім асылған жоқ.",
         "day_tie_vote": "Дауыстар тең түсті — бүгін ешкім асылған жоқ.",
@@ -725,8 +730,8 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
             if t_user:
                 t_prof = await Profile.filter(user=t_user).first()
                 if t_prof:
-                    # Yoki pul (85%) YOKI 1 olmos (15%)
-                    if random.random() < 0.15:
+                    # Yoki pul (95%) YOKI 1 olmos (5%)
+                    if random.random() < 0.05:
                         t_prof.diamond += 1
                         await t_prof.save()
                         msg = "🧞 <b>Jin sizga 💎 1 olmos in'om etdi!</b>"
@@ -1002,8 +1007,34 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
             continue
         if random.random() < 0.25:
             await _kill(game_id, actor_uid, by_uid, bot, chat, names, reason=get_msg(actor_uid, "konchi_kill_reason"))
+        elif random.random() < 0.03:
+            # Olmos topish ehtimoli 3%
+            mined_diamonds = random.choice([1, 2, 3])
+            try:
+                from models.user import User, Profile
+                u = await User.filter(user_id=actor_uid).first()
+                if u:
+                    prof = await Profile.filter(user=u).first()
+                    if prof:
+                        prof.diamond += mined_diamonds
+                        await prof.save()
+            except Exception:
+                pass
+            await _send_private(bot, actor_uid, get_msg(actor_uid, "konchi_win", no=kon_no, count=mined_diamonds))
         else:
-            await _send_private(bot, actor_uid, get_msg(actor_uid, "konchi_win", no=kon_no, count=random.choice([1, 2, 3])))
+            # Qolgan hollarda konchi konlardan dollar qazib oladi
+            mined_money = random.randint(10, 100)
+            try:
+                from models.user import User, Profile
+                u = await User.filter(user_id=actor_uid).first()
+                if u:
+                    prof = await Profile.filter(user=u).first()
+                    if prof:
+                        prof.money += mined_money
+                        await prof.save()
+            except Exception:
+                pass
+            await _send_private(bot, actor_uid, get_msg(actor_uid, "konchi_money", no=kon_no, amount=mined_money))
 
     # --- Qaroqchi ---
     for actor_uid, tgt in qaroqchi:

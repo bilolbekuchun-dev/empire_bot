@@ -655,16 +655,75 @@ async def _send_player_end_game_profile_dm(bot: Bot, uid: int, is_winner: bool, 
         print(f"End game profile DM error for {uid}: {e}")
 
 
-async def cleanup_game_redis(game_id: str):
+async def _persist_finished_game_row(game_id: str):
+    """Tugagan o'yinni yengil `Game` qatori sifatida DB ga saqlaydi.
+
+    Redis rejimda o'yinlar faqat Redisda yashaydi, shuning uchun
+    `/stats` dagi "Jami o'yinlar" (``Game.count()``) o'smay qolgan edi.
+    Bu yerda 1 tugagan o'yin = 1 ta yengil ``Game`` qatori yoziladi
+    (``GamePlayer`` yozilmaydi — global statistikaga kerak emas).
+
+    Idempotent: Redis ``SET NX`` bayrog'i tufayli cleanup qayta
+    chaqirilsa dublikat qator yaratilmaydi. Faqat ``phase == "end"``
+    (to'liq tugagan) o'yinlar sanaladi — timeout/tozalash emas.
+    """
+    try:
+        state = await game_repo.load_game(game_id)
+    except Exception:
+        state = None
+    if not state or getattr(state, "phase", None) != "end":
+        return
+
+    flag_key = f"game:{game_id}:stats_row_saved"
+    try:
+        from utils.database import redis_client as _r
+        acquired = await _r.set(flag_key, "1", nx=True, ex=_ENDED_TTL)
+        if not acquired:
+            return  # allaqachon yozilgan
+    except Exception:
+        # Redis flagsi ishlamasa — dublikatdan qo'rqib, statistikani
+        # buzmaslik uchun xavfsiz tomonda qolamiz.
+        return
+
+    from models.game_data import Chat, Game
+    from models.user import User
+    try:
+        chat = await Chat.filter(chat_id=state.chat_id).first()
+        creator = await User.filter(user_id=state.creator_id).first()
+        if not chat or not creator:
+            return
+        await Game.create(
+            chat=chat,
+            creator=creator,
+            is_active=False,
+            mode=(state.mode or "classic")[:20],
+            phase="end",
+            message_id=state.message_id or 0,
+        )
+    except Exception as e:
+        print(f"Finished game DB save error ({game_id}): {e}")
+        try:
+            await _r.delete(flag_key)  # yozuv yiqildi — keyingi safar qayta urinish
+        except Exception:
+            pass
+
+
+async def cleanup_game_redis(game_id: str, save_to_db: bool = True):
     """
     O'yin tugagandan keyin tozalash.
-    
+
     Args:
         game_id: O'yin ID
+        save_to_db: True bo'lsa (default) tugagan o'yinni yengil
+            ``Game`` qatori sifatida DB ga yozadi — /stats hisobi uchun.
     """
     # Remove from active indexes first (idempotent), so a partially-failed
     # cleanup below can never leave the game stuck in the active list.
     await _clear_active_indexes(game_id)
+
+    # Statistika uchun yengil DB qatori (faqat to'liq tugagan o'yinlar)
+    if save_to_db:
+        await _persist_finished_game_row(game_id)
 
     # Mark all players as dead
     from utils.redis_game.repositories.player_repository import player_repository as player_repo

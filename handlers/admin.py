@@ -4,6 +4,7 @@ from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, FSInputFile
 from aiogram.fsm.context import FSMContext
 from utils import admins, statistika
+from utils.data_export_import import export_all_data, import_all_data
 from utils.premium_emojis import (
     get_active_tinch, get_active_mafia, get_active_yakka, get_all_active_roles,
     WEAPON_NAMES, CURRENCY_NAMES,
@@ -12,12 +13,13 @@ from utils.premium_emojis import (
     get_diamond_display, get_dollar_display,
     sync_emojis_from_db, _load_config
 )
-from states.admin_states import AdminEmojiStates, AdminMemeStates
+from states.admin_states import AdminEmojiStates, AdminMemeStates, AdminImportStates
 from keyboards.admin_keyboard import (
     admin_emoji_main_menu, admin_emoji_roles_categories_menu,
     admin_emoji_roles_list_menu, admin_emoji_weapons_list_menu,
     admin_emoji_item_actions_menu, admin_back_btn,
-    admin_emoji_reset_confirm_menu, admin_meme_menu
+    admin_emoji_reset_confirm_menu, admin_meme_menu,
+    admin_db_migration_menu
 )
 from config import ADMINS, PRIMARY_ADMIN_ID, PRIMARY_ADMIN_IDS
 
@@ -315,52 +317,6 @@ async def adm_emj_set_item_cb(call: CallbackQuery, state: FSMContext):
     await call.message.edit_text(text, parse_mode="HTML", reply_markup=admin_back_btn("adm_emj_main"))
     await call.answer()
 
-@router.message(AdminEmojiStates.waiting_for_emoji, F.chat.type == "private")
-async def process_emoji_input_msg(message: Message, state: FSMContext):
-    if not await is_primary_admin(message.from_user.id):
-        return
-    emoji_html = parse_emoji_from_message(message)
-    if not emoji_html:
-        await message.answer("❌ Emojini aniqlab bo'lmadi. Iltimos, qayta yuboring:")
-        return
-
-    data = await state.get_data()
-    category = data.get("category")
-    raw_key = data.get("raw_key")
-    target_name = data.get("target_name")
-    await state.clear()
-
-    real_key = None
-    if category == "roles":
-        idx = int(raw_key)
-        all_roles = get_all_active_roles()
-        real_key = all_roles[idx]
-        set_custom_emoji("roles", real_key, emoji_html)
-    elif category == "weapons":
-        set_custom_emoji("weapons", raw_key, emoji_html)
-    elif category == "currency":
-        set_custom_emoji("currency", raw_key, emoji_html)
-
-    # DARHOL (0-soniyada) PostgreSQL bazaga ham saqlash
-    try:
-        from models.game_set import CustomEmojiConfig
-        target_k = real_key if category == "roles" else raw_key
-        await CustomEmojiConfig.update_or_create(
-            category=category,
-            key=target_k,
-            defaults={"emoji_html": emoji_html}
-        )
-    except Exception as db_err:
-        print(f"Error auto-saving emoji to DB: {db_err}")
-
-    await message.answer(
-        f"✅ <b>{target_name}</b> uchun premium emoji muvaffaqiyatli saqlandi!\n\n"
-        f"• Ko'rinishi: {emoji_html}\n"
-        f"• Saqlangan teg: <code>{emoji_html}</code>",
-        parse_mode="HTML",
-        reply_markup=admin_back_btn("adm_emj_main")
-    )
-
 # ==========================================
 # 🗑 BARCHA EMOJILARNI TOZALASH
 # ==========================================
@@ -422,6 +378,169 @@ async def adm_emj_load_from_db_cb(call: CallbackQuery):
         await call.message.edit_text(text, parse_mode="HTML", reply_markup=await admin_emoji_main_menu())
     except Exception as e:
         await call.answer(f"❌ Tiklashda xatolik: {str(e)}", show_alert=True)
+
+# ==========================================
+# � BAZA KO'CHIRISH
+# ==========================================
+
+@router.callback_query(F.data == "adm_db_migration")
+async def adm_db_migration_cb(call: CallbackQuery):
+    if not await is_primary_admin(call.from_user.id):
+        return
+    
+    text = (
+        "💾 <b>Baza Ko'chirish</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━\n"
+        "Bu bo'limdan bot ma'lumotlarini boshqa serverga ko'chirishingiz mumkin.\n\n"
+        "📤 <b>Eksport:</b> Barcha ma'lumotlarni ZIP faylga yig'di va yuboradi\n"
+        "📥 <b>Import:</b> ZIP fayldan ma'lumotlarni tiklaydi (UPDATE/INSERT)"
+    )
+    await call.message.edit_text(text, parse_mode="HTML", reply_markup=admin_db_migration_menu())
+    await call.answer()
+
+# ==========================================
+# � EKSPORT / IMPORT DATA
+# ==========================================
+
+@router.callback_query(F.data == "adm_export_data")
+async def adm_export_data_cb(call: CallbackQuery, bot: Bot):
+    if not await is_primary_admin(call.from_user.id):
+        return
+    
+    try:
+        await call.answer("⏳ Ma'lumotlar eksport qilinmoqda...", show_alert=True)
+        
+        # Eksport jarayoni
+        zip_path = await export_all_data()
+        
+        # Faylni yuborish
+        await bot.send_document(
+            chat_id=call.from_user.id,
+            document=FSInputFile(zip_path),
+            caption=f"✅ <b>Bot ma'lumotlari muvaffaqiyatli eksport qilindi!</b>\n\n"
+                    f"📁 Fayl: {os.path.basename(zip_path)}\n"
+                    f"📅 Vaqt: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                    f"<i>Ushbu faylni yangi serverda import qilish uchun saqlab qo'ying.</i>",
+            parse_mode="HTML"
+        )
+        
+        # Eksport tugaganidan keyin faylni o'chirish (ixtiyoriy)
+        # os.remove(zip_path)
+        
+    except Exception as e:
+        await bot.send_message(
+            chat_id=call.from_user.id,
+            text=f"❌ <b>Eksport xatolik:</b> {str(e)}",
+            parse_mode="HTML"
+        )
+
+
+@router.callback_query(F.data == "adm_import_data")
+async def adm_import_data_cb(call: CallbackQuery, state: FSMContext):
+    if not await is_primary_admin(call.from_user.id):
+        return
+    
+    await state.set_state(AdminImportStates.waiting_for_import_file)
+    
+    text = (
+        "📥 <b>Ma'lumotlarni Import qilish</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━\n"
+        "ℹ️ Import qilish hozirgi ma'lumotlarni o'chirmaydi, "
+        "faqat yangilaydi (UPDATE) va yangi ma'lumotlarni qo'shadi (INSERT).\n\n"
+        "Eksport qilingan <b>.zip</b> faylni yuboring:"
+    )
+    await call.message.edit_text(text, parse_mode="HTML", reply_markup=admin_back_btn("adm_db_migration"))
+    await call.answer()
+
+
+@router.message(AdminImportStates.waiting_for_import_file, F.chat.type == "private")
+async def process_import_data_msg(message: Message, state: FSMContext, bot: Bot):
+    if not await is_primary_admin(message.from_user.id):
+        return
+    
+    await state.clear()
+    
+    if not message.document:
+        await message.answer("❌ Iltimos, .zip faylni yuboring.")
+        return
+    
+    try:
+        # Faylni yuklab olish
+        file_info = await bot.get_file(message.document.file_id)
+        downloaded_file = await bot.download_file(file_info.file_path)
+        
+        # Vaqtinchalik faylga saqlash
+        temp_zip_path = f"temp_import_{message.document.file_name}"
+        with open(temp_zip_path, 'wb') as f:
+            f.write(downloaded_file.read())
+        
+        await message.answer("⏳ Ma'lumotlar import qilinmoqda...")
+        
+        # Import jarayoni
+        await import_all_data(temp_zip_path)
+        
+        # Vaqtinchalik faylni o'chirish
+        os.remove(temp_zip_path)
+        
+        await message.answer(
+            "✅ <b>Ma'lumotlar muvaffaqiyatli import qilindi!</b>\n\n"
+            "Bot yangi serverda davom etishi uchun botni qayta ishga tushiring.",
+            parse_mode="HTML",
+            reply_markup=admin_back_btn("adm_db_migration")
+        )
+        
+    except Exception as e:
+        await message.answer(
+            f"❌ <b>Import xatolik:</b> {str(e)}",
+            parse_mode="HTML"
+        )
+
+
+@router.message(AdminEmojiStates.waiting_for_emoji, F.chat.type == "private")
+async def process_emoji_input_msg(message: Message, state: FSMContext):
+    if not await is_primary_admin(message.from_user.id):
+        return
+    emoji_html = parse_emoji_from_message(message)
+    if not emoji_html:
+        await message.answer("❌ Emojini aniqlab bo'lmadi. Iltimos, qayta yuboring:")
+        return
+
+    data = await state.get_data()
+    category = data.get("category")
+    raw_key = data.get("raw_key")
+    target_name = data.get("target_name")
+    await state.clear()
+
+    real_key = None
+    if category == "roles":
+        idx = int(raw_key)
+        all_roles = get_all_active_roles()
+        real_key = all_roles[idx]
+        set_custom_emoji("roles", real_key, emoji_html)
+    elif category == "weapons":
+        set_custom_emoji("weapons", raw_key, emoji_html)
+    elif category == "currency":
+        set_custom_emoji("currency", raw_key, emoji_html)
+
+    # DARHOL (0-soniyada) PostgreSQL bazaga ham saqlash
+    try:
+        from models.game_set import CustomEmojiConfig
+        target_k = real_key if category == "roles" else raw_key
+        await CustomEmojiConfig.update_or_create(
+            category=category,
+            key=target_k,
+            defaults={"emoji_html": emoji_html}
+        )
+    except Exception as db_err:
+        print(f"Error auto-saving emoji to DB: {db_err}")
+
+    await message.answer(
+        f"✅ <b>{target_name}</b> uchun premium emoji muvaffaqiyatli saqlandi!\n\n"
+        f"• Ko'rinishi: {emoji_html}\n"
+        f"• Saqlangan teg: <code>{emoji_html}</code>",
+        parse_mode="HTML",
+        reply_markup=admin_back_btn("adm_emj_main")
+    )
 
 # ==========================================
 # ⚡️ STANDART BUYRUQLAR (PRESERVED)

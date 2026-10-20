@@ -25,6 +25,13 @@ async def bozor_statistikasi(message: Message):
     total_chats = await Chat.all().count()
     total_games_count = await Game.all().count()
     total_active_games_count = await Game.filter(is_active=True).count()
+    # Redis rejimdagi faol o'yinlar DB ga yozilmaydi — global setdan qo'shamiz
+    # (legacy rejimda global set bo'sh bo'ladi, ya'ni faqat DB hisobi qoladi)
+    try:
+        from utils.database import redis_client as _redis
+        total_active_games_count += int(await _redis.scard("global:active_games") or 0)
+    except Exception:
+        pass
     total_users_count = await User.all().count()
 
     await message.answer(
@@ -999,58 +1006,110 @@ async def calculate_and_cache_global_stats(period: str = "today"):
     pass
 
 async def export_global_richest_to_excel(message, bot):
-    """Eng boy foydalanuvchilar ro'yxatini Excel fayliga eksport qiladi."""
+    """Global reyting: 6 varaqlik Excel (Dollar | Olmos | G'alaba | Paralar | O'g'illar | Qizlar)."""
     if message.from_user.id not in ADMINS:
         await message.answer("⚠️ Sizda bu komandadan foydalanish huquqi yo'q.")
         return
-    
+
     try:
         import pandas as pd
         from io import BytesIO
         from aiogram.types import BufferedInputFile
-        
-        # Eng boy foydalanuvchilarni olish (dollar bo'yicha)
-        profiles = await Profile.all().prefetch_related('user').order_by('-dollar').limit(100)
-        
-        data = []
-        for idx, profile in enumerate(profiles, start=1):
-            user = profile.user
-            data.append({
-                "Rank": idx,
-                "User ID": user.user_id,
-                "Full Name": user.full_name or "",
-                "Username": f"@{user.username}" if user.username else "",
-                "Dollar": profile.dollar,
-                "Diamond": profile.diamond,
-                "Games": profile.games_count,
-                "Wins": profile.wins
-            })
-        
-        # DataFrame yaratish
-        df = pd.DataFrame(data)
-        
-        # Excel fayliga yozish
+
+        progress = await message.answer("⏳ Global reyting tayyorlanmoqda...")
+
+        total_users = await User.all().count()
+        dollar_vals = await Profile.annotate(total=Sum("dollar")).values_list("total", flat=True)
+        diamond_vals = await Profile.annotate(total=Sum("diamond")).values_list("total", flat=True)
+        wins_vals = await Profile.annotate(total=Sum("wins")).values_list("total", flat=True)
+        coins_vals = await Profile.annotate(total=Sum("coins")).values_list("total", flat=True)
+        total_dollar = (dollar_vals[0] if dollar_vals else 0) or 0
+        total_diamond = (diamond_vals[0] if diamond_vals else 0) or 0
+        total_wins = (wins_vals[0] if wins_vals else 0) or 0
+        total_coins = (coins_vals[0] if coins_vals else 0) or 0
+        vip_count = await VipUser.all().count()
+        boys_count = await User.filter(gender="m").count()
+        girls_count = await User.filter(gender="f").count()
+
+        vip_ids = set(await VipUser.all().values_list("user_id", flat=True))
+
+        def rows(profiles, value_field):
+            out = []
+            for idx, p in enumerate(profiles, start=1):
+                u = getattr(p, "user", None)
+                if not u:
+                    continue
+                out.append({
+                    "№": idx,
+                    "User ID": u.user_id,
+                    "Ism": u.full_name or "",
+                    "Username": f"@{u.username}" if getattr(u, "username", None) else "",
+                    "Jins": "👦" if getattr(u, "gender", None) == "m" else ("👧" if getattr(u, "gender", None) == "f" else ""),
+                    "VIP": "⭐" if (u.user_id in vip_ids) else "",
+                    "Qiymat": getattr(p, value_field, 0) or 0,
+                    "💵 Dollar": p.dollar or 0,
+                    "💎 Olmos": p.diamond or 0,
+                    "🏆 G'alaba": p.wins or 0,
+                    "💍 Para": p.coins or 0,
+                })
+            return out
+
+        dollar_top = await Profile.all().select_related("user").order_by("-dollar").limit(1000)
+        diamond_top = await Profile.all().select_related("user").order_by("-diamond").limit(1000)
+        wins_top = await Profile.all().select_related("user").order_by("-wins").limit(1000)
+        coins_top = await Profile.all().select_related("user").order_by("-coins").limit(1000)
+        boys_top_qs = Profile.all().select_related("user").filter(user__gender="m").order_by("-dollar").limit(1000)
+        girls_top_qs = Profile.all().select_related("user").filter(user__gender="f").order_by("-dollar").limit(1000)
+        try:
+            boys_top = await boys_top_qs
+        except Exception:
+            boys_top = [p for p in dollar_top if getattr(getattr(p, "user", None), "gender", None) == "m"][:1000]
+        try:
+            girls_top = await girls_top_qs
+        except Exception:
+            girls_top = [p for p in dollar_top if getattr(getattr(p, "user", None), "gender", None) == "f"][:1000]
+
+        sheets = {
+            "Dollar": rows(dollar_top, "dollar"),
+            "Olmos": rows(diamond_top, "diamond"),
+            "G'alaba": rows(wins_top, "wins"),
+            "Paralar": rows(coins_top, "coins"),
+            "O'g'illar": rows(boys_top, "dollar"),
+            "Qizlar": rows(girls_top, "dollar"),
+        }
+
         output = BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name='Richest Users')
-        
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            for name, data in sheets.items():
+                pd.DataFrame(data).to_excel(writer, index=False, sheet_name=name)
         output.seek(0)
-        
-        # Faylni yuborish
-        file = BufferedInputFile(
-            output.read(),
-            filename=f"richest_users_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+
+        caption = (
+            "📊 Global Reyting Fayli\n\n"
+            f"👤 Jami foydalanuvchilar: {total_users:,}\n"
+            f"💵 Jami dollar: {total_dollar:,}$\n"
+            f"💎 Jami olmos: {total_diamond:,}\n"
+            f"🏆 Jami g'alaba: {total_wins:,}\n"
+            f"⭐️ VIP foydalanuvchilar: {vip_count:,}\n"
+            f"💍 Jami paralar: {total_coins:,}\n"
+            f"👦 O'g'il bollar: {boys_count:,}\n"
+            f"👧 Qiz bollar: {girls_count:,}\n\n"
+            "📋 6 ta varaq: Dollar | Olmos | G'alaba | Paralar | O'g'illar | Qizlar"
         )
-        
         await message.answer_document(
-            file,
-            caption=f"📊 Eng boy 100 foydalanuvchi ro'yxati\n\nJami: {len(profiles)} ta foydalanuvchi"
+            BufferedInputFile(output.read(), filename=f"global_boylar_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"),
+            caption=caption,
         )
-        
+        try:
+            await progress.delete()
+        except Exception:
+            pass
+
     except ImportError as e:
         print(f"Excel kutubxonalari o'rnatilmagan: {e}")
         await message.answer("⚠️ Xatolik yuz berdi.")
     except Exception as e:
         print(f"Excel eksport xatoligi: {e}")
         await message.answer("⚠️ Xatolik yuz berdi.")
+
 
