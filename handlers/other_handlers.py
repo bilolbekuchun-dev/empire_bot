@@ -180,6 +180,18 @@ async def f(call: CallbackQuery, bot: Bot):
 async def f(call: CallbackQuery, bot: Bot):
     await others.get_profile(bot, call.message)
 
+@router.callback_query(F.data == "profile")
+async def f(call: CallbackQuery, bot: Bot):
+    await others.get_profile(bot, call.message)
+
+@router.callback_query(F.data == "diamond_menu")
+async def f(call: CallbackQuery, bot: Bot):
+    await others.show_shop(call)
+
+@router.callback_query(F.data == "money_menu")
+async def f(call: CallbackQuery, bot: Bot):
+    await others.get_dollar_callback(call)
+
 @router.message(Command("gqotil"))
 @router.channel_post(Command("gqotil"))
 async def f(message: Message, bot: Bot):
