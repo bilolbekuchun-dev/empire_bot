@@ -17,7 +17,7 @@ async def bozor_statistikasi(message: Message):
     total_dollars_sum = await Profile.annotate(total=Sum("dollar")).values_list("total", flat=True)
     total_diamonds_sum = await Profile.annotate(total=Sum("diamond")).values_list("total", flat=True)
 
-    # annotate() qaytaradigan natija ham list bo‘ladi (odatda 1 ta element),
+    # annotate() qaytaradigan natija ham list bo'lishi mumkin (odatda 1 ta element),
     # shuning uchun birinchi elementni olish kerak
     total_dollars_sum = total_dollars_sum[0] or 0
     total_diamonds_sum = total_diamonds_sum[0] or 0
@@ -33,15 +33,41 @@ async def bozor_statistikasi(message: Message):
     except Exception:
         pass
     total_users_count = await User.all().count()
+    total_vip_count = await VipUser.all().count()
+
+    # Yangi foydalanuvchilar statistikasi
+    now = datetime.now()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start = today_start - timedelta(days=7)
+    month_start = today_start - timedelta(days=30)
+
+    new_users_today = await User.filter(created_at__gte=today_start).count()
+    new_users_week = await User.filter(created_at__gte=week_start).count()
+    new_users_month = await User.filter(created_at__gte=month_start).count()
+
+    # Transferlar statistikasi
+    total_transfers = await Transfers.all().count()
+    today_transfers = await Transfers.filter(created_at__gte=today_start).count()
 
     await message.answer(
-        f"<b>Umumiy statistikalar:</b>\n\n"
-        f"<b>💵 Jami dollar: {total_dollars_sum:,}$</b>\n"
-        f"<b>💎 Jami olmos: {total_diamonds_sum:,} ta</b>\n"
-        f"<b>🎮 Jami o'yinlar: {total_games_count:,} ta</b>\n"
-        f"<b>🎮 Faol o'yinlar: {total_active_games_count:,} ta</b>\n"
-        f"<b>👤 Jami foydalanuvchilar: {total_users_count:,} ta</b>\n"
-        f"<b>💬 Jami guruhlar: {total_chats:,} ta</b>",
+        f"<b>📊 Bot statistikasi:</b>\n\n"
+        f"<b>� Foydalanuvchilar:</b>\n"
+        f"   Jami: {total_users_count:,} ta\n"
+        f"   Bugun: +{new_users_today:,}\n"
+        f"   Hafta: +{new_users_week:,}\n"
+        f"   Oy: +{new_users_month:,}\n"
+        f"   VIP: {total_vip_count:,} ta\n\n"
+        f"<b>🎮 O'yinlar:</b>\n"
+        f"   Jami: {total_games_count:,} ta\n"
+        f"   Faol: {total_active_games_count:,} ta\n\n"
+        f"<b>� Guruhlar:</b>\n"
+        f"   Jami: {total_chats:,} ta\n\n"
+        f"<b>💰 Pul:</b>\n"
+        f"   Jami dollar: {total_dollars_sum:,}$\n"
+        f"   Jami olmos: {total_diamonds_sum:,} ta\n\n"
+        f"<b>🔄 Transferlar:</b>\n"
+        f"   Jami: {total_transfers:,} ta\n"
+        f"   Bugun: {today_transfers:,} ta",
         parse_mode="HTML"
     )
 

@@ -883,15 +883,7 @@
             const s = res.stats;
             const cards = [
                 [t("admin_stat_users"), fmt(s.total_users), "fa-users", "blue"],
-                [t("admin_stat_new_today"), fmt(s.new_users_today), "fa-user-plus", "green"],
-                [t("admin_stat_new_week"), fmt(s.new_users_week), "fa-calendar-week", "green"],
-                [t("admin_stat_new_month"), fmt(s.new_users_month), "fa-calendar-days", "green"],
-                [t("admin_stat_groups"), fmt(s.total_groups), "fa-people-group", "blue"],
                 [t("admin_stat_active_games"), fmt(s.active_games), "fa-gamepad", "green"],
-                [t("admin_stat_total_games"), fmt(s.total_games), "fa-trophy", "gold"],
-                [t("admin_stat_vip"), fmt(s.vip_count), "fa-crown", "purple"],
-                [t("admin_stat_total_dollar"), fmt(s.total_dollar), "fa-sack-dollar", "gold"],
-                [t("admin_stat_total_diamond"), fmt(s.total_diamond), "fa-gem", "blue"],
             ];
             box.innerHTML = cards.map(([label, val, icon, color]) => `
                 <div class="stat-card">

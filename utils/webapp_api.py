@@ -844,21 +844,13 @@ def setup_webapp_routes(app: web.Application, static_dir: str, bot=None):
             return web.json_response({"ok": False, "error": "admin_only"}, status=403)
 
         total_users = await User.all().count()
-        total_dollars = (await Profile.annotate(t=Sum("dollar")).values_list("t", flat=True))[0] or 0
-        total_diamonds = (await Profile.annotate(t=Sum("diamond")).values_list("t", flat=True))[0] or 0
-        total_games = await Game.all().count()
         active_games = await Game.filter(is_active=True).count()
-        total_vips = await VipUser.all().count()
 
         return web.json_response({
             "ok": True,
             "stats": {
-                "users": total_users,
-                "dollars": total_dollars,
-                "diamonds": total_diamonds,
-                "total_games": total_games,
+                "total_users": total_users,
                 "active_games": active_games,
-                "vips": total_vips,
             }
         })
 

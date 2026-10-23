@@ -192,6 +192,14 @@ async def f(call: CallbackQuery, bot: Bot):
 async def f(call: CallbackQuery, bot: Bot):
     await others.get_dollar_callback(call)
 
+@router.callback_query(F.data.startswith("buy_diamond_"))
+async def f(call: CallbackQuery, bot: Bot):
+    await others.buy_diamond_callback(call)
+
+@router.callback_query(F.data.startswith("buy_dollar_"))
+async def f(call: CallbackQuery, bot: Bot):
+    await others.buy_dollar_callback(call)
+
 @router.message(Command("gqotil"))
 @router.channel_post(Command("gqotil"))
 async def f(message: Message, bot: Bot):

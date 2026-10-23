@@ -2301,22 +2301,88 @@ async def show_diamond_menu(call: CallbackQuery):
     lang = clean_lang(user.lang if user else "uz")
 
     diamond_prices = {
-        "uz": "💎 <b>Olmos xarid qilish</b>\n\n⭐️ 70 Stars ➔ 💎 10 Olmos\n⭐️ 350 Stars ➔ 💎 50 Olmos\n⭐️ 700 Stars ➔ 💎 100 Olmos\n⭐️ 3500 Stars ➔ 💎 500 Olmos\n⭐️ 7000 Stars ➔ 💎 1000 Olmos\n\n💳 Karta orqali tolov uchun quyidagi tugmani bosing:",
-        "ru": "💎 <b>Купить алмазы</b>\n\n⭐️ 70 Stars ➔ 💎 10 Алмазов\n⭐️ 350 Stars ➔ 💎 50 Алмазов\n⭐️ 700 Stars ➔ 💎 100 Алмазов\n⭐️ 3500 Stars ➔ 💎 500 Алмазов\n⭐️ 7000 Stars ➔ 💎 1000 Алмазов\n\n💳 Для оплаты картой нажмите кнопку ниже:",
-        "en": "💎 <b>Buy Diamonds</b>\n\n⭐️ 70 Stars ➔ 💎 10 Diamonds\n⭐️ 350 Stars ➔ 💎 50 Diamonds\n⭐️ 700 Stars ➔ 💎 100 Diamonds\n⭐️ 3500 Stars ➔ 💎 500 Diamonds\n⭐️ 7000 Stars ➔ 💎 1000 Diamonds\n\n💳 For card payment click the button below:",
-        "tr": "💎 <b>Elmas Satın Al</b>\n\n⭐️ 70 Stars ➔ 💎 10 Elmas\n⭐️ 350 Stars ➔ 💎 50 Elmas\n⭐️ 700 Stars ➔ 💎 100 Elmas\n⭐️ 3500 Stars ➔ 💎 500 Elmas\n⭐️ 7000 Stars ➔ 💎 1000 Elmas\n\n💳 Kart ödemesi için aşağıdaki butona tıklayın:",
-        "kk": "💎 <b>Алмаз сатып алу</b>\n\n⭐️ 70 Stars ➔ 💎 10 Алмаз\n⭐️ 350 Stars ➔ 💎 50 Алмаз\n⭐️ 700 Stars ➔ 💎 100 Алмаз\n⭐️ 3500 Stars ➔ 💎 500 Алмаз\n⭐️ 7000 Stars ➔ 💎 1000 Алмаз\n\n💵 Карта төлемі үшін төмендегі батырманы басыңыз:"
+        "uz": "💎 <b>Olmos xarid qilish</b>",
+        "ru": "💎 <b>Купить алмазы</b>",
+        "en": "💎 <b>Buy Diamonds</b>",
+        "tr": "💎 <b>Elmas Satın Al</b>",
+        "kk": "💎 <b>Алмаз сатып алу</b>"
     }
 
     kb = InlineKeyboardBuilder()
+    kb.button(text="💎 10 - ⭐️ 70", callback_data="buy_diamond_10")
+    kb.button(text="💎 50 - ⭐️ 350", callback_data="buy_diamond_50")
+    kb.button(text="💎 100 - ⭐️ 700", callback_data="buy_diamond_100")
+    kb.button(text="💎 500 - ⭐️ 3500", callback_data="buy_diamond_500")
+    kb.button(text="💎 1000 - ⭐️ 7000", callback_data="buy_diamond_1000")
     kb.button(text="💳 Karta orqali tolov", url="tg://user?id=6913838682")
     kb.button(text="⬅️ Orqaga", callback_data="back_profile")
     kb.adjust(1)
 
     await call.message.edit_text(diamond_prices.get(lang, diamond_prices["uz"]), reply_markup=kb.as_markup(), parse_mode="HTML")
 
+async def buy_diamond_callback(call: CallbackQuery):
+    user_id = call.from_user.id
+    data = call.data or ""
+
+    star_map = {
+        "buy_diamond_10": (70, 10),
+        "buy_diamond_50": (350, 50),
+        "buy_diamond_100": (700, 100),
+        "buy_diamond_500": (3500, 500),
+        "buy_diamond_1000": (7000, 1000),
+    }
+
+    if data not in star_map:
+        await call.answer("❌ Noto'g'ri tanlov!", show_alert=True)
+        return
+
+    amount, diamonds = star_map[data]
+
+    from aiogram.types import LabeledPrice
+    prices = [LabeledPrice(label=f"{diamonds} ta Olmos (💎)", amount=amount)]
+    try:
+        await call.message.answer_invoice(
+            title="💎 Olmos xarid qilish",
+            description=f"{diamonds} ta Olmos (💎) Telegram Stars orqali",
+            payload=f"buy_diamonds_{diamonds}_{user_id}",
+            currency="XTR",
+            prices=prices
+        )
+        await call.answer("To'lov oynasi yuborildi! ⭐️")
+    except Exception as e:
+        print(f"send_invoice error: {e}")
+        await call.answer("Stars to'lovini yaratishda xatolik yuz berdi.", show_alert=True)
+
 async def buy_dollar_callback(call: CallbackQuery):
-    await call.answer("Dollar xarid qilish WebApp ilovasi orqali amalga oshiriladi.", show_alert=True)
+    user_id = call.from_user.id
+    data = call.data or ""
+
+    star_map = {
+        "buy_dollar_1000": (7, 1000),
+        "buy_dollar_10000": (70, 10000),
+        "buy_dollar_30000": (200, 30000),
+    }
+
+    if data not in star_map:
+        await call.answer("❌ Noto'g'ri tanlov!", show_alert=True)
+        return
+
+    amount, dollars = star_map[data]
+
+    from aiogram.types import LabeledPrice
+    prices = [LabeledPrice(label=f"{dollars} ta Dollar (💵)", amount=amount)]
+    try:
+        await call.message.answer_invoice(
+            title="💵 Dollar xarid qilish",
+            description=f"{dollars} ta Dollar (💵) Telegram Stars orqali",
+            payload=f"buy_dollars_{dollars}_{user_id}",
+            currency="XTR",
+            prices=prices
+        )
+        await call.answer("To'lov oynasi yuborildi! ⭐️")
+    except Exception as e:
+        print(f"send_invoice error: {e}")
+        await call.answer("Stars to'lovini yaratishda xatolik yuz berdi.", show_alert=True)
 
 async def get_dollar_callback(call: CallbackQuery):
     from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -2327,14 +2393,17 @@ async def get_dollar_callback(call: CallbackQuery):
     lang = clean_lang(user.lang if user else "uz")
 
     dollar_prices = {
-        "uz": "💵 <b>Dollar xarid qilish</b>\n\n⭐️ 1000 Stars ➔ 💵 1,000 Dollar\n⭐️ 10,000 Stars ➔ 💵 10,000 Dollar\n⭐️ 30,000 Stars ➔ 💵 30,000 Dollar\n\n💳 Karta orqali tolov uchun quyidagi tugmani bosing:",
-        "ru": "💵 <b>Купить доллары</b>\n\n⭐️ 1000 Stars ➔ 💵 1,000 Dollar\n⭐️ 10,000 Stars ➔ 💵 10,000 Dollar\n⭐️ 30,000 Stars ➔ 💵 30,000 Dollar\n\n💳 Для оплаты картой нажмите кнопку ниже:",
-        "en": "💵 <b>Buy Dollars</b>\n\n⭐️ 1000 Stars ➔ 💵 1,000 Dollar\n⭐️ 10,000 Stars ➔ 💵 10,000 Dollar\n⭐️ 30,000 Stars ➔ 💵 30,000 Dollar\n\n💳 For card payment click the button below:",
-        "tr": "💵 <b>Dolar Satın Al</b>\n\n⭐️ 1000 Stars ➔ 💵 1,000 Dollar\n⭐️ 10,000 Stars ➔ 💵 10,000 Dollar\n⭐️ 30,000 Stars ➔ 💵 30,000 Dollar\n\n💳 Kart ödemesi için aşağıdaki butona tıklayın:",
-        "kk": "💵 <b>Доллар сатып алу</b>\n\n⭐️ 1000 Stars ➔ 💵 1,000 Dollar\n⭐️ 10,000 Stars ➔ 💵 10,000 Dollar\n⭐️ 30,000 Stars ➔ 💵 30,000 Dollar\n\n💵 Карта төлемі үшін төмендегі батырманы басыңыз:"
+        "uz": "💵 <b>Dollar xarid qilish</b>",
+        "ru": "💵 <b>Купить доллары</b>",
+        "en": "💵 <b>Buy Dollars</b>",
+        "tr": "💵 <b>Dolar Satın Al</b>",
+        "kk": "💵 <b>Доллар сатып алу</b>"
     }
 
     kb = InlineKeyboardBuilder()
+    kb.button(text="💵 1,000 - ⭐️ 7", callback_data="buy_dollar_1000")
+    kb.button(text="💵 10,000 - ⭐️ 70", callback_data="buy_dollar_10000")
+    kb.button(text="💵 30,000 - ⭐️ 200", callback_data="buy_dollar_30000")
     kb.button(text="💳 Karta orqali tolov", url="tg://user?id=6913838682")
     kb.button(text="⬅️ Orqaga", callback_data="back_profile")
     kb.adjust(1)
@@ -3077,6 +3146,26 @@ async def success_payment_handler(message: Message):
             extra_info=f"📱 Manba: <b>WebApp</b>\n⭐ Stars: <b>{stars_paid}</b>\n💎 Olmos: <b>+{added_diamonds}</b>\n\n",
         )
 
+    elif payload.startswith("buy_diamonds_"):
+        # buy_diamonds_{count}_{uid}
+        try:
+            added_diamonds = int(payload.split("_")[2])
+        except Exception:
+            added_diamonds = stars_paid
+        profile.diamond += added_diamonds
+        await profile.save()
+        await message.answer(
+            f"🎉 <b>To'lov muvaffaqiyatli!</b>\n\n"
+            f"⭐ {stars_paid} Stars → 💎 {added_diamonds} olmos\n"
+            f"Jami: 💎 {profile.diamond} ta",
+            parse_mode="HTML"
+        )
+        await _send_support_notification(
+            bot=message.bot, user=user, profile=profile,
+            action_type="stars_buy",
+            extra_info=f"📱 Manba: <b>Bot</b>\n⭐ Stars: <b>{stars_paid}</b>\n💎 Olmos: <b>+{added_diamonds}</b>\n\n",
+        )
+
     elif payload.startswith("webapp_dollar_"):
         # webapp_dollar_{count}_{uid}
         try:
@@ -3096,6 +3185,27 @@ async def success_payment_handler(message: Message):
             bot=message.bot, user=user, profile=profile,
             action_type="stars_buy",
             extra_info=f"📱 Manba: <b>WebApp</b>\n⭐ Stars: <b>{stars_paid}</b>\n💵 Dollar: <b>+{added_dollars:,}</b>\n\n",
+        )
+
+    elif payload.startswith("buy_dollars_"):
+        # buy_dollars_{count}_{uid}
+        try:
+            added_dollars = int(payload.split("_")[2])
+        except Exception:
+            added_dollars = 0
+        if added_dollars > 0:
+            profile.dollar += added_dollars
+            await profile.save()
+        await message.answer(
+            f"🎉 <b>To'lov muvaffaqiyatli!</b>\n\n"
+            f"⭐ {stars_paid} Stars → 💵 {added_dollars:,}$\n"
+            f"Jami: 💵 {profile.dollar:,}$",
+            parse_mode="HTML"
+        )
+        await _send_support_notification(
+            bot=message.bot, user=user, profile=profile,
+            action_type="stars_buy",
+            extra_info=f"📱 Manba: <b>Bot</b>\n⭐ Stars: <b>{stars_paid}</b>\n💵 Dollar: <b>+{added_dollars:,}</b>\n\n",
         )
 
     elif payload.startswith("webapp_vip_"):
