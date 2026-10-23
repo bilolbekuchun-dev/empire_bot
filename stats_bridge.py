@@ -28,14 +28,69 @@ SECRET = os.getenv("EXCHANGE_SECRET", "").encode()
 STATS_URL = os.getenv("STATS_URL", "").rstrip("/")
 TS_WINDOW = 300
 DIAMOND_RATE = 1000          # 1 olmos = 1000 stats $
-DOLLAR_AMOUNTS = [100, 500, 1000, 2500, 5000, 10000]
-DIAMOND_AMOUNTS = [1, 3, 5, 10, 20, 50]
+DOLLAR_AMOUNTS = [100, 500, 1000, 5000]
+DIAMOND_AMOUNTS = [1, 3, 5, 10]
 
 # ⚙️ 1) O'z User modelingizni import qiling va maydon nomlarini yozing
 from models.user import User, Profile    # ← sizning modelingiz
 USER_ID_FIELD = "user_id"                # Telegram ID saqlanadigan maydon (yoki "id")
 DOLLAR_FIELD = "dollar"                  # ⚙️ 2) dollar maydoni (Profile modelida)
 DIAMOND_FIELD = "diamond"                # ⚙️ 3) olmos maydoni (Profile modelida)
+
+from config import INFO_GROUP
+from datetime import datetime
+import html as _html
+
+
+async def _notify_support_stats(bot, user, profile, direction: str, kind: str, qty: int, stats_dollars: int):
+    """Stats tranzaksiya haqida support guruhga habar yuborish.
+    
+    direction: "out" (yuborish) | "in" (qabul qilish)
+    kind: "usd" | "dia"
+    """
+    if not INFO_GROUP or not bot:
+        return
+    try:
+        now = datetime.now().strftime("%d.%m.%Y, %H:%M:%S")
+        safe_name = _html.escape(user.full_name or "Noma'lum")
+        username = f"@{user.username}" if getattr(user, "username", None) else "yo'q"
+        user_link = f'<a href="tg://user?id={user.user_id}">{safe_name}</a>'
+
+        if direction == "out":
+            title = "📤 Stats botga pul yuborildi!"
+            if kind == "dia":
+                detail = f"💎 Yuborilgan olmos: <b>{qty}</b>\n📊 Stats $: <b>{stats_dollars:,}</b>"
+            else:
+                detail = f"💵 Yuborilgan dollar: <b>{qty:,}</b>\n📊 Stats $: <b>{stats_dollars:,}</b>"
+        else:
+            title = "📥 Stats botdan pul qabul qilindi!"
+            detail = f"💵 Qabul qilingan: <b>{stats_dollars:,}$</b>"
+
+        text = (
+            f"<b>{title}</b>\n\n"
+            f"👤 Foydalanuvchi: {user_link}\n"
+            f"🆔 User ID: <code>{user.user_id}</code>\n"
+            f"📛 Username: {username}\n\n"
+            f"{detail}\n\n"
+            f"💰 <b>Balans:</b>\n"
+            f"     💎 Olmos: <b>{profile.diamond:,}</b>\n"
+            f"     💵 Money: <b>{profile.dollar:,}</b>\n\n"
+            f"🕐 Sana: <b>{now}</b>"
+        )
+
+        kb = InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="💥 Bankrot qilish", callback_data=f"support_bankrot_{user.user_id}"),
+            InlineKeyboardButton(text="🚫 Bloklash", callback_data=f"support_block_{user.user_id}"),
+        ]])
+
+        await bot.send_message(
+            chat_id=INFO_GROUP,
+            text=text,
+            reply_markup=kb,
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        log.warning(f"Stats support notification xatosi: {e}")
 
 
 class ExchangeTxn(Model):
@@ -108,6 +163,21 @@ async def _credit(request: web.Request):
         await request.app["bot"].send_message(uid, lbls["credit_received"].format(amount=amount), parse_mode="HTML")
     except Exception:
         pass
+
+    # Support guruhga habar yuborish (kiruvchi stats tranzaksiya)
+    try:
+        await _notify_support_stats(
+            bot=request.app["bot"],
+            user=user,
+            profile=profile,
+            direction="in",
+            kind="usd",
+            qty=amount,
+            stats_dollars=amount,
+        )
+    except Exception:
+        pass
+
     return web.json_response({"ok": True, "balance": getattr(profile, DOLLAR_FIELD)})
 
 
@@ -117,20 +187,14 @@ async def _ping(_):
 
 async def start_bridge(bot, port: int | None = None):
     """Bot ishga tushganda (masalan dp.startup da) bir marta chaqiring."""
-    secret_status = "bor" if SECRET else "YOQ"
-    stats_url_status = STATS_URL if STATS_URL else "YOQ"
-    log.info(f"✅ Stats bridge yo'llari qo'shildi (secret={secret_status}, STATS_URL={stats_url_status})")
-
     app = web.Application()
     app["bot"] = bot
     app.router.add_post("/exchange/credit", _credit)
     app.router.add_get("/exchange/ping", _ping)
     runner = web.AppRunner(app)
     await runner.setup()
-    # Alohida port ishlatamiz (webapp server PORT dan farqli)
-    bridge_port = port or int(os.getenv("EXCHANGE_PORT", "8081"))
-    await web.TCPSite(runner, "0.0.0.0", bridge_port).start()
-    log.info(f"Stats bridge ishga tushdi on port {bridge_port}")
+    await web.TCPSite(runner, "0.0.0.0", port or int(os.getenv("PORT", "8080"))).start()
+    log.info("Stats bridge ishga tushdi")
 
 
 # ───────────────────────── Chiquvchi: stats botga yuborish ─────────────────────────
@@ -190,17 +254,15 @@ async def retry_pending():
 
 # ───────────────────────── "💱 Stats puli" tugmasi (aiogram Router) ─────────────────────────
 
-# Router ni faqat callback_query uchun cheklash - boshqa handlerlarga ta'sir qilmasligi uchun
 router = Router()
-# Hech qanday message handler yo'q - faqat callback_query
 
 
-def stats_button_text(lang: str = "uz"):
-    """Profil klaviaturangizga qo'shing: text=stats_button_text(lang), callback_data="sx:menu" """
+def stats_button(lang: str = "uz"):
+    """Profil klaviaturangizga qo'shing: [stats_button(lang)]"""
     from utils.i18n import clean_lang, STATS_LABELS
     l = clean_lang(lang)
     lbls = STATS_LABELS.get(l, STATS_LABELS["uz"])
-    return lbls["btn_stats"]
+    return InlineKeyboardButton(text=lbls["btn_stats"], callback_data="sx:menu")
 
 
 @router.callback_query(F.data == "sx:menu")
@@ -220,7 +282,7 @@ async def sx_menu(q: CallbackQuery):
 
     kb = [[InlineKeyboardButton(text=f"💵 {a}$", callback_data=f"sx:usd:{a}") for a in DOLLAR_AMOUNTS],
           [InlineKeyboardButton(text=f"💎 {a}", callback_data=f"sx:dia:{a}") for a in DIAMOND_AMOUNTS]]
-    await q.message.edit_text(
+    await q.message.answer(
         lbls["menu_title"],
         reply_markup=InlineKeyboardMarkup(inline_keyboard=kb), parse_mode="HTML")
     await q.answer()
@@ -242,9 +304,30 @@ async def sx_send(q: CallbackQuery):
     lbls = STATS_LABELS.get(l, STATS_LABELS["uz"])
 
     _, kind, qty = q.data.split(":")
-    res = await send_to_stats(q.from_user.id, kind, int(qty))
+    qty_int = int(qty)
+    res = await send_to_stats(q.from_user.id, kind, qty_int)
     text = {"ok": lbls["sent_ok"],
             "funds": lbls["sent_funds"],
             "rejected": lbls["sent_rejected"],
             "unknown": lbls["sent_unknown"]}[res]
     await q.answer(text, show_alert=True)
+
+    # Muvaffaqiyatli yuborilganda support guruhga habar
+    if res == "ok":
+        try:
+            stats_dollars = qty_int if kind == "usd" else qty_int * DIAMOND_RATE
+            user_obj = await User.get_or_none(user_id=q.from_user.id)
+            if user_obj:
+                profile_obj = await Profile.filter(user=user_obj).first()
+                if profile_obj:
+                    await _notify_support_stats(
+                        bot=q.bot,
+                        user=user_obj,
+                        profile=profile_obj,
+                        direction="out",
+                        kind=kind,
+                        qty=qty_int,
+                        stats_dollars=stats_dollars,
+                    )
+        except Exception:
+            pass

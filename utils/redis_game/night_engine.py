@@ -103,7 +103,6 @@ NIGHT_STRINGS = {
         "aygoqchi_res": "🦇 Ayg'oqchi: {name} → {role}",
         "konchi_kill_reason": "Kon tuzog'iga tushdi.",
         "konchi_win": "⛏ Kon {no}: {count} 💎 qazib oldingiz!",
-        "konchi_money": "⛏ Kon {no}: 💰 {amount}$ qazib oldingiz!",
         "day_vote_prompt": "Kimga ovoz berasiz?",
         "day_no_vote": "Bugun hech kim osilmadi.",
         "day_tie_vote": "Ovozlar teng bo'ldi — bugun hech kim osilmadi.",
@@ -139,7 +138,6 @@ NIGHT_STRINGS = {
         "aygoqchi_res": "🦇 Шпион: {name} → <b>{role}</b>",
         "konchi_kill_reason": "Попал в ловушку в шахте.",
         "konchi_win": "⛏ Шахта {no}: вы добыли {count} 💎!",
-        "konchi_money": "⛏ Шахта {no}: вы добыли 💰 {amount}$!",
         "day_vote_prompt": "<b>День</b> — кого повесим?",
         "day_no_vote": "Сегодня никто не был повешен.",
         "day_tie_vote": "Голоса разделились поровну — никто не повешен.",
@@ -174,7 +172,6 @@ NIGHT_STRINGS = {
         "aygoqchi_res": "🦇 Spy: {name} → <b>{role}</b>",
         "konchi_kill_reason": "Fell into a mine trap.",
         "konchi_win": "⛏ Mine {no}: You mined {count} 💎!",
-        "konchi_money": "⛏ Mine {no}: You mined 💰 {amount}$!",
         "day_vote_prompt": "<b>Day</b> — Who shall we lynch?",
         "day_no_vote": "No one was lynched today.",
         "day_tie_vote": "Tie vote — no one was lynched today.",
@@ -209,7 +206,6 @@ NIGHT_STRINGS = {
         "aygoqchi_res": "🦇 Ajan: {name} → <b>{role}</b>",
         "konchi_kill_reason": "Maden tuzağına düştü.",
         "konchi_win": "⛏ Maden {no}: {count} 💎 çıkardınız!",
-        "konchi_money": "⛏ Maden {no}: 💰 {amount}$ çıkardınız!",
         "day_vote_prompt": "<b>Gündüz</b> — Kimi asıyoruz?",
         "day_no_vote": "Bugün kimse asılmadı.",
         "day_tie_vote": "Oylar eşit — bugün kimse asılmadı.",
@@ -244,7 +240,6 @@ NIGHT_STRINGS = {
         "aygoqchi_res": "🦇 Тыңшы: {name} → <b>{role}</b>",
         "konchi_kill_reason": "Шахта тұзағына түсті.",
         "konchi_win": "⛏ Шахта {no}: {count} 💎 қазып алдыңыз!",
-        "konchi_money": "⛏ Шахта {no}: 💰 {amount}$ қазып алдыңыз!",
         "day_vote_prompt": "Кімге дауыс бересіз?",
         "day_no_vote": "Бүгін ешкім асылған жоқ.",
         "day_tie_vote": "Дауыстар тең түсті — бүгін ешкім асылған жоқ.",
@@ -300,36 +295,24 @@ def _target_kb(code: str, gid: int, ph: int, targets: List[tuple], skip_label="�
     return kb.as_markup()
 
 
-async def _send_private(bot: Bot, uid: int, text: str, kb=None, max_retries: int = 3):
+async def _send_private(bot: Bot, uid: int, text: str, kb=None, max_retries: int = 3) -> bool:
     for attempt in range(max_retries):
         try:
-            msg = await bot.send_message(uid, text, parse_mode="HTML", reply_markup=kb)
-            return msg
+            await bot.send_message(uid, text, parse_mode="HTML", reply_markup=kb)
+            return True
         except TelegramRetryAfter as e:
             await asyncio.sleep(e.retry_after + 0.1)
-        except Exception as e:
+        except Exception:
             try:
-                msg = await bot.send_message(uid, text, reply_markup=kb)
-                return msg
-            except Exception as e2:
-                print(f"_send_private xato: uid={uid}, error={e2}")
-                return None
-    print(f"_send_private failed after {max_retries} retries: uid={uid}")
-    return None
+                await bot.send_message(uid, text, reply_markup=kb)
+                return True
+            except Exception:
+                return False
+    return False
 
 
 def _targets_list(players: List, exclude: set) -> List[tuple]:
     return [(p.user_id, None) for p in players if p.user_id not in exclude]
-
-
-async def _mark_action_completed_if_possible(game_id: int, night_num: int, uid: int):
-    """Agar xabar yuborib bo'lmasa, o'yinchini completed_users ga qo'shish - tun darhol tugashi uchun"""
-    try:
-        key = f"game:{game_id}:night:{night_num}:completed_users"
-        await r.sadd(key, str(uid))
-        await r.expire(key, 3600)
-    except Exception:
-        pass
 
 
 async def send_night_actions(
@@ -426,9 +409,6 @@ async def send_night_actions(
         others = [q for q in alive if q.user_id != uid]
         if role in (RoleNames.DOKTOR, RoleNames.GAZABDOR, RoleNames.ZANJIR):
             target_pool = alive[:]
-            # Doktor o'zini faqat 1 marta davolay oladi — keyingi tunda o'zi ro'yxatda bo'lmaydi
-            if role == RoleNames.DOKTOR and not getattr(p, "can_heal_self", True):
-                target_pool = [q for q in alive if q.user_id != uid]
         elif role in MAFIA_ROLES:
             target_pool = [q for q in others if q.role not in MAFIA_ROLES]
         elif role == RoleNames.OVCHI:
@@ -456,13 +436,11 @@ async def send_night_actions(
             kb.button(text=ns.get("komissar_shoot_btn", "🔫 O'ldirish"), callback_data=_cb("ko", game_id, night_num, "k", 0))
             kb.button(text=skip_label, callback_data=_cb("ko", game_id, night_num, "s", 0))
             kb.adjust(2, 1)
-            msg = await _send_private(
+            await _send_private(
                 bot, uid,
                 kom_prompt,
                 kb.as_markup()
             )
-            if not msg:
-                print(f"[NIGHT BUTTONS ERROR] Failed to send Komissar buttons to uid={uid}")
             continue
 
         # --- Konchi: kon tanlash ---
@@ -472,42 +450,31 @@ async def send_night_actions(
                 kb.button(text=f"⛏ Kon {i}", callback_data=_cb("kn", game_id, night_num, "t", i))
             kb.button(text=skip_label, callback_data=_cb("kn", game_id, night_num, "s", 0))
             kb.adjust(5, 1)
-            msg = await _send_private(
+            await _send_private(
                 bot, uid,
                 ns.get("konchi_prompt", "👷🏻‍♂️ <b>Konchi</b>, qaysi kondan qazasiz? (ba'zilarida tuzoq bor!)"),
                 kb.as_markup()
             )
-            if not msg:
-                print(f"[NIGHT BUTTONS ERROR] Failed to send Konchi buttons to uid={uid}")
             continue
 
         # --- Qaroqchi: nishon tanlash ---
         if role == RoleNames.QAROQCHI:
-            msg = await _send_private(bot, uid, f"⚔️ {role_display(role)}",
+            await _send_private(bot, uid, f"⚔️ {role_display(role)}",
                                 _target_kb("qa", game_id, night_num, mk_targets, skip_label=skip_label))
-            if not msg:
-                print(f"[NIGHT BUTTONS ERROR] Failed to send Qaroqchi buttons to uid={uid}, marking as skipped")
-                await _mark_action_completed_if_possible(game_id, night_num, uid)
             await asyncio.sleep(0.03)
             continue
 
         # --- Qoriqchi: nishon tanlash ---
         if role == RoleNames.QORIQCHI:
-            msg = await _send_private(bot, uid, f"🛡 {role_display(role)} — qo'riqlash uchun nishonni tanlang:",
+            await _send_private(bot, uid, f"🛡 {role_display(role)} — qo'riqlash uchun nishonni tanlang:",
                                 _target_kb("qr", game_id, night_num, mk_targets, skip_label=skip_label))
-            if not msg:
-                print(f"[NIGHT BUTTONS ERROR] Failed to send Qoriqchi buttons to uid={uid}, marking as skipped")
-                await _mark_action_completed_if_possible(game_id, night_num, uid)
             await asyncio.sleep(0.03)
             continue
 
         # --- Bo'ri: nishon tanlash ---
         if role == RoleNames.BORI:
-            msg = await _send_private(bot, uid, f"🐺 {role_display(role)} — nishonni tanlang:",
+            await _send_private(bot, uid, f"🐺 {role_display(role)} — nishonni tanlang:",
                                 _target_kb("bw", game_id, night_num, mk_targets, skip_label=skip_label))
-            if not msg:
-                print(f"[NIGHT BUTTONS ERROR] Failed to send Bori buttons to uid={uid}, marking as skipped")
-                await _mark_action_completed_if_possible(game_id, night_num, uid)
             await asyncio.sleep(0.03)
             continue
 
@@ -520,10 +487,7 @@ async def send_night_actions(
                 "tr": "🌙 🧞 <b>Cin</b> — ziyaret edeceğiniz oyuncuyu seçin:\n<i>(O oyuncu 3 dilekten birini seçecek ve siz gerçekleştireceksiniz)</i>",
                 "kk": "🌙 🧞 <b>Жын</b> — баратын ойыншыны таңдаңыз:\n<i>(Ол ойыншы 3 тілектің бірін таңдайды, сіз оны орындайсыз)</i>"
             }.get(chat_lang, "🌙 🧞 <b>Jin</b> — huzuriga borish uchun o'yinchini tanlang:")
-            msg = await _send_private(bot, uid, jin_prompt, _target_kb("ji", game_id, night_num, mk_targets, skip_label=skip_label))
-            if not msg:
-                print(f"[NIGHT BUTTONS ERROR] Failed to send Jin buttons to uid={uid}, marking as skipped")
-                await _mark_action_completed_if_possible(game_id, night_num, uid)
+            await _send_private(bot, uid, jin_prompt, _target_kb("ji", game_id, night_num, mk_targets, skip_label=skip_label))
             await asyncio.sleep(0.03)
             continue
 
@@ -532,21 +496,23 @@ async def send_night_actions(
             if role == RoleNames.ZANJIR:
                 tcode, label = "zj", ns.get("zanjir_prompt", "⛓ <b>Zanjir</b>: bog'lash uchun <b>1-nishon</b>ni tanlang.")
             else:
-                tcode, label = "se", ns.get("sehrgar_prompt", "🧙 <b>Sehrgar</b>: almashtirish uchun <b>1-nishon</b>ni tanlang.")
-            msg = await _send_private(bot, uid, label, _target_kb(tcode, game_id, night_num, mk_targets, skip_label=skip_label))
-            if not msg:
-                print(f"[NIGHT BUTTONS ERROR] Failed to send {role} buttons to uid={uid}, marking as skipped")
-                await _mark_action_completed_if_possible(game_id, night_num, uid)
+                try:
+                    _uses_raw = await r.get(f"game:{game_id}:sehrgar_uses:{uid}")
+                    _uses = int(_uses_raw.decode() if isinstance(_uses_raw, bytes) else _uses_raw) if _uses_raw else 0
+                except Exception:
+                    _uses = 0
+                if _uses >= 3:
+                    await _send_private(bot, uid, "🧙 <b>Sehrgar</b>: almashtirish kuchingiz tugagan (3/3).\nBu tun faqat hujumchilarga hukm qilasiz — tonggacha kuting.")
+                    continue
+                tcode, label = "se", ns.get("sehrgar_prompt", "🧙 <b>Sehrgar</b>: almashtirish uchun <b>1-nishon</b>ni tanlang.") + f"\n<i>Qoldi: {3 - _uses} marta</i>"
+            await _send_private(bot, uid, label, _target_kb(tcode, game_id, night_num, mk_targets, skip_label=skip_label))
             await asyncio.sleep(0.04)
             continue
 
         # --- Oddiy bitta nishonli harakatlar ---
         target_fmt = ns.get("target_prompt", "🌙 {role} — nishonni tanlang:")
         label = target_fmt.format(role=role_display(role))
-        msg = await _send_private(bot, uid, label, _target_kb(code, game_id, night_num, mk_targets, skip_label=skip_label))
-        if not msg:
-            print(f"[NIGHT BUTTONS ERROR] Failed to send target selection for uid={uid}, role={role}, code={code}, marking as skipped")
-            await _mark_action_completed_if_possible(game_id, night_num, uid)
+        await _send_private(bot, uid, label, _target_kb(code, game_id, night_num, mk_targets, skip_label=skip_label))
         await asyncio.sleep(0.04)
 
     # Tungi kutilayotgan harakatlarni Redis keshiga saqlaymiz
@@ -563,13 +529,73 @@ async def send_night_actions(
 
 
 # ==================================================================
+# SEHRGAR: hujumga uchrasa kechirim / o'ldirish tanlovi
+# ==================================================================
+def _sehrgar_pending_key(game_id: int, sehrgar_uid: int, attacker_uid: int) -> str:
+    return f"game:{int(game_id)}:sehrgar_pending:{int(sehrgar_uid)}:{int(attacker_uid)}"
+
+
+def _sehrgar_cb(action: str, gid: int, ph: int, sehrgar_uid: int, attacker_uid: int) -> str:
+    # action: forgive | kill
+    return f"se|{gid}|{ph}|{action}|{sehrgar_uid}|{attacker_uid}"
+
+
+async def _handle_sehrgar_attack(game_id: int, night_num: int, sehrgar_uid: int, attacker_uid: int,
+                                 killer_role, by_uid: Dict, names: Dict, bot: Bot, chat: Chat) -> None:
+    """Sehrgarga hujum bo'lganda: guruhga xabar + sehrgarga Kechirish/O'ldirish tugmasi."""
+    try:
+        sehrgar_uid, attacker_uid = int(sehrgar_uid), int(attacker_uid)
+    except Exception:
+        return
+    att_p = by_uid.get(attacker_uid)
+    att_role = att_p.role if att_p and getattr(att_p, "role", None) else (killer_role or "")
+    att_role_disp = role_display(att_role) if att_role else ""
+    att_name = html.escape(str(names.get(attacker_uid) or attacker_uid), quote=False)
+    att_mention = f'<a href="tg://user?id={attacker_uid}">{att_name}</a>'
+
+    # bir tunda bir hujumchiga bitta tanlov (dublikat bo'lmasin)
+    try:
+        pkey = _sehrgar_pending_key(game_id, sehrgar_uid, attacker_uid)
+        if await r.get(pkey):
+            return
+        await r.set(pkey, "1", ex=7200)
+    except Exception:
+        pass
+
+    # guruhga e'lon (hujumchi ismi oshkor bo'lmaydi — faqat roli)
+    try:
+        c_id = getattr(chat, 'chat_id', getattr(chat, 'id', None))
+        if c_id:
+            group_text = (
+                f"🌙 Tunda {att_role_disp} sehrgarni o'ldirishga urindi! "
+                f"Sehrgar uning bu qilmishini kechiradimi yoki yo'q, buni vaqt ko'rsatadi..."
+            )
+            await bot.send_message(c_id, group_text, parse_mode="HTML")
+    except Exception as e:
+        logger.warning(f"Sehrgar group announce error: {e}")
+
+    # sehrgarga shaxsiy tanlov tugmasi
+    try:
+        kb = InlineKeyboardBuilder()
+        kb.button(text="😇 Kechirish", callback_data=_sehrgar_cb("forgive", game_id, night_num, sehrgar_uid, attacker_uid))
+        kb.button(text="⚔️ O'ldirish", callback_data=_sehrgar_cb("kill", game_id, night_num, sehrgar_uid, attacker_uid))
+        kb.adjust(2)
+        priv_text = (
+            f"🧙 <b>Sehrgar</b>, sizga {att_role_disp} {att_mention} hujum qildi!\n"
+            f"Uni kechirasizmi yoki o'ldirasizmi?"
+        )
+        await _send_private(bot, sehrgar_uid, priv_text, kb.as_markup())
+    except Exception as e:
+        logger.warning(f"Sehrgar private choice error: {e}")
+
+
+# ==================================================================
 # NATIJALARNI QAYTA ISHLASH
 # ==================================================================
 async def _kill(game_id: int, uid: int, by_uid: Dict, bot: Bot, chat: Chat, names: Dict,
                 reason: str = "", killer_role: Optional[Union[str, List[str]]] = None, custom_text: Optional[str] = None) -> Optional[object]:
     p = by_uid.get(uid)
     if not p or not p.is_alive:
-        print(f"[KILL] Skipped - player not found or already dead: uid={uid}")
         return None
     p.is_alive = False
     p.deaded_at = datetime.now(timezone.utc)
@@ -594,7 +620,6 @@ async def _kill(game_id: int, uid: int, by_uid: Dict, bot: Bot, chat: Chat, name
                     text += f"\nAytishlaricha unikiga {joined_roles} kelgan ekan..."
             elif reason:
                 text += f"\n{reason}"
-        print(f"[KILL] Killing uid={uid}, role={p.role}, killer={killer_role}, text={text[:100]}...")
         # Xabar darhol emas, TONGDAN KEYIN yuboriladi (navbatga qo'yiladi).
         await queue_death_message(game_id, text)
         try:
@@ -606,10 +631,10 @@ async def _kill(game_id: int, uid: int, by_uid: Dict, bot: Bot, chat: Chat, name
                 d_msg,
                 parse_mode="HTML"
             )
-        except Exception as e:
-            print(f"[KILL] Failed to send death PM to uid={uid}: {e}")
-    except Exception as e:
-        print(f"[KILL ERROR] Error in _kill for uid={uid}: {e}")
+        except Exception:
+            pass
+    except Exception:
+        pass
     return p
 
 
@@ -622,9 +647,8 @@ async def queue_death_message(game_id: int, text: str) -> None:
         key = f"game:{game_id}:pending_deaths"
         await r.rpush(key, text)
         await r.expire(key, 3600)
-        print(f"[DEATH QUEUE] Queued death message for game {game_id}: {text[:100]}...")
-    except Exception as e:
-        print(f"[DEATH QUEUE ERROR] Failed to queue death message: {e}")
+    except Exception:
+        pass
 
 
 async def flush_pending_deaths(game_id: int, bot: Bot, chat: Any) -> int:
@@ -777,6 +801,26 @@ async def load_zanjir_pairs(game_id: int, phase_id: Optional[int] = None) -> Lis
     return []
 
 
+def _player_from_uid_map(by_uid: Dict, uid) -> Optional[object]:
+    p = by_uid.get(uid)
+    if p:
+        return p
+    try:
+        iu = int(uid)
+    except (TypeError, ValueError):
+        return None
+    p = by_uid.get(iu)
+    if p:
+        return p
+    for pl in by_uid.values():
+        try:
+            if int(getattr(pl, "user_id", 0)) == iu:
+                return pl
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
 async def process_night_results(game_id: int, night_num: int, players: List, bot: Bot, chat: Chat) -> None:
     """Tungi harakatlarni qo'llash: o'ldirish, davolash, himoya, tekshiruv va h.k."""
     all_uids = [p.user_id for p in players]
@@ -882,8 +926,7 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
         elif atype == "jin_hayot" and tgt:
             jin_protect.append(tgt)
         elif atype == "jin_pul" and tgt:
-            # (target, jin_uid) — jin o'ziga qancha hadya berganini ko'rsata olishi uchun
-            jin_pul.append((tgt, actor.user_id))
+            jin_pul.append(tgt)
         elif atype == "jin_qotil" and tgt:
             jin_kill.append((tgt, actor.user_id))
         elif atype == "qaroqchi" or atype == "qaroqchi_pul":
@@ -909,12 +952,12 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
         if len(top) == 1:
             family_target = top[0]
             family_killer = RoleNames.DON
-            family_actor_id = mafia_voters.get(top[0])
+            family_actor_id = don_actor_id if don_target else mafia_voters.get(top[0])
 
     protected |= set(jin_protect)
 
     # --- Jin pul in'omi ---
-    for target, jin_uid in jin_pul:
+    for target in jin_pul:
         try:
             from models.user import User, Profile
             t_user = await User.filter(user_id=target).first()
@@ -924,13 +967,10 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
                     t_prof = await Profile.create(user=t_user)
                 if t_prof:
                     t_lang = lang_map.get(target, "uz")
-                    gave_diamond = False
-                    money_given = 0
                     # Yoki pul (95%) YOKI 1 olmos (5%)
                     if random.random() < 0.05:
                         t_prof.diamond = (t_prof.diamond or 0) + 1
                         await t_prof.save()
-                        gave_diamond = True
                         diamond_msgs = {
                             "uz": "🧞 <b>Jin sizga 💎 1 olmos in'om etdi!</b>",
                             "ru": "🧞 <b>Джинн одарил вас 💎 1 алмазом!</b>",
@@ -956,30 +996,6 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
                         }
                         msg = dollar_msgs.get(t_lang, dollar_msgs["uz"])
                     await _send_private(bot, target, msg)
-                    # Jin o'ziga qancha hadya berganini ko'rsatish (masalan: "Siz Ali ga 100$ hadya qildingiz!")
-                    try:
-                        jin_lang = lang_map.get(jin_uid, "uz")
-                        t_name_for_jin = html.escape(names.get(target) or str(target))
-                        if gave_diamond:
-                            jin_gift_msgs = {
-                                "uz": f"🧞 Siz <b>{t_name_for_jin}</b> ga 💎 1 olmos hadya qildingiz!",
-                                "ru": f"🧞 Вы подарили <b>{t_name_for_jin}</b> 💎 1 алмаз!",
-                                "en": f"🧞 You gifted <b>{t_name_for_jin}</b> 💎 1 diamond!",
-                                "tr": f"🧞 <b>{t_name_for_jin}</b> kişisine 💎 1 elmas hediye ettiniz!",
-                                "kk": f"🧞 Сіз <b>{t_name_for_jin}</b> адамына 💎 1 алмаз сыйладыңыз!"
-                            }
-                            await _send_private(bot, jin_uid, jin_gift_msgs.get(jin_lang, jin_gift_msgs["uz"]))
-                        else:
-                            jin_gift_msgs = {
-                                "uz": f"🧞 Siz <b>{t_name_for_jin}</b> ga 💰 {money_given}$ hadya qildingiz!",
-                                "ru": f"🧞 Вы подарили <b>{t_name_for_jin}</b> 💰 {money_given}$!",
-                                "en": f"🧞 You gifted <b>{t_name_for_jin}</b> 💰 {money_given}$!",
-                                "tr": f"🧞 <b>{t_name_for_jin}</b> kişisine 💰 {money_given}$ hediye ettiniz!",
-                                "kk": f"🧞 Сіз <b>{t_name_for_jin}</b> адамына 💰 {money_given}$ сыйладыңыз!"
-                            }
-                            await _send_private(bot, jin_uid, jin_gift_msgs.get(jin_lang, jin_gift_msgs["uz"]))
-                    except Exception:
-                        pass
         except Exception as e:
             logger.error(f"Error giving Jin money reward to target {target}: {e}")
 
@@ -998,14 +1014,36 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
         except Exception as e:
             logger.error(f"Error sending Jin protect msg to {target}: {e}")
 
-    # --- Sehrgar: ikki nishon rolini almashtirish ---
+    # --- Sehrgar: ikki nishon rolini almashtirish (har o'yinda 3 marta) ---
     for actor_uid, tgts in swaps.items():
         if len(tgts) >= 2:
+            try:
+                uses_raw = await r.get(f"game:{game_id}:sehrgar_uses:{actor_uid}")
+                uses = int(uses_raw.decode() if isinstance(uses_raw, bytes) else uses_raw) if uses_raw else 0
+            except Exception:
+                uses = 0
+            if uses >= 3:
+                try:
+                    await _send_private(bot, actor_uid, "🧙 <b>Sehrgar</b>: siz almashtirish kuchingizni tugatdingiz (3/3)! Endi faqat hujumchilarga hukm qilasiz.")
+                except Exception:
+                    pass
+                continue
             x, y = by_uid.get(tgts[0]), by_uid.get(tgts[1])
-            if x and y:
+            if x and y and x.is_alive and y.is_alive:
                 x.role, y.role = y.role, x.role
                 await player_repo.save_player(x)
                 await player_repo.save_player(y)
+                try:
+                    await r.set(f"game:{game_id}:sehrgar_uses:{actor_uid}", str(uses + 1), ex=86400)
+                except Exception:
+                    pass
+                # Rol egalari yangilanganini bilishlari uchun xabar
+                try:
+                    await _send_private(bot, x.user_id, f"🧙 <b>Sehrgar</b> sizning rolingizni almashtirdi!\nEndi rolingiz: {role_display(x.role)}")
+                    await _send_private(bot, y.user_id, f"🧙 <b>Sehrgar</b> sizning rolingizni almashtirdi!\nEndi rolingiz: {role_display(y.role)}")
+                    await _send_private(bot, actor_uid, f"🧙 Almashtirish bajarildi ({uses + 1}/3): {html.escape(str(names.get(x.user_id) or x.user_id), quote=False)} ⇄ {html.escape(str(names.get(y.user_id) or y.user_id), quote=False)}")
+                except Exception:
+                    pass
 
     # --- Kezuvchi: uxlash belgisini o'rnatish ---
     for uid in slept:
@@ -1031,6 +1069,20 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
         kill_attempts.append((jt, RoleNames.JIN, jactor))
 
     for target, killer, attacker_id in kill_attempts:
+        # --- Sehrgar himoyasi: unga hujum bo'lsa o'lmaydi, kechirim/o'ldirish tanlovi chiqadi ---
+        try:
+            _t_p = by_uid.get(target) if target else None
+            if _t_p and _t_p.is_alive and _t_p.role == RoleNames.SEHRGAR and attacker_id and int(attacker_id) != int(target):
+                await _handle_sehrgar_attack(game_id, night_num, target, attacker_id, killer, by_uid, names, bot, chat)
+                # hujumchi yoziladi (kim hujum qilgani ma'lum bo'lishi uchun), lekin sehrgar o'lmaydi
+                if attacker_id and attacker_id != target:
+                    if target not in direct_killers:
+                        direct_killers[target] = []
+                    if attacker_id not in direct_killers[target]:
+                        direct_killers[target].append(attacker_id)
+                continue
+        except Exception as e:
+            logger.warning(f"Sehrgar attack handle error: {e}")
         if target and target not in healed and target not in protected:
             is_saved = False
             try:
@@ -1322,32 +1374,44 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
             continue
         if random.random() < 0.25:
             await _kill(game_id, actor_uid, by_uid, bot, chat, names, reason=get_msg(actor_uid, "konchi_kill_reason"))
-        elif random.random() < 0.03:
-            # Olmos topish ehtimoli 3%
-            mined_diamonds = random.choice([1, 2, 3])
-            try:
-                from models.user import User, Profile
-                u = await User.filter(user_id=actor_uid).first()
-                if u:
-                    prof, _ = await Profile.get_or_create(user=u)
-                    prof.diamond += mined_diamonds
-                    await prof.save(update_fields=["diamond"])
-            except Exception as e:
-                logger.error(f"Error saving konchi diamonds for {actor_uid}: {e}")
-            await _send_private(bot, actor_uid, get_msg(actor_uid, "konchi_win", no=(kon_no or 1), count=mined_diamonds))
         else:
-            # Qolgan hollarda konchi konlardan dollar qazib oladi
-            mined_money = random.randint(10, 100)
-            try:
-                from models.user import User, Profile
-                u = await User.filter(user_id=actor_uid).first()
-                if u:
-                    prof, _ = await Profile.get_or_create(user=u)
-                    prof.dollar += mined_money
-                    await prof.save(update_fields=["dollar"])
-            except Exception as e:
-                logger.error(f"Error saving konchi money for {actor_uid}: {e}")
-            await _send_private(bot, actor_uid, get_msg(actor_uid, "konchi_money", no=(kon_no or 1), amount=mined_money))
+            # 3% olmos, 97% dollar
+            if random.random() < 0.03:
+                mined_diamonds = random.choice([1, 2, 3])
+                try:
+                    from models.user import User, Profile
+                    u = await User.filter(user_id=actor_uid).first()
+                    if u:
+                        prof, _ = await Profile.get_or_create(user=u)
+                        prof.diamond += mined_diamonds
+                        await prof.save(update_fields=["diamond"])
+                except Exception as e:
+                    logger.error(f"Error saving konchi diamonds for {actor_uid}: {e}")
+                await _send_private(bot, actor_uid, get_msg(actor_uid, "konchi_win", no=(kon_no or 1), count=mined_diamonds))
+            else:
+                # Dollar mukofoti
+                if random.random() < 0.80:
+                    money_given = random.randint(1, 150)
+                else:
+                    money_given = random.randint(151, 500)
+                try:
+                    from models.user import User, Profile
+                    u = await User.filter(user_id=actor_uid).first()
+                    if u:
+                        prof, _ = await Profile.get_or_create(user=u)
+                        prof.dollar += money_given
+                        await prof.save(update_fields=["dollar"])
+                except Exception as e:
+                    logger.error(f"Error saving konchi dollars for {actor_uid}: {e}")
+                act_lang = lang_map.get(actor_uid, "uz")
+                dollar_msgs = {
+                    "uz": f"⛏ Kon {kon_no or 1}: 💰 {money_given}$ qazib oldingiz!",
+                    "ru": f"⛏ Шахта {kon_no or 1}: 💰 {money_given}$ добыто!",
+                    "en": f"⛏ Mine {kon_no or 1}: 💰 {money_given}$ mined!",
+                    "tr": f"⛏ Maden {kon_no or 1}: 💰 {money_given}$ çıkardınız!",
+                    "kk": f"⛏ Шахта {kon_no or 1}: 💰 {money_given}$ қазып алдыңыз!"
+                }
+                await _send_private(bot, actor_uid, dollar_msgs.get(act_lang, dollar_msgs["uz"]))
 
     # --- Bo'ri ---
     if bori_target and bori_actor_id:
@@ -1408,11 +1472,11 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
                 a_prof = await Profile.filter(user=a_user).first()
                 if t_prof and a_prof:
                     if choice == "pul":
-                        # Pul olish (Profile modelida maydon: dollar)
-                        if t_prof.dollar >= 10:
-                            stolen = min(t_prof.dollar, random.randint(10, 50))
-                            t_prof.dollar -= stolen
-                            a_prof.dollar += stolen
+                        # Pul olish
+                        if t_prof.money >= 10:
+                            stolen = min(t_prof.money, random.randint(10, 50))
+                            t_prof.money -= stolen
+                            a_prof.money += stolen
                             await t_prof.save()
                             await a_prof.save()
                             await _send_private(bot, actor_uid, f"⚔️ <b>Qaroqchi</b>: Siz {target_name}dan 💵 {stolen}$ o'g'irladingiz!")
@@ -1478,7 +1542,6 @@ async def process_night_results(game_id: int, night_num: int, players: List, bot
 async def send_day_votes(game_id: int, day_num: int, players: List, bot: Bot, chat: Chat) -> None:
     alive = await player_repo.get_alive_players(game_id)
     names = await _name_map([p.user_id for p in alive])
-    message_ids = []
     for p in alive:
         if p.is_sleep:
             continue
@@ -1491,17 +1554,8 @@ async def send_day_votes(game_id: int, day_num: int, players: List, bot: Bot, ch
         kb.button(text="🚷 O'tkazib yuborish", callback_data=f"nv|{game_id}|{day_num}|s")
         kb.adjust(2)
         day_head = "Kimga ovoz berasiz?"
-        msg = await _send_private(bot, p.user_id, day_head, kb.as_markup())
-        if msg and hasattr(msg, 'message_id'):
-            message_ids.append((p.user_id, msg.message_id))
+        await _send_private(bot, p.user_id, day_head, kb.as_markup())
         await asyncio.sleep(0.04)
-    
-    # Ovoz xabari IDlarini Redisda saqlash
-    try:
-        for uid, msg_id in message_ids:
-            await r.set(f"game:{game_id}:day:{day_num}:vote_msg:{uid}", str(msg_id), ex=7200)
-    except Exception:
-        pass
 
 
 async def _check_role_succession(by_uid: Dict, lang_map: Dict, bot: Bot, game_id: Optional[int] = None, chat_id: Optional[int] = None, is_night: bool = False) -> None:
@@ -1597,22 +1651,6 @@ def lynch_confirm_kb(game_id: int, day_num: int, target_id: int, likes: int = 0,
 
 
 async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot, chat: Chat, like_time: int = 30) -> None:
-    # Ovoz tugmalarini o'chirish - like/dislike bosqichi boshlanganda
-    try:
-        all_players = await player_repo.get_all_players(game_id)
-        for p in all_players:
-            msg_id_key = f"game:{game_id}:day:{day_num}:vote_msg:{p.user_id}"
-            msg_id_raw = await r.get(msg_id_key)
-            if msg_id_raw:
-                try:
-                    msg_id = int(msg_id_raw)
-                    await bot.edit_message_reply_markup(chat_id=p.user_id, message_id=msg_id, reply_markup=None)
-                except Exception:
-                    pass
-                await r.delete(msg_id_key)
-    except Exception:
-        pass
-
     all_players = await player_repo.get_all_players(game_id)
     names = await _name_map([p.user_id for p in all_players])
     from utils.i18n import get_chat_lang
@@ -1809,7 +1847,7 @@ async def process_day_votes(game_id: int, day_num: int, players: List, bot: Bot,
             if _vid not in (_t1, _t2):
                 continue
             _other_uid = _t2 if _vid == _t1 else _t1
-            _other_p = by_uid.get(_other_uid)
+            _other_p = _player_from_uid_map(by_uid, _other_uid)
             if _other_p and _other_p.is_alive:
                 _other_p.is_alive = False
                 _other_p.deaded_at = datetime.now(timezone.utc)

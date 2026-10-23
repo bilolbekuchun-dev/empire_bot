@@ -119,18 +119,6 @@ async def f(call: CallbackQuery, bot: Bot):
 @router.callback_query(F.data.startswith("channel-giveaway_"))
 async def f(call: CallbackQuery, bot: Bot):
     await others.giveaway_callback_channel(call, bot)
-
-@router.message(Command("gmoney"))
-@router.message(F.text.startswith("/gmoney "))
-async def f(message: Message, bot: Bot):
-    if message.from_user and message.from_user.id in PRIMARY_ADMIN_IDS:
-        await others.start_money_giveaway(message, bot)
-    else:
-        await message.answer("⚠️ Bu komandadan faqat adminlar foydalanishi mumkin!")
-
-@router.callback_query(F.data.startswith("money-giveaway_"))
-async def f(call: CallbackQuery, bot: Bot):
-    await others.money_giveaway_callback(call, bot)
     
 @router.callback_query(F.data.startswith("buy_dollar"))
 async def f(call: CallbackQuery, bot: Bot):
@@ -140,6 +128,14 @@ async def f(call: CallbackQuery, bot: Bot):
 async def f(call: CallbackQuery, bot: Bot):
     await others.process_buy_star(call)
 
+@router.callback_query(F.data.startswith("support_bankrot_"))
+async def f(call: CallbackQuery, bot: Bot):
+    await others.support_bankrot_handler(call)
+
+@router.callback_query(F.data.startswith("support_block_"))
+async def f(call: CallbackQuery, bot: Bot):
+    await others.support_block_handler(call)
+
 @router.pre_checkout_query()
 async def f(pre_checkout_query: PreCheckoutQuery):
     await others.pre_checkout_handler(pre_checkout_query)
@@ -148,37 +144,9 @@ async def f(pre_checkout_query: PreCheckoutQuery):
 async def f(message: Message, bot: Bot):
     await others.success_payment_handler(message)
 
-@router.callback_query(F.data == "diamond_menu")
-async def f(call: CallbackQuery, bot: Bot):
-    print(f"[DEBUG] diamond_menu callback: user={call.from_user.id}, data={call.data}")
-    await others.buy_diamond_menu_handler(call)
-
-@router.callback_query(F.data == "diamond_stars_payment")
-async def f(call: CallbackQuery, bot: Bot):
-    print(f"[DEBUG] diamond_stars_payment callback: user={call.from_user.id}, data={call.data}")
-    await others.diamond_stars_payment_handler(call, bot)
-
-@router.callback_query(F.data.startswith("buy_stars_"))
-async def f(call: CallbackQuery, bot: Bot):
-    print(f"[DEBUG] buy_stars callback: user={call.from_user.id}, data={call.data}")
-    await others.buy_stars_invoice_handler(call, bot)
-
-@router.callback_query(F.data == "money_menu")
-async def f(call: CallbackQuery, bot: Bot):
-    print(f"[DEBUG] money_menu callback: user={call.from_user.id}, data={call.data}")
-    await others.buy_money_menu_handler(call)
-
 @router.callback_query(F.data.startswith("buy_"))
 async def f(call: CallbackQuery, bot: Bot):
     await others.buy_handler(call)
-
-@router.callback_query(F.data.startswith("exchange_"))
-async def f(call: CallbackQuery, bot: Bot):
-    await others.exchange_diamond_handler(call)
-
-@router.callback_query(F.data.startswith("item_"))
-async def f(call: CallbackQuery, bot: Bot):
-    await others.item_info_handler(call)
     
 @router.callback_query(F.data.startswith("get_dollar"))
 async def f(call: CallbackQuery, bot: Bot):
@@ -192,9 +160,8 @@ async def f(call: CallbackQuery, bot: Bot):
 async def f(call: CallbackQuery, bot: Bot):
     await others.show_shop(call)
 
-@router.callback_query(F.data == "back_profile")
+@router.callback_query(F.data.startswith("back_profile"))
 async def f(call: CallbackQuery, bot: Bot, state: FSMContext):
-    print(f"[DEBUG] back_profile callback: user={call.from_user.id}, data={call.data}")
     await others.back_profile(call, state)
 
 @router.callback_query(F.data == "open_protections")

@@ -92,7 +92,7 @@ ITEM_PRICES = {
 
 
 # ── Telegram Stars narxlari (webapp frontend bilan bir xil bo'lishi SHART) ──
-DIAMOND_STAR_PACKS = {10: 70, 30: 200, 70: 450, 250: 1300}
+DIAMOND_STAR_PACKS = {10: 70, 50: 350, 100: 700, 500: 3500, 1000: 7000}
 DOLLAR_STAR_PACKS = {1000: 7, 10000: 70, 30000: 200}
 DIAMOND_STAR_RATE = 7        # custom: 1 💎 = 7 ⭐
 DOLLAR_STAR_PER = 1000       # custom: 1000 💵 = 7 ⭐
@@ -963,4 +963,124 @@ def setup_webapp_routes(app: web.Application, static_dir: str, bot=None):
         return web.json_response({"ok": True, "items": result})
 
     app.router.add_post("/webapp/api/nft_market_list", nft_market_list_handler)
+
+    # ── CURRENCY INVOICE (Stars orqali olmos/dollar xaridi) ──
+    async def currency_invoice_handler(request):
+        if not bot:
+            return web.json_response({"ok": False, "error": "bot_not_available"})
+        payload = await request.json()
+        uid = payload.get("user_id") or payload.get("uid")
+        if not uid:
+            return web.json_response({"ok": False, "error": "no_user"})
+        kind = payload.get("kind", "diamond")  # "diamond" or "dollar"
+        count = int(payload.get("count", 0))
+        if count <= 0:
+            return web.json_response({"ok": False, "error": "bad_count"})
+
+        if kind == "diamond":
+            if count in DIAMOND_STAR_PACKS:
+                stars = DIAMOND_STAR_PACKS[count]
+            else:
+                stars = count * DIAMOND_STAR_RATE
+        else:
+            if count in DOLLAR_STAR_PACKS:
+                stars = DOLLAR_STAR_PACKS[count]
+            else:
+                stars = max(1, (count // DOLLAR_STAR_PER) * DOLLAR_STAR_RATE)
+
+        if stars < 1:
+            return web.json_response({"ok": False, "error": "bad_stars"})
+
+        title = f"{'💎 ' + str(count) + ' olmos' if kind == 'diamond' else '💵 ' + str(count) + '$'}"
+        payload_str = f"webapp_{kind}_{count}_{uid}"
+
+        from aiogram.types import LabeledPrice
+        link = await bot.create_invoice_link(
+            title=title,
+            description=f"{title} — Telegram Stars orqali",
+            payload=payload_str,
+            currency="XTR",
+            prices=[LabeledPrice(label=title, amount=stars)]
+        )
+        return web.json_response({"ok": True, "link": link})
+
+    app.router.add_post("/webapp/api/currency_invoice", currency_invoice_handler)
+
+    # ── VIP INVOICE (Stars orqali VIP xaridi) ──
+    async def vip_invoice_handler(request):
+        if not bot:
+            return web.json_response({"ok": False, "error": "bot_not_available"})
+        payload = await request.json()
+        uid = payload.get("user_id") or payload.get("uid")
+        if not uid:
+            return web.json_response({"ok": False, "error": "no_user"})
+        days = int(payload.get("days", 30))
+        if days not in VIP_STAR_PRICES:
+            return web.json_response({"ok": False, "error": "bad_days"})
+        stars = VIP_STAR_PRICES[days]
+        title = f"⭐ VIP {days} kun"
+        from aiogram.types import LabeledPrice
+        link = await bot.create_invoice_link(
+            title=title,
+            description=f"VIP obuna {days} kunga",
+            payload=f"webapp_vip_{days}_{uid}",
+            currency="XTR",
+            prices=[LabeledPrice(label=title, amount=stars)]
+        )
+        return web.json_response({"ok": True, "link": link})
+
+    app.router.add_post("/webapp/api/vip_invoice", vip_invoice_handler)
+
+    # ── GEROY INVOICE (Stars orqali geroy xaridi) ──
+    async def geroy_invoice_handler(request):
+        if not bot:
+            return web.json_response({"ok": False, "error": "bot_not_available"})
+        payload = await request.json()
+        uid = payload.get("user_id") or payload.get("uid")
+        if not uid:
+            return web.json_response({"ok": False, "error": "no_user"})
+        geroy = await Geroys.filter(user__user_id=uid).first()
+        if geroy:
+            return web.json_response({"ok": False, "error": "already_geroy"})
+        stars = 500  # Geroy narxi
+        title = "🦸 Geroy sotib olish"
+        from aiogram.types import LabeledPrice
+        link = await bot.create_invoice_link(
+            title=title,
+            description="Geroy statusini olish",
+            payload=f"webapp_geroy_{uid}",
+            currency="XTR",
+            prices=[LabeledPrice(label=title, amount=stars)]
+        )
+        return web.json_response({"ok": True, "link": link, "stars_price": stars})
+
+    app.router.add_post("/webapp/api/geroy_invoice", geroy_invoice_handler)
+
+    # ── GIFT VIP INVOICE (Stars orqali boshqaga VIP sovg'a) ──
+    async def gift_vip_invoice_handler(request):
+        if not bot:
+            return web.json_response({"ok": False, "error": "bot_not_available"})
+        payload = await request.json()
+        uid = payload.get("user_id") or payload.get("uid")
+        if not uid:
+            return web.json_response({"ok": False, "error": "no_user"})
+        t_uid = payload.get("target_user_id") or payload.get("target_id")
+        if not t_uid:
+            return web.json_response({"ok": False, "error": "no_target"})
+        days = int(payload.get("days", 30))
+        if days not in VIP_STAR_PRICES:
+            return web.json_response({"ok": False, "error": "bad_days"})
+        stars = VIP_STAR_PRICES[days]
+        title = f"🎁 VIP sovg'a {days} kun"
+        from aiogram.types import LabeledPrice
+        link = await bot.create_invoice_link(
+            title=title,
+            description=f"VIP {days} kun sovg'a qilish",
+            payload=f"webapp_giftvip_{days}_{t_uid}_{uid}",
+            currency="XTR",
+            prices=[LabeledPrice(label=title, amount=stars)]
+        )
+        return web.json_response({"ok": True, "link": link})
+
+    app.router.add_post("/webapp/api/gift_vip_invoice", gift_vip_invoice_handler)
 

@@ -4658,7 +4658,7 @@
         diaDollarBox.innerHTML = "";
         dolBox.innerHTML = "";
 
-        const starDiamondPrices = { 10: 70, 30: 200, 70: 450, 250: 1300 };
+        const starDiamondPrices = { 10: 70, 50: 350, 100: 700, 500: 3500, 1000: 7000 };
         Object.keys(starDiamondPrices).forEach((countStr) => {
             const count = Number(countStr);
             const card = document.createElement("div");
@@ -4667,7 +4667,6 @@
             card.querySelector("button").addEventListener("click", (e) => buyCurrencyStars("diamond", count, e.target));
             diaStarsBox.appendChild(card);
         });
-        diaStarsBox.appendChild(buildCustomAmountCard("diamond", "💎", 7, 1));
 
         [1, 5, 10, 30].forEach((count) => {
             const card = document.createElement("div");
