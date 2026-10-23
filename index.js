@@ -85,6 +85,9 @@
     let geroyMarketPage = 1;
     let geroyMarketHasMore = false;
     let isAdminUser = false;
+    let shopLoaded = false;
+    let paraLoaded = false;
+    let transferLoaded = false;
     let UI = {};
 
     function t(key, fallback) {
@@ -345,6 +348,9 @@
         if (target === "nft-market" && !nftMarketLoaded) { nftMarketLoaded = true; initNftMarket(); }
         if (target === "support") startSupportChatPolling(); else stopSupportChatPolling();
         if (target === "overview") startOverviewPolling(); else stopOverviewPolling();
+        if (target === "shop" && !shopLoaded) { shopLoaded = true; renderCurrencyPacks(); }
+        if (target === "para" && !paraLoaded) { paraLoaded = true; if (profileCache) renderPara(profileCache); }
+        if (target === "transfer" && !transferLoaded) { transferLoaded = true; setupTransferForm(); }
 
         const fab = document.getElementById("support-fab-btn");
         if (fab) fab.classList.toggle("hidden", target !== "overview");
