@@ -2215,13 +2215,13 @@ async def show_shop(call: CallbackQuery):
             f"🛡️ <b>Himoya</b> - Sizni hayotingizni saqlab qoladi\n\n"
             f"📁 <b>Hujjat</b> - Komissar sizni tekshirganda sizni Tinch aholi qilib ko'rsatadi.\n\n"
             f"⚖️ <b>Ovozdan himoya</b> - Sizni ovozdan keyin o'ldirishdan saqlab qoladi.\n\n"
-            f"🔫 <b>Miltiq</b> - Sizga o'yinda tong vaqtida ham otish imkonini beradi...\n\n"
+            f"🔫 <b>Miltiq</b> - Sizga o'yinda tong vaqtida ham otash imkonini beradi...\n\n"
             f"💊 <b>Doridan himoya</b> - sizni kezuvchining dorisidan himoya qiladi\n\n"
             f"🎭 <b>Maska</b> - Daydi sizni qotillik ustida ko'rib qolsa ham yuzingizni ko'rolmaydi\n\n"
             f"⛑️ <b>Qotildan himoya</b> - Sizni qotil hujumidan qutqaradi\n\n"
             f"🪤 <b>Sirpanishdan himoya</b> - Sizni konchi rolida sirpanishdan saqlab qoladi.\n\n"
             f"🔰 <b>Geroydan himoya</b> - Sizga geroydan bo'lgan har qanday hujumdan omon qolish imkonini beradi.\n\n"
-            f"🥷 <b>Geroy</b> - Sizga kunduz kuni ham otish imkoniyatini beradi!"
+            f"🥷 <b>Geroy</b> - Sizga kunduz kuni ham otash imkoniyatini beradi!"
         ),
         "ru": (
             f"🛡️ <b>Защита</b> - Спасает вашу жизнь в игре\n\n"
@@ -2292,11 +2292,54 @@ async def show_shop(call: CallbackQuery):
 
     await call.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
 
+async def show_diamond_menu(call: CallbackQuery):
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from utils.i18n import clean_lang
+    from models.user import User
+
+    user = await User.filter(user_id=call.from_user.id).first()
+    lang = clean_lang(user.lang if user else "uz")
+
+    diamond_prices = {
+        "uz": "💎 <b>Olmos xarid qilish</b>\n\n⭐️ 70 Stars ➔ 💎 10 Olmos\n⭐️ 350 Stars ➔ 💎 50 Olmos\n⭐️ 700 Stars ➔ 💎 100 Olmos\n⭐️ 3500 Stars ➔ 💎 500 Olmos\n⭐️ 7000 Stars ➔ 💎 1000 Olmos\n\n💳 Karta orqali tolov uchun quyidagi tugmani bosing:",
+        "ru": "💎 <b>Купить алмазы</b>\n\n⭐️ 70 Stars ➔ 💎 10 Алмазов\n⭐️ 350 Stars ➔ 💎 50 Алмазов\n⭐️ 700 Stars ➔ 💎 100 Алмазов\n⭐️ 3500 Stars ➔ 💎 500 Алмазов\n⭐️ 7000 Stars ➔ 💎 1000 Алмазов\n\n💳 Для оплаты картой нажмите кнопку ниже:",
+        "en": "💎 <b>Buy Diamonds</b>\n\n⭐️ 70 Stars ➔ 💎 10 Diamonds\n⭐️ 350 Stars ➔ 💎 50 Diamonds\n⭐️ 700 Stars ➔ 💎 100 Diamonds\n⭐️ 3500 Stars ➔ 💎 500 Diamonds\n⭐️ 7000 Stars ➔ 💎 1000 Diamonds\n\n💳 For card payment click the button below:",
+        "tr": "💎 <b>Elmas Satın Al</b>\n\n⭐️ 70 Stars ➔ 💎 10 Elmas\n⭐️ 350 Stars ➔ 💎 50 Elmas\n⭐️ 700 Stars ➔ 💎 100 Elmas\n⭐️ 3500 Stars ➔ 💎 500 Elmas\n⭐️ 7000 Stars ➔ 💎 1000 Elmas\n\n💳 Kart ödemesi için aşağıdaki butona tıklayın:",
+        "kk": "💎 <b>Алмаз сатып алу</b>\n\n⭐️ 70 Stars ➔ 💎 10 Алмаз\n⭐️ 350 Stars ➔ 💎 50 Алмаз\n⭐️ 700 Stars ➔ 💎 100 Алмаз\n⭐️ 3500 Stars ➔ 💎 500 Алмаз\n⭐️ 7000 Stars ➔ 💎 1000 Алмаз\n\n💵 Карта төлемі үшін төмендегі батырманы басыңыз:"
+    }
+
+    kb = InlineKeyboardBuilder()
+    kb.button(text="💳 Karta orqali tolov", url="tg://user?id=6913838682")
+    kb.button(text="⬅️ Orqaga", callback_data="back_profile")
+    kb.adjust(1)
+
+    await call.message.edit_text(diamond_prices.get(lang, diamond_prices["uz"]), reply_markup=kb.as_markup(), parse_mode="HTML")
+
 async def buy_dollar_callback(call: CallbackQuery):
     await call.answer("Dollar xarid qilish WebApp ilovasi orqali amalga oshiriladi.", show_alert=True)
 
 async def get_dollar_callback(call: CallbackQuery):
-    await get_diamond_hamyonlar(call)
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from utils.i18n import clean_lang
+    from models.user import User
+
+    user = await User.filter(user_id=call.from_user.id).first()
+    lang = clean_lang(user.lang if user else "uz")
+
+    dollar_prices = {
+        "uz": "💵 <b>Dollar xarid qilish</b>\n\n⭐️ 1000 Stars ➔ 💵 1,000 Dollar\n⭐️ 10,000 Stars ➔ 💵 10,000 Dollar\n⭐️ 30,000 Stars ➔ 💵 30,000 Dollar\n\n💳 Karta orqali tolov uchun quyidagi tugmani bosing:",
+        "ru": "💵 <b>Купить доллары</b>\n\n⭐️ 1000 Stars ➔ 💵 1,000 Dollar\n⭐️ 10,000 Stars ➔ 💵 10,000 Dollar\n⭐️ 30,000 Stars ➔ 💵 30,000 Dollar\n\n💳 Для оплаты картой нажмите кнопку ниже:",
+        "en": "💵 <b>Buy Dollars</b>\n\n⭐️ 1000 Stars ➔ 💵 1,000 Dollar\n⭐️ 10,000 Stars ➔ 💵 10,000 Dollar\n⭐️ 30,000 Stars ➔ 💵 30,000 Dollar\n\n💳 For card payment click the button below:",
+        "tr": "💵 <b>Dolar Satın Al</b>\n\n⭐️ 1000 Stars ➔ 💵 1,000 Dollar\n⭐️ 10,000 Stars ➔ 💵 10,000 Dollar\n⭐️ 30,000 Stars ➔ 💵 30,000 Dollar\n\n💳 Kart ödemesi için aşağıdaki butona tıklayın:",
+        "kk": "💵 <b>Доллар сатып алу</b>\n\n⭐️ 1000 Stars ➔ 💵 1,000 Dollar\n⭐️ 10,000 Stars ➔ 💵 10,000 Dollar\n⭐️ 30,000 Stars ➔ 💵 30,000 Dollar\n\n💵 Карта төлемі үшін төмендегі батырманы басыңыз:"
+    }
+
+    kb = InlineKeyboardBuilder()
+    kb.button(text="💳 Karta orqali tolov", url="tg://user?id=6913838682")
+    kb.button(text="⬅️ Orqaga", callback_data="back_profile")
+    kb.adjust(1)
+
+    await call.message.edit_text(dollar_prices.get(lang, dollar_prices["uz"]), reply_markup=kb.as_markup(), parse_mode="HTML")
 
 async def item_info_handler(call: CallbackQuery):
     from aiogram.utils.keyboard import InlineKeyboardBuilder

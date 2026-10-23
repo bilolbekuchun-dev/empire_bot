@@ -186,7 +186,7 @@ async def f(call: CallbackQuery, bot: Bot):
 
 @router.callback_query(F.data == "diamond_menu")
 async def f(call: CallbackQuery, bot: Bot):
-    await others.show_shop(call)
+    await others.show_diamond_menu(call)
 
 @router.callback_query(F.data == "money_menu")
 async def f(call: CallbackQuery, bot: Bot):
