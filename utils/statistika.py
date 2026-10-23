@@ -2,7 +2,7 @@ from tortoise.expressions import Q
 from datetime import datetime, timedelta
 from models.game_set import GroupBalance, CommandPermissionsChat
 from models.game_data import Game, GamePlayer, Chat, GiveTopChat, PlayersGameBall
-from models.user import Profile, VipUser, User
+from models.user import Profile, VipUser, User, Transfers
 from aiogram.types import Message
 from aiogram.enums import ChatMemberStatus
 from aiogram import Bot

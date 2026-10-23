@@ -3324,10 +3324,146 @@ async def success_payment_handler(message: Message):
         )
 
 async def get_active_role(call: CallbackQuery):
-    await call.answer("Faol rol ma'lumoti", show_alert=True)
+    from models.user import User, Profile, ActiveRole
+    from utils.premium_emojis import get_all_active_roles, role_display
+    from keyboards.user_keyboards import active_role_keyboard
+    from utils.i18n import clean_lang
+    
+    user = await User.filter(user_id=call.from_user.id).first()
+    if not user:
+        await call.answer("❌ Foydalanuvchi topilmadi!", show_alert=True)
+        return
+    
+    profile = await Profile.get_or_none(user=user)
+    if not profile:
+        profile = await Profile.create(user=user, dollar=0, diamond=0)
+    
+    lang = clean_lang(user.lang if user else "uz")
+    
+    # Get all available active roles with prices
+    all_roles = get_all_active_roles()
+    role_price = {}
+    for role in all_roles:
+        role_price[role] = 10  # 10 diamond for each role
+    
+    # Get user's current active roles
+    active_roles = await ActiveRole.filter(profile=profile, is_active=True).all()
+    
+    # Language-specific messages
+    labels = {
+        "uz": {
+            "title": "🃏 <b>Faol rollar</b>",
+            "you_have": "Sizda:",
+            "no_role": "Sizda faol rol yo'q.",
+            "diamond": f"💎 Sizning olmosingiz: {profile.diamond}",
+            "select": "Rol sotib olish uchun quyidagilardan birini tanlang:"
+        },
+        "ru": {
+            "title": "🃏 <b>Активные роли</b>",
+            "you_have": "У вас:",
+            "no_role": "У вас нет активной роли.",
+            "diamond": f"💎 Ваши алмазы: {profile.diamond}",
+            "select": "Выберите роль для покупки:"
+        },
+        "en": {
+            "title": "🃏 <b>Active roles</b>",
+            "you_have": "You have:",
+            "no_role": "You have no active role.",
+            "diamond": f"💎 Your diamonds: {profile.diamond}",
+            "select": "Select a role to purchase:"
+        },
+        "tr": {
+            "title": "🃏 <b>Aktif roller</b>",
+            "you_have": "Sizin:",
+            "no_role": "Aktif rolünüz yok.",
+            "diamond": f"💎 Pırlantalarınız: {profile.diamond}",
+            "select": "Satın almak için bir rol seçin:"
+        },
+        "kk": {
+            "title": "🃏 <b>Белсенді рөлдер</b>",
+            "you_have": "Сізде:",
+            "no_role": "Сізде белсенді рөл жоқ.",
+            "diamond": f"💎 Сіздің алмасыңыз: {profile.diamond}",
+            "select": "Сатып алу үшін рөлді таңдаңыз:"
+        }
+    }
+    
+    lbl = labels.get(lang, labels["uz"])
+    
+    text = f"{lbl['title']}\n\n"
+    if active_roles:
+        roles_text = ", ".join(role_display(r.role) for r in active_roles)
+        text += f"{lbl['you_have']} {roles_text}\n\n"
+    else:
+        text += f"{lbl['no_role']}\n\n"
+    
+    text += f"{lbl['diamond']}\n\n"
+    text += lbl['select']
+    
+    kb = active_role_keyboard(role_price)
+    
+    try:
+        await call.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+    except Exception:
+        await call.message.answer(text, reply_markup=kb, parse_mode="HTML")
+    await call.answer()
 
 async def buy_active_role(call: CallbackQuery):
-    await call.answer("Faol rol xarid qilindi!", show_alert=True)
+    from models.user import User, Profile, ActiveRole
+    from utils.premium_emojis import role_display
+    from utils.i18n import clean_lang
+    
+    user = await User.filter(user_id=call.from_user.id).first()
+    if not user:
+        await call.answer("❌ Foydalanuvchi topilmadi!", show_alert=True)
+        return
+    
+    profile = await Profile.get_or_none(user=user)
+    if not profile:
+        profile = await Profile.create(user=user, dollar=0, diamond=0)
+    
+    lang = clean_lang(user.lang if user else "uz")
+    
+    # Extract role name from callback data
+    role_name = call.data.replace("role-buy_", "")
+    
+    if not role_name:
+        await call.answer("❌ Noto'g'ri tanlov!", show_alert=True)
+        return
+    
+    price_diamond = 10
+    if profile.diamond < price_diamond:
+        # Language-specific error messages
+        error_msgs = {
+            "uz": f"❌ Olmos yetarli emas! Kerak: {price_diamond}💎",
+            "ru": f"❌ Недостаточно алмазов! Нужно: {price_diamond}💎",
+            "en": f"❌ Not enough diamonds! Need: {price_diamond}💎",
+            "tr": f"❌ Yeterli pırlanta yok! Gerekli: {price_diamond}💎",
+            "kk": f"❌ Алмас жеткіліксіз! Қажет: {price_diamond}💎"
+        }
+        await call.answer(error_msgs.get(lang, error_msgs["uz"]), show_alert=True)
+        return
+    
+    # Deduct diamond
+    profile.diamond -= price_diamond
+    await profile.save()
+    
+    # Delete all existing active roles and create new one
+    await ActiveRole.filter(profile=profile).delete()
+    await ActiveRole.create(profile=profile, role=role_name, is_active=True)
+    
+    # Language-specific success messages
+    success_msgs = {
+        "uz": f"✅ {role_display(role_name)} roli sotib olindi!",
+        "ru": f"✅ Роль {role_display(role_name)} куплена!",
+        "en": f"✅ Role {role_display(role_name)} purchased!",
+        "tr": f"✅ {role_display(role_name)} rolü satın alındı!",
+        "kk": f"✅ {role_display(role_name)} рөлі сатып алынды!"
+    }
+    await call.answer(success_msgs.get(lang, success_msgs["uz"]), show_alert=True)
+    
+    # Refresh the active role menu
+    await get_active_role(call)
 
 async def del_active_role_handler(call: CallbackQuery):
     await call.answer("Faol rol o'chirildi!", show_alert=True)

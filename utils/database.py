@@ -163,6 +163,7 @@ async def init():
             "ALTER TABLE tournament ADD COLUMN gift_diamond INT DEFAULT 0;",
             "ALTER TABLE tournament ADD COLUMN gift_dollar INT DEFAULT 0;",
             "ALTER TABLE tournament ADD COLUMN gift_last_year INT;",
+            "ALTER TABLE profile ADD COLUMN on_active_role BOOLEAN DEFAULT TRUE;",
         ]
         for q in queries:
             try:

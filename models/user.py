@@ -100,6 +100,7 @@ class Profile(Model):
     on_maska = fields.BooleanField(default=True)
     on_slip_himoya = fields.BooleanField(default=True)
     on_geroy_himoya = fields.BooleanField(default=True)
+    on_active_role = fields.BooleanField(default=True)  # faol rol tizimini yoqish/o'chirish
     daily_streak = fields.IntField(default=0)  # kunlik kirish ketma-ketligi (1-7, keyin 7 da qoladi)
     last_claim_date = fields.DateField(null=True)  # oxirgi kunlik mukofot olingan sana
     birth_date = fields.CharField(max_length=5, null=True)  # "OO-KK" formatida (yil saqlanmaydi) — tug'ilgan kunni tabriklash uchun

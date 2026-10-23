@@ -144,10 +144,30 @@ async def f(pre_checkout_query: PreCheckoutQuery):
 async def f(message: Message, bot: Bot):
     await others.success_payment_handler(message)
 
-@router.callback_query(F.data.startswith("buy_"))
+@router.callback_query(F.data.startswith("buy_diamond_"))
+async def f(call: CallbackQuery, bot: Bot):
+    await others.buy_diamond_callback(call)
+
+@router.callback_query(F.data.startswith("buy_dollar_"))
+async def f(call: CallbackQuery, bot: Bot):
+    await others.buy_dollar_callback(call)
+
+@router.callback_query(F.data.startswith("buy_") & ~F.data.startswith("buy_diamond_") & ~F.data.startswith("buy_dollar_"))
 async def f(call: CallbackQuery, bot: Bot):
     await others.buy_handler(call)
-    
+
+@router.callback_query(F.data == "item_active_role")
+async def f(call: CallbackQuery, bot: Bot):
+    await others.get_active_role(call)
+
+@router.callback_query(F.data.startswith("role-buy_"))
+async def f(call: CallbackQuery, bot: Bot):
+    await others.buy_active_role(call)
+
+@router.callback_query(F.data.startswith("item_"))
+async def f(call: CallbackQuery, bot: Bot):
+    await others.item_info_handler(call)
+
 @router.callback_query(F.data.startswith("get_dollar"))
 async def f(call: CallbackQuery, bot: Bot):
     await others.get_dollar_callback(call)
