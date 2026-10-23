@@ -159,11 +159,10 @@ async def main():
         from utils.webapp_api import setup_webapp_routes
         setup_webapp_routes(app, static_dir=os.path.dirname(os.path.abspath(__file__)), bot=bot)
 
-        # Stats bridge ni app ga qo'shish
-        app["bot"] = bot
-        app.router.add_post("/exchange/credit", _credit)
-        app.router.add_get("/exchange/ping", _ping)
-
+        # Healthcheck route for Railway
+        async def healthcheck(request):
+            return web.Response(text="OK", status=200)
+        app.router.add_get("/health", healthcheck)
 
         # Stats bridge ni app ga qo'shish
         app["bot"] = bot
@@ -172,9 +171,9 @@ async def main():
 
         runner = web.AppRunner(app)
         await runner.setup()
-        site = web.TCPSite(runner, host=WEBAPP_HOST, port=int(os.getenv("PORT", "8002")))
+        site = web.TCPSite(runner, host=WEBAPP_HOST, port=int(PORT))
         await site.start()
-        logging.info(f"Webapp serveri {WEBAPP_HOST}:{os.getenv('PORT', '8002')} da ishga tushdi")
+        logging.info(f"Webapp serveri {WEBAPP_HOST}:{PORT} da ishga tushdi")
         
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     else:
