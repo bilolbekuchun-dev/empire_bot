@@ -265,6 +265,14 @@ def stats_button(lang: str = "uz"):
     return InlineKeyboardButton(text=lbls["btn_stats"], callback_data="sx:menu")
 
 
+def stats_button_text(lang: str = "uz"):
+    """Tugma matnini olish uchun: [stats_button_text(lang)]"""
+    from utils.i18n import clean_lang, STATS_LABELS
+    l = clean_lang(lang)
+    lbls = STATS_LABELS.get(l, STATS_LABELS["uz"])
+    return lbls["btn_stats"]
+
+
 @router.callback_query(F.data == "sx:menu")
 async def sx_menu(q: CallbackQuery):
     from utils.i18n import clean_lang, STATS_LABELS
