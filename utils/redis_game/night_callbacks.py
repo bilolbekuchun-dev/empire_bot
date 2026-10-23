@@ -939,8 +939,8 @@ async def jin_wish_choice_cb(call: CallbackQuery, bot: Bot):
 async def jin_kill_target_cb(call: CallbackQuery, bot: Bot):
     """Jin qotillik tilagi uchun o'yinchi nishon tanlaganda."""
     try:
-        _, gid, ph, target, jin_uid, wisher_uid = call.data.split("|")
-        gid, ph, target, jin_uid, wisher_uid = int(gid), int(ph), int(target), int(jin_uid), int(wisher_uid)
+        _, gid, ph, victim_uid, jin_uid, wisher_uid = call.data.split("|")
+        gid, ph, victim_uid, jin_uid, wisher_uid = int(gid), int(ph), int(victim_uid), int(jin_uid), int(wisher_uid)
     except Exception:
         await call.answer()
         return
