@@ -21,7 +21,7 @@ TELEGRAM_USERBOT_SESSION = os.path.join(os.path.dirname(__file__), "userbot_sess
 # BOT_URL=https://t.me/UnvMafiaSpeedBot
 
 BOT_URL = os.getenv("BOT_URL", "https://t.me/test_empire_bot")
-WEBAPP_URL = os.getenv("WEBAPP_URL", "https://empire-production-1eae.up.railway.app")
+WEBAPP_URL = os.getenv("WEBAPP_URL", "https://empire-production-1eae.up.railway.app/webapp")
 IS_WEBAPP_ACTIVE = True  # WebApp yoqilgan
 PORT = os.getenv("PORT", "8000")
 
