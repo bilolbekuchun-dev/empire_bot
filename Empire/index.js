@@ -1,6 +1,13 @@
 (function () {
     "use strict";
 
+    // ═══════ API SERVER CONFIGURATION ═══════
+    // Bu URL bot serveri ishga tushganda o'zgaradi.
+    // Hozircha bo'sh — relative path sifatida ishlaydi (same-origin).
+    // Production'da bot server URL'ini qo'ying, masalan: "https://your-server.com"
+    const API_BASE = window.__EMPIRE_API_BASE || "";
+
+
     function showFatalError(msg) {
         try {
             console.error(msg);
@@ -50,6 +57,48 @@
 
     const initData = tg ? tg.initData : "";
     const tgUser = tg && tg.initDataUnsafe ? tg.initDataUnsafe.user : null;
+
+    // ═══════ INITDATA TEKSHIRUVI (Telegram vs Brauzer) ═══════
+    const isTelegramWebApp = !!(tg && initData && initData.length > 0);
+    
+    if (!isTelegramWebApp) {
+        // Oddiy brauzerdan kirilgan — cheklangan rejim
+        const gateOverlay = document.createElement("div");
+        gateOverlay.id = "browser-gate-overlay";
+        gateOverlay.style.cssText = "position:fixed; inset:0; z-index:99999; background:linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #0a0a1a 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:32px; font-family:'Outfit',sans-serif;";
+        
+        gateOverlay.innerHTML = `
+            <div style="max-width:400px;">
+                <div style="font-size:64px; margin-bottom:20px;">🎭</div>
+                <h1 style="color:#fff; font-size:28px; font-weight:800; margin:0 0 12px;">Empire Mafia</h1>
+                <p style="color:rgba(255,255,255,0.6); font-size:15px; line-height:1.6; margin:0 0 28px;">
+                    Bu WebApp faqat <strong style="color:#38bdf8;">Telegram</strong> ilovasi orqali ochiladi.
+                    <br>Iltimos, botga o\'ting va <strong style="color:#f0c419;">🌐 Shaxsiy kabinet</strong> tugmasini bosing.
+                </p>
+                <a href="https://t.me/UnvMafiaBot" 
+                   style="display:inline-flex; align-items:center; gap:8px; padding:14px 28px; background:linear-gradient(135deg, #2AABEE, #229ED9); color:#fff; text-decoration:none; border-radius:12px; font-size:16px; font-weight:700; box-shadow:0 4px 20px rgba(42,171,238,0.3); transition:transform 0.2s;"
+                   onmouseover="this.style.transform='scale(1.05)'"
+                   onmouseout="this.style.transform='scale(1)'">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.03-1.99 1.27-5.62 3.72-.53.36-1.01.54-1.44.53-.47-.01-1.38-.27-2.06-.49-.83-.27-1.49-.42-1.43-.88.03-.24.37-.49 1.02-.75 3.99-1.73 6.65-2.87 7.97-3.44 3.8-1.58 4.59-1.86 5.1-1.87.11 0 .37.03.54.17.14.12.18.28.2.47-.01.06.01.24 0 .38z"/>
+                    </svg>
+                    Botga o\'tish
+                </a>
+                <p style="color:rgba(255,255,255,0.25); font-size:11px; margin-top:24px;">
+                    Telegram WebApp initData topilmadi
+                </p>
+            </div>
+        `;
+        document.body.appendChild(gateOverlay);
+        
+        // Asosiy kontentni yashiramiz
+        const shell = document.querySelector(".shell");
+        if (shell) shell.style.display = "none";
+        
+        console.warn("[Empire WebApp] Telegram initData topilmadi — brauzer rejimi.");
+        return; // IIFE dan chiqamiz, hech narsa yuklanmaydi
+    }
+
 
     setTimeout(() => {
         try {
@@ -243,7 +292,7 @@
 
     function setChatWallpaper(box, userId) {
         if (!userId) { box.style.backgroundImage = FALLBACK_CHAT_BG; return; }
-        const avatarUrl = `/webapp/avatar/${userId}`;
+        const avatarUrl = `${API_BASE}/webapp/avatar/${userId}`;
         const probe = new Image();
         probe.onload = () => { box.style.backgroundImage = `linear-gradient(rgba(13,10,8,.88), rgba(13,10,8,.88)), url(${avatarUrl})`; };
         probe.onerror = () => { box.style.backgroundImage = FALLBACK_CHAT_BG; };
@@ -396,10 +445,10 @@
         try {
             let unread = 0;
             if (isAdminUser) {
-                const res = await api("/webapp/api/admin_support_list");
+                const res = await api(API_BASE + "/webapp/api/admin_support_list");
                 unread = (res.conversations || []).filter((c) => c.unread).length;
             } else {
-                const res = await api("/webapp/api/support_unread");
+                const res = await api(API_BASE + "/webapp/api/support_unread");
                 unread = res.unread || 0;
             }
             [fabBadge, navBadge].forEach((badge) => {
@@ -426,7 +475,7 @@
 
         if (u.user_id) {
             const svgFallback = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100%" height="100%" fill="%231e1e2d"/><text x="50%" y="55%" font-size="42" fill="%23f0c419" text-anchor="middle" dominant-baseline="middle">👤</text></svg>`;
-            const proxyUrl = `/webapp/avatar/${u.user_id}`;
+            const proxyUrl = `${API_BASE}/webapp/avatar/${u.user_id}`;
             const photoUrl = u.photo_url || (tgUser && tgUser.photo_url) || null;
 
             [document.getElementById("user-avatar"), document.getElementById("sidebar-user-avatar")].forEach((img) => {
@@ -532,7 +581,7 @@
         if (!btn || btn.disabled) return;
         btn.disabled = true;
         try {
-            const res = await api("/webapp/api/claim_daily");
+            const res = await api(API_BASE + "/webapp/api/claim_daily");
             if (!res.ok) {
                 if (res.error === "already_claimed_today") {
                     if (profileCache) {
@@ -625,7 +674,7 @@
             const isFinished = u.cardStatus === "finished";
             const joinHtml = (!isFinished && u.contact_username) ? `
                 <a href="https://t.me/${escapeHtml(u.contact_username.replace(/^@/, ""))}" target="_blank" rel="noopener" class="tournament-join-btn tournament-join-btn-inline">
-                    ${u.contact_user_id ? `<span class="tournament-join-avatar"><img src="/webapp/avatar_chat/${u.contact_user_id}" alt="" onerror="this.parentElement.style.display='none';"></span>` : ""}
+                    ${u.contact_user_id ? `<span class="tournament-join-avatar"><img src="${API_BASE}/webapp/avatar_chat/${u.contact_user_id}" alt="" onerror="this.parentElement.style.display='none';"></span>` : ""}
                     <i class="fa-brands fa-telegram"></i> ${escapeHtml(u.contact_button_text || t("tournament_join_btn"))}
                 </a>` : "";
             const winnerHtml = (isFinished && (u.winner_name || u.winner_team)) ? `
@@ -695,7 +744,7 @@
             const badgeText = s.isPersonal ? "🎁 Sizga tabrik" : (s.isHoliday ? "🎉 Bayram" : (s.isUpcoming ? t("tournament_nextup_badge") : t("tournament_status_live")));
             const joinHtml = s.contact_username ? `
                 <a href="https://t.me/${escapeHtml(s.contact_username.replace(/^@/, ""))}" target="_blank" rel="noopener" class="tournament-join-btn tournament-join-btn-inline" onclick="event.stopPropagation();">
-                    ${s.contact_user_id ? `<span class="tournament-join-avatar"><img src="/webapp/avatar_chat/${s.contact_user_id}" alt="" onerror="this.parentElement.style.display='none';"></span>` : ""}
+                    ${s.contact_user_id ? `<span class="tournament-join-avatar"><img src="${API_BASE}/webapp/avatar_chat/${s.contact_user_id}" alt="" onerror="this.parentElement.style.display='none';"></span>` : ""}
                     <i class="fa-brands fa-telegram"></i> ${escapeHtml(s.contact_button_text || t("tournament_join_btn"))}
                 </a>` : "";
             return `
@@ -780,12 +829,12 @@
 
     async function loadTournament() {
         try {
-            const res = await api("/webapp/api/tournament");
+            const res = await api(API_BASE + "/webapp/api/tournament");
             const hasHistory = (res.history || []).length > 0;
 
             let homeHolidays = [];
             try {
-                const hRes = await api("/webapp/api/holiday");
+                const hRes = await api(API_BASE + "/webapp/api/holiday");
                 homeHolidays = [...(hRes.active || []), ...(hRes.upcoming || [])];
             } catch (e) { /* bayram yuklanmasa ham reklama ko'rsatilaveradi */ }
 
@@ -801,7 +850,7 @@
                     pJoin.href = "https://t.me/" + p.contact_username.replace(/^@/, "");
                     pJoin.querySelector("span").textContent = p.contact_button_text || "Qatnashish uchun yozing";
                     pJoin.style.display = "flex";
-                    pJoin.onclick = () => { safe(() => api("/webapp/api/tournament_track_click", { tournament_id: p.id }), "trackClick"); };
+                    pJoin.onclick = () => { safe(() => api(API_BASE + "/webapp/api/tournament_track_click", { tournament_id: p.id }), "trackClick"); };
                 } else {
                     pJoin.style.display = "none";
                 }
@@ -818,13 +867,13 @@
             if (res.info.active && res.info.contact_username) {
                 joinBtn.href = "https://t.me/" + res.info.contact_username.replace(/^@/, "");
                 if (res.info.contact_user_id) {
-                    joinAvatar.innerHTML = `<img src="/webapp/avatar_chat/${res.info.contact_user_id}" alt="" onerror="this.parentElement.style.display='none';">`;
+                    joinAvatar.innerHTML = `<img src="${API_BASE}/webapp/avatar_chat/${res.info.contact_user_id}" alt="" onerror="this.parentElement.style.display='none';">`;
                     joinAvatar.style.display = "";
                 } else {
                     joinAvatar.style.display = "none";
                 }
                 joinBtn.style.display = "flex";
-                joinBtn.onclick = () => { safe(() => api("/webapp/api/tournament_track_click", { tournament_id: res.info.id }), "trackClick"); };
+                joinBtn.onclick = () => { safe(() => api(API_BASE + "/webapp/api/tournament_track_click", { tournament_id: res.info.id }), "trackClick"); };
             } else {
                 joinBtn.style.display = "none";
             }
@@ -873,7 +922,7 @@
         const box = document.getElementById("admin-stats-container");
         box.innerHTML = '<div class="skeleton-list"></div>';
         try {
-            const res = await api("/webapp/api/admin_stats");
+            const res = await api(API_BASE + "/webapp/api/admin_stats");
             const s = res.stats;
             const cards = [
                 [t("admin_stat_users"), fmt(s.total_users), "fa-users", "blue"],
@@ -933,9 +982,9 @@
                 const userId = document.getElementById("admin-user-result").dataset.userId;
                 if (!userId) return;
                 try {
-                    await api("/webapp/api/admin_adjust_balance", { user_id: userId, item_deltas: { [field]: sign * amt } });
+                    await api(API_BASE + "/webapp/api/admin_adjust_balance", { user_id: userId, item_deltas: { [field]: sign * amt } });
                     toast(t("admin_action_success"), "success");
-                    const res = await api("/webapp/api/admin_search_user", { query: userId });
+                    const res = await api(API_BASE + "/webapp/api/admin_search_user", { query: userId });
                     renderAdminUserCard(res.user);
                 } catch (e) {
                     toast(t("toast_generic_error"), "error");
@@ -950,7 +999,7 @@
         const initial = name.trim().charAt(0).toUpperCase() || "?";
         card.innerHTML = `
             <div class="auc-head">
-                <div class="auc-avatar"><img src="/webapp/avatar/${u.user_id}" alt="" onerror="var p=this.parentElement; this.remove(); if(p) p.textContent='${escapeHtml(initial)}';"></div>
+                <div class="auc-avatar"><img src="${API_BASE}/webapp/avatar/${u.user_id}" alt="" onerror="var p=this.parentElement; this.remove(); if(p) p.textContent='${escapeHtml(initial)}';"></div>
                 <div>
                     <div class="auc-name">${escapeHtml(name)}</div>
                     <div class="auc-meta">${u.username ? "@" + escapeHtml(u.username) + " · " : ""}ID: ${u.user_id}</div>
@@ -975,9 +1024,9 @@
 
     window.adminToggleBlock = async function(userId, currentlyBlocked) {
         try {
-            await api(currentlyBlocked ? "/webapp/api/admin_unblock_user" : "/webapp/api/admin_block_user", { user_id: userId });
+            await api(currentlyBlocked ? API_BASE + "/webapp/api/admin_unblock_user" : API_BASE + "/webapp/api/admin_block_user", { user_id: userId });
             toast(t("admin_action_success"), "success");
-            const res = await api("/webapp/api/admin_search_user", { query: String(userId) });
+            const res = await api(API_BASE + "/webapp/api/admin_search_user", { query: String(userId) });
             renderAdminUserCard(res.user);
         } catch (e) {
             toast(t("toast_generic_error"), "error");
@@ -1054,7 +1103,7 @@
             : `<span class="auc-open-link is-disabled">Username yo'q — Telegramdan to'g'ridan-to'g'ri ochib bo'lmaydi</span>`;
         box.innerHTML = `
             <div class="auc-head">
-                <div class="auc-avatar"><img src="/webapp/avatar/${u.user_id}" alt="" onerror="this.remove();"></div>
+                <div class="auc-avatar"><img src="${API_BASE}/webapp/avatar/${u.user_id}" alt="" onerror="this.remove();"></div>
                 <div>
                     <div class="auc-name">${escapeHtml(name)}</div>
                     <div class="auc-meta">${u.username ? "@" + escapeHtml(u.username) + " · " : ""}ID: ${u.user_id}</div>
@@ -1081,7 +1130,7 @@
             const query = input.value.trim();
             if (!query) { suggestBox.classList.remove("open"); return; }
             try {
-                const res = await api("/webapp/api/admin_support_search_users", { query });
+                const res = await api(API_BASE + "/webapp/api/admin_support_search_users", { query });
                 const users = res.users || [];
                 if (!users.length) { suggestBox.innerHTML = `<div class="admin-support-search-empty">Hech kim topilmadi</div>`; positionSuggest(); suggestBox.classList.add("open"); return; }
                 suggestBox.innerHTML = users.map((u) => `
@@ -1122,7 +1171,7 @@
         const q = (query || "").trim().replace(/^@/, "");
         if (!q) { box.style.display = "none"; return; }
         try {
-            const res = await api("/webapp/api/admin_resolve_contact", { username: q });
+            const res = await api(API_BASE + "/webapp/api/admin_resolve_contact", { username: q });
             if (!res.found) {
                 box.innerHTML = `<span class="inv-empty">❌ @${escapeHtml(q)} topilmadi — Telegram bu username haqida ma'lumot bermayapti (guruh/kanal bo'lsa nomi noto'g'ri, shaxs bo'lsa botni hali ishga tushirmagan)</span>`;
                 box.style.display = "";
@@ -1132,7 +1181,7 @@
             const initial = name.trim().charAt(0).toUpperCase() || "?";
             box.innerHTML = `
                 <div class="auc-head">
-                    <div class="auc-avatar"><img src="/webapp/avatar_chat/${res.id}" alt="" onerror="var p=this.parentElement; this.remove(); if(p) p.textContent='${escapeHtml(initial)}';"></div>
+                    <div class="auc-avatar"><img src="${API_BASE}/webapp/avatar_chat/${res.id}" alt="" onerror="var p=this.parentElement; this.remove(); if(p) p.textContent='${escapeHtml(initial)}';"></div>
                     <div>
                         <div class="auc-name">${escapeHtml(name)}</div>
                         <div class="auc-meta">@${escapeHtml(q)} · ID: ${res.id}</div>
@@ -1185,7 +1234,7 @@
         box.querySelectorAll("[data-del-tr]").forEach((btn) => {
             btn.addEventListener("click", async () => {
                 try {
-                    await api("/webapp/api/admin_tournament_delete", { entity: "tournament", id: btn.dataset.delTr });
+                    await api(API_BASE + "/webapp/api/admin_tournament_delete", { entity: "tournament", id: btn.dataset.delTr });
                     toast(t("admin_action_success"), "success");
                     if (adminSelectedTournamentId === parseInt(btn.dataset.delTr, 10)) resetTournamentForm();
                     loadAdminTournament();
@@ -1225,7 +1274,7 @@
 
     async function loadAdminTournament() {
         try {
-            const res = await api("/webapp/api/admin_tournaments_list");
+            const res = await api(API_BASE + "/webapp/api/admin_tournaments_list");
             adminTournamentsCache = res.tournaments || [];
             renderAdminTournamentsList();
         } catch (e) {
@@ -1237,7 +1286,7 @@
         const box = document.getElementById("adm-tm-managers-list");
         if (!box) return;
         try {
-            const res = await api("/webapp/api/admin_tournament_managers_list");
+            const res = await api(API_BASE + "/webapp/api/admin_tournament_managers_list");
             const managers = res.managers || [];
             if (!managers.length) { box.innerHTML = `<span class="inv-empty">Hozircha menejer yo'q</span>`; return; }
             box.innerHTML = managers.map((m) => `
@@ -1249,7 +1298,7 @@
             box.querySelectorAll("[data-revoke-tm]").forEach((btn) => {
                 btn.addEventListener("click", async () => {
                     try {
-                        await api("/webapp/api/admin_revoke_tournament_manager", { user_id: btn.dataset.revokeTm });
+                        await api(API_BASE + "/webapp/api/admin_revoke_tournament_manager", { user_id: btn.dataset.revokeTm });
                         toast(t("admin_action_success"), "success");
                         loadAdminTournamentManagers();
                     } catch (e) {
@@ -1327,7 +1376,7 @@
         box.querySelectorAll("[data-del-turnir]").forEach((btn) => {
             btn.addEventListener("click", async () => {
                 try {
-                    await api("/webapp/api/admin_tournament_delete", { entity: "tournament", id: btn.dataset.delTurnir });
+                    await api(API_BASE + "/webapp/api/admin_tournament_delete", { entity: "tournament", id: btn.dataset.delTurnir });
                     toast(t("admin_action_success"), "success");
                     if (adminSelectedTurnirId === parseInt(btn.dataset.delTurnir, 10)) resetTurnirForm();
                     await loadAdminTournament();
@@ -1394,7 +1443,7 @@
             if (!payload.title) return;
             if (adminSelectedTurnirId) payload.id = adminSelectedTurnirId;
             try {
-                const res = await api("/webapp/api/admin_tournament_save", payload);
+                const res = await api(API_BASE + "/webapp/api/admin_tournament_save", payload);
                 adminSelectedTurnirId = res.id;
                 toast(t("admin_action_success"), "success");
                 await loadAdminTournament();
@@ -1415,7 +1464,7 @@
                 const fd = new FormData();
                 fd.append("initData", initData);
                 fd.append("file", file);
-                const res = await fetch("/webapp/api/admin_upload_banner", { method: "POST", body: fd });
+                const res = await fetch(API_BASE + "/webapp/api/admin_upload_banner", { method: "POST", body: fd });
                 const data = await res.json();
                 if (!data.ok) throw new Error(data.error || "upload_failed");
                 document.getElementById("adm-tr-banner-image").value = data.url;
@@ -1439,7 +1488,7 @@
                     const fd = new FormData();
                     fd.append("initData", initData);
                     fd.append("file", file);
-                    const res = await fetch("/webapp/api/admin_upload_banner", { method: "POST", body: fd });
+                    const res = await fetch(API_BASE + "/webapp/api/admin_upload_banner", { method: "POST", body: fd });
                     const data = await res.json();
                     if (data.ok) urls.push(data.url);
                 }
@@ -1489,7 +1538,7 @@
         box.querySelectorAll("[data-del-h]").forEach((btn) => {
             btn.addEventListener("click", async () => {
                 try {
-                    await api("/webapp/api/admin_holiday_delete", { id: btn.dataset.delH });
+                    await api(API_BASE + "/webapp/api/admin_holiday_delete", { id: btn.dataset.delH });
                     toast(t("admin_action_success"), "success");
                     if (adminSelectedHolidayId === parseInt(btn.dataset.delH, 10)) resetHolidayForm();
                     loadAdminHolidays();
@@ -1518,7 +1567,7 @@
 
     async function loadAdminHolidays() {
         try {
-            const res = await api("/webapp/api/admin_holidays_list");
+            const res = await api(API_BASE + "/webapp/api/admin_holidays_list");
             adminHolidaysCache = res.holidays || [];
             renderAdminHolidaysList();
         } catch (e) {
@@ -1540,7 +1589,7 @@
             if (!payload.title) return;
             if (adminSelectedHolidayId) payload.id = adminSelectedHolidayId;
             try {
-                const res = await api("/webapp/api/admin_holiday_save", payload);
+                const res = await api(API_BASE + "/webapp/api/admin_holiday_save", payload);
                 adminSelectedHolidayId = res.id;
                 toast(t("admin_action_success"), "success");
                 await loadAdminHolidays();
@@ -1559,7 +1608,7 @@
                 const fd = new FormData();
                 fd.append("initData", initData);
                 fd.append("file", file);
-                const res = await fetch("/webapp/api/admin_upload_banner", { method: "POST", body: fd });
+                const res = await fetch(API_BASE + "/webapp/api/admin_upload_banner", { method: "POST", body: fd });
                 const data = await res.json();
                 if (!data.ok) throw new Error(data.error || "upload_failed");
                 document.getElementById("adm-h-banner-image").value = data.url;
@@ -1576,7 +1625,7 @@
     let holidayLoaded = false;
     async function loadHoliday() {
         try {
-            const res = await api("/webapp/api/holiday");
+            const res = await api(API_BASE + "/webapp/api/holiday");
             const active = res.active || [];
             const upcoming = res.upcoming || [];
             document.getElementById("nav-holiday").style.display = (active.length || upcoming.length) ? "" : "none";
@@ -1620,7 +1669,7 @@
         const box = document.getElementById("adm-bd-today-list");
         if (!box) return;
         try {
-            const res = await api("/webapp/api/admin_todays_birthdays");
+            const res = await api(API_BASE + "/webapp/api/admin_todays_birthdays");
             const list = res.birthdays || [];
             if (!list.length) { box.innerHTML = `<span class="inv-empty">Bugun tug'ilgan kuni bo'lganlar yo'q</span>`; return; }
             box.innerHTML = list.map((b) => `
@@ -1638,7 +1687,7 @@
                     const giftInput = box.querySelector(`[data-bd-gift="${uid}"]`);
                     const gift = parseInt(giftInput.value, 10) || 0;
                     try {
-                        await api("/webapp/api/admin_greet_birthday", { user_id: uid, diamond_gift: gift });
+                        await api(API_BASE + "/webapp/api/admin_greet_birthday", { user_id: uid, diamond_gift: gift });
                         toast(t("admin_action_success"), "success");
                         loadAdminBirthdays();
                     } catch (e) {
@@ -1717,7 +1766,7 @@
         box.querySelectorAll("[data-del-bd]").forEach((btn) => {
             btn.addEventListener("click", async () => {
                 try {
-                    await api("/webapp/api/admin_tournament_delete", { entity: "tournament", id: btn.dataset.delBd });
+                    await api(API_BASE + "/webapp/api/admin_tournament_delete", { entity: "tournament", id: btn.dataset.delBd });
                     toast(t("admin_action_success"), "success");
                     if (adminSelectedBirthdayAdId === parseInt(btn.dataset.delBd, 10)) resetBirthdayAdForm();
                     await loadAdminTournament();
@@ -1791,7 +1840,7 @@
             if (!payload.title) return;
             if (adminSelectedBirthdayAdId) payload.id = adminSelectedBirthdayAdId;
             try {
-                const res = await api("/webapp/api/admin_tournament_save", payload);
+                const res = await api(API_BASE + "/webapp/api/admin_tournament_save", payload);
                 adminSelectedBirthdayAdId = res.id;
                 toast(t("admin_action_success"), "success");
                 await loadAdminTournament();
@@ -1811,7 +1860,7 @@
                 const fd = new FormData();
                 fd.append("initData", initData);
                 fd.append("file", file);
-                const res = await fetch("/webapp/api/admin_upload_banner", { method: "POST", body: fd });
+                const res = await fetch(API_BASE + "/webapp/api/admin_upload_banner", { method: "POST", body: fd });
                 const data = await res.json();
                 if (!data.ok) throw new Error(data.error || "upload_failed");
                 document.getElementById("adm-bd-banner-image").value = data.url;
@@ -1861,7 +1910,7 @@
         box.querySelectorAll("[data-del-tm]").forEach((btn) => {
             btn.addEventListener("click", async () => {
                 try {
-                    await api("/webapp/api/admin_tournament_delete", { entity: "tournament", id: btn.dataset.delTm });
+                    await api(API_BASE + "/webapp/api/admin_tournament_delete", { entity: "tournament", id: btn.dataset.delTm });
                     toast(t("admin_action_success"), "success");
                     if (tmSelectedId === parseInt(btn.dataset.delTm, 10)) resetTmTournamentForm();
                     loadTmTournamentList();
@@ -1891,7 +1940,7 @@
 
     async function loadTmTournamentList() {
         try {
-            const res = await api("/webapp/api/admin_tournaments_list");
+            const res = await api(API_BASE + "/webapp/api/admin_tournaments_list");
             tmListCache = res.tournaments || [];
             renderTmTournamentList();
         } catch (e) {
@@ -1917,7 +1966,7 @@
             if (!payload.title) return;
             if (tmSelectedId) payload.id = tmSelectedId;
             try {
-                const res = await api("/webapp/api/admin_tournament_save", payload);
+                const res = await api(API_BASE + "/webapp/api/admin_tournament_save", payload);
                 tmSelectedId = res.id;
                 toast(t("admin_action_success"), "success");
                 loadTmTournamentList();
@@ -1935,7 +1984,7 @@
                 const fd = new FormData();
                 fd.append("initData", initData);
                 fd.append("file", file);
-                const res = await fetch("/webapp/api/admin_upload_banner", { method: "POST", body: fd });
+                const res = await fetch(API_BASE + "/webapp/api/admin_upload_banner", { method: "POST", body: fd });
                 const data = await res.json();
                 if (!data.ok) throw new Error(data.error || "upload_failed");
                 document.getElementById("tm-t-banner-image").value = data.url;
@@ -1957,7 +2006,7 @@
         }
         box.innerHTML = groups.map((g) => `
             <div class="admin-group-card"${g.invite_link ? ` data-link="${escapeHtml(g.invite_link)}" style="cursor:pointer;"` : ""}>
-                <div class="agc-avatar"><img src="/webapp/avatar_chat/${g.chat_id}" alt="" onerror="this.remove();"></div>
+                <div class="agc-avatar"><img src="${API_BASE}/webapp/avatar_chat/${g.chat_id}" alt="" onerror="this.remove();"></div>
                 <div class="agc-info">
                     <div class="agc-title">${escapeHtml(g.title)}</div>
                     <div class="agc-meta">👥 ${fmt(g.member_count)} · ${g.games_count} ${t("admin_group_games")}</div>
@@ -1994,7 +2043,7 @@
         cBox.innerHTML = '<div class="skeleton-list"></div>';
         gBox.innerHTML = '<div class="skeleton-list"></div>';
         try {
-            const res = await api("/webapp/api/admin_activity");
+            const res = await api(API_BASE + "/webapp/api/admin_activity");
             const purchases = res.purchases || [];
             pBox.innerHTML = purchases.length ? purchases.map((p) => {
                 const name = p.full_name || t("label_gamer");
@@ -2003,7 +2052,7 @@
                 const icon = isDollar ? "💵" : "💎";
                 return `
                     <div class="admin-activity-card kind-${p.kind}">
-                        <div class="admin-activity-avatar"><img src="/webapp/avatar/${p.user_id}" alt="" onerror="var e=this.parentElement; e.innerHTML=''; e.textContent='${escapeHtml(initial)}';"></div>
+                        <div class="admin-activity-avatar"><img src="${API_BASE}/webapp/avatar/${p.user_id}" alt="" onerror="var e=this.parentElement; e.innerHTML=''; e.textContent='${escapeHtml(initial)}';"></div>
                         <div class="admin-activity-info">
                             <div class="admin-activity-name">${escapeHtml(name)}</div>
                             <div class="admin-activity-meta">${p.username ? "@" + escapeHtml(p.username) + " · " : ""}ID: ${p.user_id}<br>🕐 ${escapeHtml(p.date)} · ${p.source === "webapp" ? "📱 WebApp" : "🤖 Bot"}</div>
@@ -2022,7 +2071,7 @@
                 const initial = name.trim().charAt(0).toUpperCase() || "?";
                 return `
                     <div class="admin-activity-card">
-                        <div class="admin-activity-avatar"><img src="/webapp/avatar/${c.user_id}" alt="" onerror="var e=this.parentElement; e.innerHTML=''; e.textContent='${escapeHtml(initial)}';"></div>
+                        <div class="admin-activity-avatar"><img src="${API_BASE}/webapp/avatar/${c.user_id}" alt="" onerror="var e=this.parentElement; e.innerHTML=''; e.textContent='${escapeHtml(initial)}';"></div>
                         <div class="admin-activity-info">
                             <div class="admin-activity-name">${escapeHtml(name)}</div>
                             <div class="admin-activity-meta">${c.username ? "@" + escapeHtml(c.username) + " · " : ""}ID: ${c.user_id}</div>
@@ -2040,7 +2089,7 @@
                 const amountText = g.amount ? `${g.amount > 0 ? "+" : ""}${fmt(g.amount)}` : "";
                 return `
                     <div class="admin-activity-card">
-                        <div class="admin-activity-avatar"><img src="/webapp/avatar/${g.admin_user_id}" alt="" onerror="var e=this.parentElement; e.innerHTML=''; e.textContent='👮';"></div>
+                        <div class="admin-activity-avatar"><img src="${API_BASE}/webapp/avatar/${g.admin_user_id}" alt="" onerror="var e=this.parentElement; e.innerHTML=''; e.textContent='👮';"></div>
                         <div class="admin-activity-info">
                             <div class="admin-activity-name">${escapeHtml(g.admin_name)} → ${escapeHtml(g.target_name)}</div>
                             <div class="admin-activity-meta">🕐 ${escapeHtml(g.date)} · ${g.source === "webapp" ? "📱 WebApp" : "🤖 Bot"}${g.extra ? " · " + escapeHtml(g.extra) : ""}</div>
@@ -2076,7 +2125,7 @@
         const fd = new FormData();
         fd.append("initData", initData);
         fd.append("file", file);
-        const res = await fetch("/webapp/api/support_upload_image", { method: "POST", body: fd });
+        const res = await fetch(API_BASE + "/webapp/api/support_upload_image", { method: "POST", body: fd });
         const data = await res.json();
         if (!data.ok) throw new Error(data.error || "upload_failed");
         return data.url;
@@ -2086,7 +2135,7 @@
         const badge = document.getElementById("admin-support-badge");
         if (!badge) return;
         try {
-            const res = await api("/webapp/api/admin_support_list");
+            const res = await api(API_BASE + "/webapp/api/admin_support_list");
             const unread = (res.conversations || []).filter((c) => c.unread).length;
             if (unread > 0) {
                 badge.textContent = unread > 99 ? "99+" : String(unread);
@@ -2105,14 +2154,14 @@
         box.innerHTML = '<div class="skeleton-list"></div>';
         const load = async () => {
             try {
-                const res = await api("/webapp/api/admin_support_list");
+                const res = await api(API_BASE + "/webapp/api/admin_support_list");
                 const convos = res.conversations || [];
                 box.innerHTML = convos.length ? convos.map((c) => {
                     const name = c.full_name || t("label_gamer");
                     return `
                         <div class="admin-support-convo${c.unread ? " unread" : ""}" data-cid="${c.customer_user_id}">
                             <div class="auc-avatar" style="width:40px;height:40px;flex-shrink:0;">
-                                <img src="/webapp/avatar/${c.customer_user_id}" alt="" onerror="this.remove();">
+                                <img src="${API_BASE}/webapp/avatar/${c.customer_user_id}" alt="" onerror="this.remove();">
                             </div>
                             <div class="admin-support-convo-info">
                                 <div class="admin-support-convo-name">${escapeHtml(name)}${c.username ? " · @" + escapeHtml(c.username) : ""}${c.unread ? '<span class="admin-support-convo-new-tag">Yangi</span>' : ""}</div>
@@ -2160,7 +2209,7 @@
         if (!customer) { card.innerHTML = ""; return; }
         const name = customer.full_name || t("label_gamer");
         card.innerHTML = `
-            <img class="admin-support-customer-avatar" src="/webapp/avatar/${customer.user_id}" alt="" onerror="this.style.display='none';">
+            <img class="admin-support-customer-avatar" src="${API_BASE}/webapp/avatar/${customer.user_id}" alt="" onerror="this.style.display='none';">
             <div class="admin-support-customer-info">
                 <div class="admin-support-customer-name">${escapeHtml(name)}</div>
                 <div class="admin-support-customer-meta">${customer.username ? "@" + escapeHtml(customer.username) + " · " : ""}ID: ${customer.user_id}</div>
@@ -2182,7 +2231,7 @@
         const box = document.getElementById("admin-support-thread-messages");
         box.innerHTML = '<div class="skeleton-list"></div>';
         try {
-            const res = await api("/webapp/api/admin_support_thread", { customer_user_id: customerId });
+            const res = await api(API_BASE + "/webapp/api/admin_support_thread", { customer_user_id: customerId });
             adminSupportThreadLastId = 0;
             renderAdminSupportCustomerCard(res.customer);
             renderAdminSupportThread(res.messages || [], false);
@@ -2195,7 +2244,7 @@
         adminSupportThreadTimer = setInterval(async () => {
             if (adminSupportOpenCustomerId !== customerId) return;
             try {
-                const res = await api("/webapp/api/admin_support_thread", { customer_user_id: customerId });
+                const res = await api(API_BASE + "/webapp/api/admin_support_thread", { customer_user_id: customerId });
                 renderAdminSupportThread((res.messages || []).filter((m) => m.id > adminSupportThreadLastId), true);
                 refreshSupportFabBadge();
             } catch (e) { /* jim */ }
@@ -2215,7 +2264,7 @@
             } else {
                 resultsBox.innerHTML = users.map((u) => `
                     <div class="admin-support-search-result" data-uid="${u.user_id}">
-                        <img src="/webapp/avatar/${u.user_id}" alt="" onerror="this.remove();">
+                        <img src="${API_BASE}/webapp/avatar/${u.user_id}" alt="" onerror="this.remove();">
                         <div>
                             <div class="admin-support-search-result-name">${escapeHtml(u.full_name || t("label_gamer"))}</div>
                             <div class="admin-support-search-result-sub">${u.username ? "@" + escapeHtml(u.username) + " · " : ""}ID: ${u.user_id}</div>
@@ -2237,7 +2286,7 @@
             const query = searchInput.value.trim();
             if (!query) { resultsBox.style.display = "none"; return; }
             try {
-                const res = await api("/webapp/api/admin_support_search_users", { query });
+                const res = await api(API_BASE + "/webapp/api/admin_support_search_users", { query });
                 renderSearchResults(res.users || []);
             } catch (e) {
                 toast(t("toast_generic_error"), "error");
@@ -2260,7 +2309,7 @@
             if (!adminSupportOpenCustomerId) return;
             if (!(await tgConfirm("Bu suhbat sizning ro'yxatingizdan yashiriladi (foydalanuvchida saqlanib qoladi). Davom etasizmi?"))) return;
             try {
-                await api("/webapp/api/admin_support_delete_conversation", { customer_user_id: adminSupportOpenCustomerId });
+                await api(API_BASE + "/webapp/api/admin_support_delete_conversation", { customer_user_id: adminSupportOpenCustomerId });
                 toast(t("admin_action_success"), "success");
                 showAdminSupportList();
             } catch (e) {
@@ -2276,7 +2325,7 @@
             if ((!text && !imageUrl) || !adminSupportOpenCustomerId) return;
             input.value = "";
             try {
-                const res = await api("/webapp/api/admin_support_reply", { customer_user_id: adminSupportOpenCustomerId, text, image_url: imageUrl || "" });
+                const res = await api(API_BASE + "/webapp/api/admin_support_reply", { customer_user_id: adminSupportOpenCustomerId, text, image_url: imageUrl || "" });
                 renderAdminSupportThread([res.message], true);
             } catch (e) {
                 toast(t("toast_generic_error"), "error");
@@ -2305,7 +2354,7 @@
         const box = document.getElementById("admin-groups-container");
         box.innerHTML = '<div class="skeleton-list"></div>';
         try {
-            const res = await api("/webapp/api/admin_groups");
+            const res = await api(API_BASE + "/webapp/api/admin_groups");
             adminGroupsCache = res.groups || [];
             renderAdminGroupsList(adminGroupsCache);
             document.getElementById("admin-groups-search").addEventListener("input", (e) => {
@@ -2373,7 +2422,7 @@
             const uid = document.getElementById("adm-tm-grant-user-id").value.trim();
             if (!uid) { toast("Avval foydalanuvchini tanlang", "error"); return; }
             try {
-                await api("/webapp/api/admin_grant_tournament_manager", { user_id: uid });
+                await api(API_BASE + "/webapp/api/admin_grant_tournament_manager", { user_id: uid });
                 toast(t("admin_action_success"), "success");
                 document.getElementById("adm-tm-grant-search").value = "";
                 document.getElementById("adm-tm-grant-user-id").value = "";
@@ -2399,7 +2448,7 @@
         async function selectAdminSearchUser(userId) {
             adminSearchResultsBox.style.display = "none";
             try {
-                const res = await api("/webapp/api/admin_search_user", { query: String(userId) });
+                const res = await api(API_BASE + "/webapp/api/admin_search_user", { query: String(userId) });
                 renderAdminUserCard(res.user);
             } catch (e) {
                 toast(t("admin_user_not_found"), "error");
@@ -2412,18 +2461,18 @@
             if (!query) return;
             adminSearchResultsBox.style.display = "none";
             try {
-                const res = await api("/webapp/api/admin_search_user", { query });
+                const res = await api(API_BASE + "/webapp/api/admin_search_user", { query });
                 await selectAdminSearchUser(res.user.user_id);
             } catch (e) {
                 try {
-                    const res2 = await api("/webapp/api/admin_support_search_users", { query });
+                    const res2 = await api(API_BASE + "/webapp/api/admin_support_search_users", { query });
                     const users = res2.users || [];
                     if (users.length === 1) {
                         await selectAdminSearchUser(users[0].user_id);
                     } else if (users.length > 1) {
                         adminSearchResultsBox.innerHTML = users.map((u) => `
                             <div class="admin-support-search-result" data-uid="${u.user_id}">
-                                <img src="/webapp/avatar/${u.user_id}" alt="" onerror="this.remove();">
+                                <img src="${API_BASE}/webapp/avatar/${u.user_id}" alt="" onerror="this.remove();">
                                 <div>
                                     <div class="admin-support-search-result-name">${escapeHtml(u.full_name || t("label_gamer"))}</div>
                                     <div class="admin-support-search-result-sub">${u.username ? "@" + escapeHtml(u.username) + " · " : ""}ID: ${u.user_id}</div>
@@ -2455,7 +2504,7 @@
         async function refreshAdminUser() {
             const userId = document.getElementById("admin-user-result").dataset.userId;
             if (!userId) return;
-            const res = await api("/webapp/api/admin_search_user", { query: userId });
+            const res = await api(API_BASE + "/webapp/api/admin_search_user", { query: userId });
             renderAdminUserCard(res.user);
         }
 
@@ -2463,7 +2512,7 @@
             const userId = document.getElementById("admin-user-result").dataset.userId;
             if (!userId) return;
             try {
-                await api("/webapp/api/admin_adjust_balance", { user_id: userId, dollar_delta: dollarDelta, diamond_delta: diamondDelta });
+                await api(API_BASE + "/webapp/api/admin_adjust_balance", { user_id: userId, dollar_delta: dollarDelta, diamond_delta: diamondDelta });
                 toast(t("admin_action_success"), "success");
                 await refreshAdminUser();
             } catch (e) {
@@ -2502,7 +2551,7 @@
             const userId = document.getElementById("admin-user-result").dataset.userId;
             if (!userId) return;
             try {
-                await api("/webapp/api/admin_adjust_balance", { user_id: userId, geroy_level_delta: amt });
+                await api(API_BASE + "/webapp/api/admin_adjust_balance", { user_id: userId, geroy_level_delta: amt });
                 toast(t("admin_action_success"), "success");
                 await refreshAdminUser();
             } catch (e) {
@@ -2516,7 +2565,7 @@
             const userId = document.getElementById("admin-user-result").dataset.userId;
             if (!userId) return;
             try {
-                await api("/webapp/api/admin_adjust_balance", { user_id: userId, geroy_level_delta: -amt });
+                await api(API_BASE + "/webapp/api/admin_adjust_balance", { user_id: userId, geroy_level_delta: -amt });
                 toast(t("admin_action_success"), "success");
                 await refreshAdminUser();
             } catch (e) {
@@ -2530,7 +2579,7 @@
             const days = parseInt(document.getElementById("admin-vip-days").value, 10);
             if (!days) return;
             try {
-                await api("/webapp/api/admin_grant_vip", { user_id: userId, days });
+                await api(API_BASE + "/webapp/api/admin_grant_vip", { user_id: userId, days });
                 toast(t("admin_action_success"), "success");
                 document.getElementById("admin-vip-days").value = "";
                 await refreshAdminUser();
@@ -2543,7 +2592,7 @@
             const userId = document.getElementById("admin-user-result").dataset.userId;
             if (!userId) return;
             try {
-                await api("/webapp/api/admin_revoke_vip", { user_id: userId });
+                await api(API_BASE + "/webapp/api/admin_revoke_vip", { user_id: userId });
                 toast(t("admin_action_success"), "success");
                 await refreshAdminUser();
             } catch (e) {
@@ -2591,7 +2640,7 @@
             const role = selectedRoleKey || roleKeyInput.value.trim();
             if (!role) return;
             try {
-                await api("/webapp/api/admin_grant_role", { user_id: userId, role: role });
+                await api(API_BASE + "/webapp/api/admin_grant_role", { user_id: userId, role: role });
                 toast(t("admin_action_success"), "success");
                 roleKeyInput.value = "";
                 selectedRoleKey = null;
@@ -2607,7 +2656,7 @@
             const btn = document.getElementById("admin-broadcast-btn");
             btn.disabled = true;
             try {
-                const res = await api("/webapp/api/admin_broadcast", { text: text });
+                const res = await api(API_BASE + "/webapp/api/admin_broadcast", { text: text });
                 toast(tf("admin_broadcast_queued", { count: res.queued }), "success");
                 document.getElementById("admin-broadcast-text").value = "";
             } catch (e) {
@@ -2713,7 +2762,7 @@
             if (!payload.title) return;
             if (adminSelectedTournamentId) payload.id = adminSelectedTournamentId;
             try {
-                const res = await api("/webapp/api/admin_tournament_save", payload);
+                const res = await api(API_BASE + "/webapp/api/admin_tournament_save", payload);
                 adminSelectedTournamentId = res.id;
                 toast(t("admin_action_success"), "success");
                 await loadAdminTournament();
@@ -2743,7 +2792,7 @@
                 const fd = new FormData();
                 fd.append("initData", initData);
                 fd.append("file", file);
-                const res = await fetch("/webapp/api/admin_upload_banner", { method: "POST", body: fd });
+                const res = await fetch(API_BASE + "/webapp/api/admin_upload_banner", { method: "POST", body: fd });
                 const data = await res.json();
                 if (!data.ok) throw new Error(data.error || "upload_failed");
                 document.getElementById("adm-t-banner-image").value = data.url;
@@ -2775,7 +2824,7 @@
                     const fd = new FormData();
                     fd.append("initData", initData);
                     fd.append("file", file);
-                    const res = await fetch("/webapp/api/admin_upload_banner", { method: "POST", body: fd });
+                    const res = await fetch(API_BASE + "/webapp/api/admin_upload_banner", { method: "POST", body: fd });
                     const data = await res.json();
                     if (data.ok) urls.push(data.url);
                 }
@@ -2845,7 +2894,7 @@
         const oldText = btn.textContent;
         btn.textContent = "...";
         try {
-            const res = await api("/webapp/api/buy_vip", { days });
+            const res = await api(API_BASE + "/webapp/api/buy_vip", { days });
             profileCache.profile.diamond = res.profile.diamond;
             profileCache.vip = res.vip;
             renderUser(profileCache);
@@ -2866,7 +2915,7 @@
         const oldText = btn.textContent;
         btn.textContent = "...";
         try {
-            const res = await api("/webapp/api/vip_invoice", { days });
+            const res = await api(API_BASE + "/webapp/api/vip_invoice", { days });
             tg.openInvoice(res.link, (status) => {
                 btn.disabled = false;
                 btn.textContent = oldText;
@@ -2984,7 +3033,7 @@
                 const oldText = btn.textContent;
                 btn.textContent = "...";
                 try {
-                    const res = await api("/webapp/api/find_random_para");
+                    const res = await api(API_BASE + "/webapp/api/find_random_para");
                     toast(tf("toast_para_request_sent", { remaining: res.remaining }), "success");
                     btn.textContent = oldText;
                 } catch (e) {
@@ -3012,7 +3061,7 @@
             daysTogether = diff + " " + t("label_days_together");
         }
         const avatarInner = para.user_id
-            ? `<img src="/webapp/avatar/${para.user_id}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'💞'}))">`
+            ? `<img src="${API_BASE}/webapp/avatar/${para.user_id}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'💞'}))">`
             : "💞";
         box.innerHTML = `
             <div class="para-card">
@@ -3071,7 +3120,7 @@
     async function toggleActiveRole(id, sw) {
         sw.style.pointerEvents = "none";
         try {
-            const res = await api("/webapp/api/toggle_active_role", { id: id });
+            const res = await api(API_BASE + "/webapp/api/toggle_active_role", { id: id });
             sw.classList.toggle("on", res.is_active);
             if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred("light");
         } catch (e) {
@@ -3084,7 +3133,7 @@
     async function toggleProtection(field, sw) {
         sw.style.pointerEvents = "none";
         try {
-            const res = await api("/webapp/api/toggle_protection", { field: field });
+            const res = await api(API_BASE + "/webapp/api/toggle_protection", { field: field });
             sw.classList.toggle("on", res.on);
             if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred("light");
         } catch (e) {
@@ -3219,7 +3268,7 @@
         const oldText = btn.textContent;
         btn.textContent = "...";
         try {
-            const res = await api("/webapp/api/buy", { item_key: itemKey });
+            const res = await api(API_BASE + "/webapp/api/buy", { item_key: itemKey });
             Object.assign(profileCache.profile, res.profile);
             renderUser(profileCache);
             toast(t("toast_purchase_success"), "success");
@@ -3240,7 +3289,7 @@
         const oldText = btn.textContent;
         btn.textContent = "...";
         try {
-            const res = await api("/webapp/api/buy_active_role", { role: role });
+            const res = await api(API_BASE + "/webapp/api/buy_active_role", { role: role });
             Object.assign(profileCache.profile, res.profile);
             profileCache.active_roles = res.active_roles;
             renderUser(profileCache);
@@ -3274,7 +3323,7 @@
         const box = document.getElementById("lb-container");
         box.innerHTML = '<div class="skeleton-list"></div>';
         try {
-            const res = await api("/webapp/api/leaderboard", { category: category });
+            const res = await api(API_BASE + "/webapp/api/leaderboard", { category: category });
             leaderboardLoaded = true;
             if (!res.leaderboard.length) {
                 box.innerHTML = '<div class="lb-empty">Hozircha ma\'lumot yo\'q</div>';
@@ -3298,7 +3347,7 @@
                     return `
                         <div class="lb-podium-spot lb-podium-${rank}${row.is_me ? " me" : ""}">
                             ${crown}
-                            <div class="lb-podium-avatar">${row.user_id ? `<img src="/webapp/avatar/${row.user_id}" alt="" onerror="this.remove();">` : ""}</div>
+                            <div class="lb-podium-avatar">${row.user_id ? `<img src="${API_BASE}/webapp/avatar/${row.user_id}" alt="" onerror="this.remove();">` : ""}</div>
                             <div class="lb-podium-medal">${medal}</div>
                             <div class="lb-podium-name">${escapeHtml(row.full_name)}</div>
                             <div class="lb-podium-value">${fmt(row[category])} ${icon}</div>
@@ -3314,7 +3363,7 @@
                 el.className = "lb-row" + (row.is_me ? " me" : "");
                 el.innerHTML = `
                     <div class="lb-rank">${row.rank}</div>
-                    <div class="lb-avatar">${row.user_id ? `<img src="/webapp/avatar/${row.user_id}" alt="" onerror="this.remove();">` : ""}</div>
+                    <div class="lb-avatar">${row.user_id ? `<img src="${API_BASE}/webapp/avatar/${row.user_id}" alt="" onerror="this.remove();">` : ""}</div>
                     <div class="lb-name">${escapeHtml(row.full_name)}</div>
                     <div class="lb-value">${fmt(row[category])} ${icon}</div>
                 `;
@@ -3363,7 +3412,7 @@
         if (!adminUserId) { header.style.display = "none"; return; }
         header.style.display = "";
         header.innerHTML = `
-            <img class="admin-support-customer-avatar" src="/webapp/avatar/${adminUserId}" alt="" onerror="this.style.display='none';">
+            <img class="admin-support-customer-avatar" src="${API_BASE}/webapp/avatar/${adminUserId}" alt="" onerror="this.style.display='none';">
             <div class="admin-support-customer-info">
                 <div class="admin-support-customer-name">🎧 ${escapeHtml(adminName || "Operator")}</div>
             </div>
@@ -3373,7 +3422,7 @@
 
     async function loadSupportChatHistory() {
         try {
-            const res = await api("/webapp/api/support_history");
+            const res = await api(API_BASE + "/webapp/api/support_history");
             supportChatLastId = 0;
             renderSupportMessages(res.messages || [], false);
             refreshSupportFabBadge();
@@ -3382,7 +3431,7 @@
 
     async function pollSupportChat() {
         try {
-            const res = await api("/webapp/api/support_history");
+            const res = await api(API_BASE + "/webapp/api/support_history");
             renderSupportMessages((res.messages || []).filter((m) => m.id > supportChatLastId), true);
         } catch (e) { /* jim */ }
     }
@@ -3413,7 +3462,7 @@
         clearBtn.addEventListener("click", async () => {
             if (!(await tgConfirm(t("webapp_support_clear_confirm")))) return;
             try {
-                await api("/webapp/api/support_clear_chat", {});
+                await api(API_BASE + "/webapp/api/support_clear_chat", {});
                 supportChatLastId = 0;
                 renderSupportMessages([], false);
             } catch (e) {
@@ -3426,7 +3475,7 @@
             input.value = "";
             input.style.height = "auto";
             try {
-                const res = await api("/webapp/api/support_send", { text, image_url: imageUrl || "" });
+                const res = await api(API_BASE + "/webapp/api/support_send", { text, image_url: imageUrl || "" });
                 renderSupportMessages([res.message], true);
             } catch (e) {
                 toast(t("toast_generic_error"), "error");
@@ -3459,7 +3508,7 @@
         const box = document.getElementById("history-container");
         box.innerHTML = '<div class="skeleton-list"></div>';
         try {
-            const res = await api("/webapp/api/history");
+            const res = await api(API_BASE + "/webapp/api/history");
             historyLoaded = true;
             if (!res.history.length) {
                 box.innerHTML = '<div class="hist-empty">Hali o\'tkazma yo\'q</div>';
@@ -3479,7 +3528,7 @@
                 const reason = row.caption ? (reasonMap[row.caption] || row.caption) : "";
                 const initial = (row.counterparty || "?").trim().charAt(0).toUpperCase() || "?";
                 const avatarHtml = row.counterparty_user_id
-                    ? `<img src="/webapp/avatar/${row.counterparty_user_id}" alt="" onerror="var p=this.parentElement; this.remove(); if(p) p.textContent='${escapeHtml(initial)}';">`
+                    ? `<img src="${API_BASE}/webapp/avatar/${row.counterparty_user_id}" alt="" onerror="var p=this.parentElement; this.remove(); if(p) p.textContent='${escapeHtml(initial)}';">`
                     : escapeHtml(initial);
                 el.innerHTML = `
                     <div class="hist-avatar">${avatarHtml}</div>
@@ -3505,7 +3554,7 @@
 
     async function loadGroups() {
         try {
-            const res = await api("/webapp/api/my_groups");
+            const res = await api(API_BASE + "/webapp/api/my_groups");
             groupsLoaded = true;
             const sel = document.getElementById("group-select");
             sel.innerHTML = "";
@@ -3534,7 +3583,7 @@
         weaponsBox.innerHTML = '<div class="skeleton-list"></div>';
         moreBox.innerHTML = '<div class="skeleton-list"></div>';
         try {
-            const res = await api("/webapp/api/group_settings", { chat_id: Number(chatId) });
+            const res = await api(API_BASE + "/webapp/api/group_settings", { chat_id: Number(chatId) });
             weaponsBox.innerHTML = "";
             res.weapons.forEach((w) => {
                 const row = document.createElement("div");
@@ -3562,7 +3611,7 @@
     async function toggleGroupField(groupKey, field, sw) {
         sw.style.pointerEvents = "none";
         try {
-            const res = await api("/webapp/api/group_toggle", { chat_id: Number(currentGroupChatId), group: groupKey, field: field });
+            const res = await api(API_BASE + "/webapp/api/group_toggle", { chat_id: Number(currentGroupChatId), group: groupKey, field: field });
             sw.classList.toggle("on", res.on);
             if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred("light");
         } catch (e) {
@@ -3594,7 +3643,7 @@
     async function loadGeroy() {
         const box = document.getElementById("geroy-container");
         try {
-            const res = await api("/webapp/api/geroy_status");
+            const res = await api(API_BASE + "/webapp/api/geroy_status");
             geroyLoaded = true;
             renderGeroy(res);
         } catch (e) {
@@ -3607,7 +3656,7 @@
         if (!res.has_geroy) {
             box.innerHTML = `
                 <div class="panel geroy-empty-card">
-                    <img class="geroy-empty-img" src="/webapp/assets/geroy-avatar.svg" alt="Hero">
+                    <img class="geroy-empty-img" src="${API_BASE}/webapp/assets/geroy-avatar.svg" alt="Hero">
                     <div class="sub-title">${t("webapp_geroy_no_hero")}</div>
                     <div class="sub-desc">Shaxsiy Geroy sotib olib, jangda ishlatishingiz mumkin</div>
                     <div class="geroy-buy-row">
@@ -3625,7 +3674,7 @@
             <div class="panel geroy-card">
                 <div class="geroy-header">
                     <div class="geroy-avatar geroy-avatar-editable" id="geroy-avatar-upload">
-                        <img src="${g.photo_url || "/webapp/assets/geroy-avatar.svg"}" alt="Hero">
+                        <img src="${g.photo_url || API_BASE + "/webapp/assets/geroy-avatar.svg"}" alt="Hero">
                         <span class="geroy-avatar-edit-badge">📷</span>
                     </div>
                     <input type="file" id="geroy-photo-input" accept="image/*" style="display:none;">
@@ -3668,7 +3717,7 @@
             avatarBox.classList.add("uploading");
             try {
                 const photoUrl = await uploadGeroyPhoto(file);
-                const res = await api("/webapp/api/geroy_action", { action: "photo", photo_url: photoUrl });
+                const res = await api(API_BASE + "/webapp/api/geroy_action", { action: "photo", photo_url: photoUrl });
                 toast(t("toast_action_done"), "success");
                 renderGeroy({ ok: true, has_geroy: true, geroy: res.geroy });
             } catch (e) {
@@ -3682,7 +3731,7 @@
         const fd = new FormData();
         fd.append("initData", initData);
         fd.append("file", file);
-        const res = await fetch("/webapp/api/support_upload_image", { method: "POST", body: fd });
+        const res = await fetch(API_BASE + "/webapp/api/support_upload_image", { method: "POST", body: fd });
         const data = await res.json();
         if (!data.ok) throw new Error(data.error || "upload_failed");
         return data.url;
@@ -3692,7 +3741,7 @@
         if (btn.disabled) return;
         btn.disabled = true;
         try {
-            const res = await api("/webapp/api/buy_geroy");
+            const res = await api(API_BASE + "/webapp/api/buy_geroy");
             profileCache.profile.diamond = res.profile.diamond;
             renderUser(profileCache);
             toast(t("toast_geroy_bought"), "success");
@@ -3708,7 +3757,7 @@
         if (btn.disabled || !tg) return;
         btn.disabled = true;
         try {
-            const res = await api("/webapp/api/geroy_invoice");
+            const res = await api(API_BASE + "/webapp/api/geroy_invoice");
             tg.openInvoice(res.link, (status) => {
                 btn.disabled = false;
                 if (status === "paid") {
@@ -3726,7 +3775,7 @@
         if (btn.disabled) return;
         btn.disabled = true;
         try {
-            const res = await api("/webapp/api/geroy_action", Object.assign({ action }, extra || {}));
+            const res = await api(API_BASE + "/webapp/api/geroy_action", Object.assign({ action }, extra || {}));
             Object.assign(profileCache.profile, res.profile);
             renderUser(profileCache);
             toast(t("toast_action_done"), "success");
@@ -3770,7 +3819,7 @@
         return `
             <div class="panel gm-card gm-card-compact">
                 <div class="gm-card-top">
-                    <div class="geroy-avatar gm-avatar-lg"><img src="${g.photo_url || "/webapp/assets/geroy-avatar.svg"}" alt="Hero"></div>
+                    <div class="geroy-avatar gm-avatar-lg"><img src="${g.photo_url || API_BASE + "/webapp/assets/geroy-avatar.svg"}" alt="Hero"></div>
                     <div class="gm-card-info">
                         <div class="gm-card-name-row">
                             <h3 class="geroy-header-name">${escapeHtml(g.name)}</h3>
@@ -3798,7 +3847,7 @@
         geroyMarketPage = page || 1;
         const box = document.getElementById("geroy-market-browse-container");
         try {
-            const res = await api("/webapp/api/geroy_market/list", { page: geroyMarketPage });
+            const res = await api(API_BASE + "/webapp/api/geroy_market/list", { page: geroyMarketPage });
             geroyMarketHasMore = !!res.has_more;
             if (!res.listings.length) {
                 box.innerHTML = `<div class="hist-empty">${t("geroy_market_empty")}</div>`;
@@ -3821,7 +3870,7 @@
         if (!(await confirmAction("geroy_market_buy_confirm"))) return;
         btn.disabled = true;
         try {
-            const res = await api("/webapp/api/geroy_market/buy", { listing_id: listingId });
+            const res = await api(API_BASE + "/webapp/api/geroy_market/buy", { listing_id: listingId });
             profileCache.profile.diamond = res.profile.diamond;
             renderUser(profileCache);
             toast(t("toast_geroy_market_bought"), "success");
@@ -3840,7 +3889,7 @@
     async function loadGeroyMarketMine() {
         const box = document.getElementById("geroy-market-mine-container");
         try {
-            const res = await api("/webapp/api/geroy_market/my");
+            const res = await api(API_BASE + "/webapp/api/geroy_market/my");
             const active = res.listings.find((l) => l.status === "active");
             let html = "";
             if (active) {
@@ -3848,7 +3897,7 @@
                     <div class="panel gm-card gm-card-compact">
                         <div class="panel-head"><h3>${t("geroy_market_active_listing_title")}</h3></div>
                         <div class="gm-card-top">
-                            <div class="geroy-avatar gm-avatar-lg"><img src="${active.geroy.photo_url || "/webapp/assets/geroy-avatar.svg"}" alt="Hero"></div>
+                            <div class="geroy-avatar gm-avatar-lg"><img src="${active.geroy.photo_url || API_BASE + "/webapp/assets/geroy-avatar.svg"}" alt="Hero"></div>
                             <div class="gm-card-info">
                                 <div class="gm-card-name-row"><h3 class="geroy-header-name">${escapeHtml(active.geroy.name)}</h3></div>
                                 <span class="gm-price">💎 ${fmt(active.price)}</span>
@@ -3900,7 +3949,7 @@
         if (!price || price < 20) { toast(t("toast_geroy_market_bad_price"), "error"); return; }
         btn.disabled = true;
         try {
-            await api("/webapp/api/geroy_market/create", { price });
+            await api(API_BASE + "/webapp/api/geroy_market/create", { price });
             toast(t("toast_geroy_market_listed"), "success");
             loadGeroyMarketMine();
         } catch (e) {
@@ -3915,7 +3964,7 @@
         if (!(await confirmAction("geroy_market_cancel_confirm"))) return;
         btn.disabled = true;
         try {
-            await api("/webapp/api/geroy_market/cancel", { listing_id: listingId });
+            await api(API_BASE + "/webapp/api/geroy_market/cancel", { listing_id: listingId });
             toast(t("toast_geroy_market_cancelled"), "success");
             loadGeroyMarketMine();
         } catch (e) {
@@ -3930,7 +3979,7 @@
         if (!price || price < 20) { toast(t("toast_geroy_market_bad_price"), "error"); return; }
         btn.disabled = true;
         try {
-            await api("/webapp/api/geroy_market/update_price", { listing_id: listingId, price });
+            await api(API_BASE + "/webapp/api/geroy_market/update_price", { listing_id: listingId, price });
             toast(t("toast_geroy_market_price_updated"), "success");
             loadGeroyMarketMine();
         } catch (e) {
@@ -3942,7 +3991,7 @@
     async function loadGeroyMarketAdminList() {
         const box = document.getElementById("geroy-market-admin-list");
         try {
-            const res = await api("/webapp/api/geroy_market/admin/list");
+            const res = await api(API_BASE + "/webapp/api/geroy_market/admin/list");
             if (!res.listings.length) {
                 box.innerHTML = `<div class="hist-empty">${t("geroy_market_empty")}</div>`;
                 return;
@@ -3959,7 +4008,7 @@
                     if (!(await confirmAction("geroy_market_cancel_confirm"))) return;
                     btn.disabled = true;
                     try {
-                        await api("/webapp/api/geroy_market/admin/cancel", { listing_id: parseInt(btn.dataset.adminCancelId, 10) });
+                        await api(API_BASE + "/webapp/api/geroy_market/admin/cancel", { listing_id: parseInt(btn.dataset.adminCancelId, 10) });
                         toast(t("toast_geroy_market_cancelled"), "success");
                         loadGeroyMarketAdminList();
                     } catch (e) {
@@ -3982,7 +4031,7 @@
         if (!name || !price || price < 20) { toast(t("toast_geroy_market_bad_price"), "error"); return; }
         btn.disabled = true;
         try {
-            await api("/webapp/api/geroy_market/admin/create", { name, level, price });
+            await api(API_BASE + "/webapp/api/geroy_market/admin/create", { name, level, price });
             toast(t("toast_geroy_market_listed"), "success");
             document.getElementById("gm-admin-name").value = "";
             document.getElementById("gm-admin-price").value = "";
@@ -4035,7 +4084,7 @@
         const budgetInput = document.getElementById("nft-budget-input");
         topBox.style.display = "";
         try {
-            const res = await api("/webapp/api/admin_nft_stars_balance", {});
+            const res = await api(API_BASE + "/webapp/api/admin_nft_stars_balance", {});
             const text = tf("nft_stars_balance_text", { balance: fmt(res.balance) });
             topBox.textContent = text;
             if (panelBox) panelBox.textContent = text;
@@ -4060,7 +4109,7 @@
                 const raw = document.getElementById("nft-budget-input").value.trim();
                 budgetSaveBtn.disabled = true;
                 try {
-                    await api("/webapp/api/admin_nft_set_budget", { budget: raw || null });
+                    await api(API_BASE + "/webapp/api/admin_nft_set_budget", { budget: raw || null });
                     toast(t("admin_action_success"), "success");
                     loadNftStarsBalance();
                 } catch (e) {
@@ -4107,7 +4156,7 @@
             const btn = document.getElementById("nft-admin-sync-btn");
             btn.disabled = true;
             try {
-                const res = await api("/webapp/api/admin_nft_sync", {});
+                const res = await api(API_BASE + "/webapp/api/admin_nft_sync", {});
                 toast(tf("nft_sync_toast", { count: res.count }), "success");
                 loadNftAdminList();
             } catch (e) {
@@ -4121,7 +4170,7 @@
             resaleSyncBtn.addEventListener("click", async () => {
                 resaleSyncBtn.disabled = true;
                 try {
-                    const res = await api("/webapp/api/admin_nft_resale_sync", {});
+                    const res = await api(API_BASE + "/webapp/api/admin_nft_resale_sync", {});
                     toast(`Sinxronlandi: ${res.count} ta Collectible`, "success");
                     loadResaleAdminList();
                 } catch (e) {
@@ -4136,7 +4185,7 @@
             premiumSyncBtn.addEventListener("click", async () => {
                 premiumSyncBtn.disabled = true;
                 try {
-                    const res = await api("/webapp/api/admin_premium_sync", {});
+                    const res = await api(API_BASE + "/webapp/api/admin_premium_sync", {});
                     toast(`Sinxronlandi: ${res.count} ta Premium variant`, "success");
                     await loadPremiumAdminList();
                     if (nftAdminFilter === "premium") renderNftAdminList();
@@ -4154,7 +4203,7 @@
         const box = document.getElementById("resale-market-browse-container");
         clearNftLottieInstances();
         try {
-            const res = await api("/webapp/api/resale_market_list", {});
+            const res = await api(API_BASE + "/webapp/api/resale_market_list", {});
             const items = res.items || [];
             if (!items.length) {
                 box.innerHTML = `<div class="hist-empty">${t("resale_empty_store")}</div>`;
@@ -4191,7 +4240,7 @@
         if (!(await tgConfirm(t("nft_buy_confirm")))) return;
         btn.disabled = true;
         try {
-            const res = await api("/webapp/api/resale_market_buy", { id });
+            const res = await api(API_BASE + "/webapp/api/resale_market_buy", { id });
             if (res.profile) {
                 profileCache.profile.diamond = res.profile.diamond;
                 renderUser(profileCache);
@@ -4221,7 +4270,7 @@
     async function loadResaleAdminList(page, append) {
         page = page || 1;
         try {
-            const res = await api("/webapp/api/admin_nft_resale_list", { page });
+            const res = await api(API_BASE + "/webapp/api/admin_nft_resale_list", { page });
             const items = res.items || [];
             resaleAdminAllItems = append ? resaleAdminAllItems.concat(items) : items;
             resaleAdminPage = page;
@@ -4239,7 +4288,7 @@
     async function loadResaleAdminHistory() {
         const box = document.getElementById("resale-admin-history");
         try {
-            const res = await api("/webapp/api/admin_nft_resale_purchase_history", {});
+            const res = await api(API_BASE + "/webapp/api/admin_nft_resale_purchase_history", {});
             const items = res.items || [];
             if (!items.length) {
                 box.innerHTML = `<span class="inv-empty">${t("nft_empty_history")}</span>`;
@@ -4263,7 +4312,7 @@
 
     async function loadPremiumAdminList() {
         try {
-            const res = await api("/webapp/api/admin_premium_list", {});
+            const res = await api(API_BASE + "/webapp/api/admin_premium_list", {});
             premiumAdminAllItems = res.items || [];
         } catch (e) {
             premiumAdminAllItems = [];
@@ -4273,7 +4322,7 @@
     async function loadPremiumAdminHistory() {
         const box = document.getElementById("premium-admin-history");
         try {
-            const res = await api("/webapp/api/admin_premium_purchase_history", {});
+            const res = await api(API_BASE + "/webapp/api/admin_premium_purchase_history", {});
             const items = res.items || [];
             if (!items.length) {
                 box.innerHTML = `<span class="inv-empty">${t("nft_empty_history")}</span>`;
@@ -4295,7 +4344,7 @@
     async function loadPremiumMarketBrowse() {
         const box = document.getElementById("premium-market-browse-container");
         try {
-            const res = await api("/webapp/api/premium_market_list", {});
+            const res = await api(API_BASE + "/webapp/api/premium_market_list", {});
             const items = res.items || [];
             if (!items.length) {
                 box.innerHTML = `<div class="hist-empty">Hozircha sotuvda Premium variant yo'q</div>`;
@@ -4328,7 +4377,7 @@
         if (!(await tgConfirm(t("nft_buy_confirm")))) return;
         btn.disabled = true;
         try {
-            const res = await api("/webapp/api/premium_market_buy", { id });
+            const res = await api(API_BASE + "/webapp/api/premium_market_buy", { id });
             if (res.profile) {
                 profileCache.profile.diamond = res.profile.diamond;
                 renderUser(profileCache);
@@ -4356,7 +4405,7 @@
         const box = document.getElementById("nft-market-mine-container");
         clearNftLottieInstances();
         try {
-            const res = await api("/webapp/api/nft_market_my_purchases", {});
+            const res = await api(API_BASE + "/webapp/api/nft_market_my_purchases", {});
             const items = res.items || [];
             if (!items.length) {
                 box.innerHTML = `<div class="hist-empty">${t("nft_empty_purchases_mine")}</div>`;
@@ -4380,7 +4429,7 @@
         const box = document.getElementById("nft-market-browse-container");
         clearNftLottieInstances();
         try {
-            const res = await api("/webapp/api/nft_market_list", {});
+            const res = await api(API_BASE + "/webapp/api/nft_market_list", {});
             const items = res.items || [];
             if (!items.length) {
                 box.innerHTML = `<div class="hist-empty">${t("nft_empty_store")}</div>`;
@@ -4416,7 +4465,7 @@
         if (!(await tgConfirm(t("nft_buy_confirm")))) return;
         btn.disabled = true;
         try {
-            const res = await api("/webapp/api/nft_market_buy", { id });
+            const res = await api(API_BASE + "/webapp/api/nft_market_buy", { id });
             if (res.profile) {
                 profileCache.profile.diamond = res.profile.diamond;
                 renderUser(profileCache);
@@ -4443,7 +4492,7 @@
 
     function renderNftCardEditGrid(containerId, items, emptyText, onSaved, opts) {
         opts = opts || {};
-        const endpoint = opts.endpoint || "/webapp/api/admin_nft_set_price";
+        const endpoint = opts.endpoint || API_BASE + "/webapp/api/admin_nft_set_price";
         const showTitle = !!opts.showTitle;
         const box = document.getElementById(containerId);
         if (!items.length) {
@@ -4533,7 +4582,7 @@
                     const priceInput = box.querySelector(`[data-premium-price="${id}"]`);
                     const price = parseInt(priceInput.value, 10) || 0;
                     try {
-                        await api("/webapp/api/admin_premium_set_price", { id, diamond_price: price, is_active: true });
+                        await api(API_BASE + "/webapp/api/admin_premium_set_price", { id, diamond_price: price, is_active: true });
                         const cached = premiumAdminAllItems.find((x) => String(x.id) === String(id));
                         if (cached) cached.diamond_price = price;
                         toast(t("admin_action_success"), "success");
@@ -4546,7 +4595,7 @@
         }
         if (nftAdminFilter === "resale") {
             renderNftCardEditGrid("nft-admin-list", resaleAdminAllItems, t("resale_empty_catalog"), () => renderNftAdminList(), {
-                endpoint: "/webapp/api/admin_nft_resale_set_price", showTitle: true,
+                endpoint: API_BASE + "/webapp/api/admin_nft_resale_set_price", showTitle: true,
             });
             if (resaleAdminHasMore) {
                 const box = document.getElementById("nft-admin-list");
@@ -4569,7 +4618,7 @@
     async function loadNftAdminList() {
         const box = document.getElementById("nft-admin-list");
         try {
-            const res = await api("/webapp/api/admin_nft_list", {});
+            const res = await api(API_BASE + "/webapp/api/admin_nft_list", {});
             nftAdminAllItems = res.items || [];
             renderNftAdminList();
         } catch (e) {
@@ -4580,7 +4629,7 @@
     async function loadNftStoreEditList() {
         const box = document.getElementById("nft-storeedit-list");
         try {
-            const res = await api("/webapp/api/admin_nft_list", {});
+            const res = await api(API_BASE + "/webapp/api/admin_nft_list", {});
             nftAdminAllItems = res.items || [];
             const listed = nftAdminAllItems.filter((it) => it.diamond_price);
             renderNftCardEditGrid("nft-storeedit-list", listed, t("nft_empty_listed"), () => loadNftStoreEditList());
@@ -4598,7 +4647,7 @@
     async function loadNftPurchaseHistory() {
         const box = document.getElementById("nft-admin-history");
         try {
-            const res = await api("/webapp/api/admin_nft_purchase_history", {});
+            const res = await api(API_BASE + "/webapp/api/admin_nft_purchase_history", {});
             const items = res.items || [];
             if (!items.length) {
                 box.innerHTML = `<span class="inv-empty">${t("nft_empty_history")}</span>`;
@@ -4658,7 +4707,7 @@
         diaDollarBox.innerHTML = "";
         dolBox.innerHTML = "";
 
-        const starDiamondPrices = { 10: 70, 30: 200, 70: 450, 250: 1300 };
+        const starDiamondPrices = { 10: 70, 50: 350, 100: 700, 500: 3500, 1000: 7000 };
         Object.keys(starDiamondPrices).forEach((countStr) => {
             const count = Number(countStr);
             const card = document.createElement("div");
@@ -4667,7 +4716,6 @@
             card.querySelector("button").addEventListener("click", (e) => buyCurrencyStars("diamond", count, e.target));
             diaStarsBox.appendChild(card);
         });
-        diaStarsBox.appendChild(buildCustomAmountCard("diamond", "💎", 7, 1));
 
         [1, 5, 10, 30].forEach((count) => {
             const card = document.createElement("div");
@@ -4727,7 +4775,7 @@
         const oldText = btn.textContent;
         btn.textContent = "...";
         try {
-            const res = await api("/webapp/api/sell_diamond_for_dollar", { diamond });
+            const res = await api(API_BASE + "/webapp/api/sell_diamond_for_dollar", { diamond });
             Object.assign(profileCache.profile, res.profile);
             renderUser(profileCache);
             toast(t("toast_purchase_success"), "success");
@@ -4746,7 +4794,7 @@
         const oldText = btn.textContent;
         btn.textContent = "...";
         try {
-            const res = await api("/webapp/api/currency_invoice", { kind, count });
+            const res = await api(API_BASE + "/webapp/api/currency_invoice", { kind, count });
             tg.openInvoice(res.link, (status) => {
                 btn.disabled = false;
                 btn.textContent = oldText;
@@ -4767,7 +4815,7 @@
         const oldText = btn.textContent;
         btn.textContent = "...";
         try {
-            const res = await api("/webapp/api/buy_diamond_with_dollar", { count });
+            const res = await api(API_BASE + "/webapp/api/buy_diamond_with_dollar", { count });
             Object.assign(profileCache.profile, res.profile);
             renderUser(profileCache);
             toast(t("toast_purchase_success"), "success");
@@ -4839,7 +4887,7 @@
             if (!targetBody || diaBtn.disabled) return;
             diaBtn.disabled = true;
             try {
-                const res = await api("/webapp/api/gift_vip", Object.assign({ days: giftDays }, targetBody));
+                const res = await api(API_BASE + "/webapp/api/gift_vip", Object.assign({ days: giftDays }, targetBody));
                 profileCache.profile.diamond = res.profile.diamond;
                 renderUser(profileCache);
                 toast(t("toast_vip_gifted"), "success");
@@ -4856,7 +4904,7 @@
             if (!targetBody || starBtn.disabled || !tg) return;
             starBtn.disabled = true;
             try {
-                const res = await api("/webapp/api/gift_vip_invoice", Object.assign({ days: giftDays }, targetBody));
+                const res = await api(API_BASE + "/webapp/api/gift_vip_invoice", Object.assign({ days: giftDays }, targetBody));
                 tg.openInvoice(res.link, (status) => {
                     starBtn.disabled = false;
                     if (status === "paid") toast(t("toast_vip_gifted"), "success");
@@ -4911,7 +4959,7 @@
             const oldText = btn.textContent;
             btn.textContent = "...";
             try {
-                const res = await api("/webapp/api/transfer", body);
+                const res = await api(API_BASE + "/webapp/api/transfer", body);
                 if (res.profile) Object.assign(profileCache.profile, res.profile);
                 renderUser(profileCache);
                 toast(t("toast_transfer_to_para"), "success");
@@ -4941,11 +4989,11 @@
 
         async function runLookup(body) {
             try {
-                const res = await api("/webapp/api/lookup_user", body);
+                const res = await api(API_BASE + "/webapp/api/lookup_user", body);
                 const u = res.user;
                 previewBox.className = "target-preview";
                 previewBox.innerHTML = `
-                    <img src="/webapp/avatar/${u.user_id}" alt="" onerror="this.style.display='none'">
+                    <img src="${API_BASE}/webapp/avatar/${u.user_id}" alt="" onerror="this.style.display='none'">
                     <div>
                         <div class="target-preview-name">${escapeHtml(u.full_name || t("label_unknown"))}</div>
                         <div class="target-preview-id">ID: ${u.user_id}${u.is_self ? " (" + t("label_this_is_you") + ")" : ""}</div>
@@ -5046,7 +5094,7 @@
             const oldText = btn.textContent;
             btn.textContent = "...";
             try {
-                const res = await api("/webapp/api/transfer", body);
+                const res = await api(API_BASE + "/webapp/api/transfer", body);
                 if (res.profile) Object.assign(profileCache.profile, res.profile);
                 renderUser(profileCache);
                 toast(t("toast_transfer_success"), "success");
@@ -5095,10 +5143,10 @@
                     menu.classList.remove("open");
                     if (l.code === currentLang) return;
                     try {
-                        const res = await api("/webapp/api/set_lang", { lang: l.code });
+                        const res = await api(API_BASE + "/webapp/api/set_lang", { lang: l.code });
                         applyI18n(res.ui);
                         renderMenu(res.lang);
-                        const data = await api("/webapp/api/profile");
+                        const data = await api(API_BASE + "/webapp/api/profile");
                         profileCache = data;
                         applyI18n(data.ui);
                         safe(() => renderCurrencyPacks(), "renderCurrencyPacks");
@@ -5175,6 +5223,19 @@
         }
     }
 
+    // ═══════ SPLASH SCREEN YASHIRISH ═══════
+    let _splashHidden = false;
+    function splashHide() {
+        if (_splashHidden) return;
+        _splashHidden = true;
+        const el = document.getElementById("splash-screen");
+        if (!el) return;
+        el.classList.add("splash-hidden");
+        setTimeout(() => { try { el.remove(); } catch(e){} }, 600);
+    }
+    // Maksimal kutish: 4 soniya (tarmoq sekin bo'lsa ham splash qolmasin)
+    setTimeout(splashHide, 4000);
+
     async function boot() {
         safe(setupNav, "setupNav");
         safe(setupLeaderboardTabs, "setupLeaderboardTabs");
@@ -5186,7 +5247,7 @@
         safe(() => document.getElementById("daily-claim-btn").addEventListener("click", claimDaily), "daily-claim-btn");
         const langSwitcher = safe(setupLangSwitcher, "setupLangSwitcher");
         try {
-            const data = await api("/webapp/api/profile");
+            const data = await api(API_BASE + "/webapp/api/profile");
             profileCache = data;
             safe(() => applyI18n(data.ui), "applyI18n");
             safe(() => langSwitcher && langSwitcher.renderMenu(data.lang), "langSwitcher.renderMenu");
@@ -5207,7 +5268,10 @@
             document.getElementById("user-name").textContent = t("label_error");
             document.getElementById("user-username").textContent = t("webapp_no_user");
             toast(t("toast_error_prefix") + e.message, "error");
+            setTimeout(splashHide, 500);
         }
+        // Profil yuklandi — splash yashir
+        splashHide();
     }
 
     /* ---------------- auto-update: deploy bo'lganda foydalanuvchi qo'lda
@@ -5215,7 +5279,7 @@
     let knownAppVersion = null;
     async function checkAppVersion() {
         try {
-            const r = await fetch("/webapp/api/version", { cache: "no-store" });
+            const r = await fetch(API_BASE + "/webapp/api/version", { cache: "no-store" });
             const data = await r.json();
             if (!data || !data.version) return;
             if (knownAppVersion === null) {
