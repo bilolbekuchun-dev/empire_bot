@@ -176,6 +176,10 @@ async def f(call: CallbackQuery, bot: Bot):
 async def f(call: CallbackQuery, bot: Bot):
     await others.get_premium_groups_on_profile(call, bot)
 
+@router.callback_query(F.data == "my_profile")
+async def f(call: CallbackQuery, bot: Bot):
+    await others.get_profile(bot, call.message)
+
 @router.message(Command("gqotil"))
 @router.channel_post(Command("gqotil"))
 async def f(message: Message, bot: Bot):
